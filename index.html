@@ -1,22 +1,9 @@
 <!DOCTYPE html>
-<html>
-<head>
-  <title>Test</title>
-</head>
-<body style="background:black;color:white;">
-  <h1>HELLO – IF YOU SEE THIS, HTML IS WORKING</h1>
-</body>
-</html>
-
-<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Toy Store Admin Panel</title>
-
-  <!-- ICONS -->
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
   <style>
     :root {
@@ -34,9 +21,14 @@
 
     body {
       margin: 0;
+      min-height: 100vh;
       background: var(--bg);
       color: var(--text);
+    }
+
+    .app {
       display: flex;
+      min-height: 100vh;
     }
 
     /* SIDEBAR */
@@ -97,6 +89,7 @@
       text-align: center;
       cursor: pointer;
       transition: 0.3s;
+      font-size: 18px;
     }
 
     .card:hover {
@@ -108,7 +101,6 @@
       margin-bottom: 10px;
     }
 
-    /* CONTENT */
     .content {
       margin-top: 30px;
       font-size: 18px;
@@ -117,19 +109,22 @@
 </head>
 <body>
 
-  <!-- SIDEBAR -->
-  <div class="sidebar" id="sidebar">
-    <div id="sidebarMenu"></div>
-    <div class="menu-item">⚙ Settings</div>
-  </div>
+  <div class="app">
 
-  <!-- MAIN -->
-  <div class="main">
-    <div class="header">🧸 Toy Store Software Admin Panel</div>
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+      <div id="sidebarMenu"></div>
+      <div class="menu-item">⚙ Settings</div>
+    </div>
 
-    <div id="home" class="cards"></div>
+    <!-- MAIN -->
+    <div class="main">
+      <div class="header">🧸 Toy Store Software Admin Panel</div>
 
-    <div id="content" class="content"></div>
+      <div id="home" class="cards"></div>
+      <div id="content" class="content"></div>
+    </div>
+
   </div>
 
   <script>
@@ -151,10 +146,11 @@
 
     function renderHome() {
       home.innerHTML = "";
+      content.innerHTML = "";
       menuItems.forEach(item => {
         const card = document.createElement("div");
         card.className = "card";
-        card.innerHTML = `<div class="icon">${item.icon}</div>${item.name}`;
+        card.innerHTML = `<div class=\"icon\">${item.icon}</div>${item.name}`;
         card.onclick = () => selectMenu(item.name);
         home.appendChild(card);
       });
@@ -181,5 +177,6 @@
 
     renderHome();
   </script>
+
 </body>
 </html>
