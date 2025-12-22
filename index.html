@@ -7,3 +7,179 @@
   <h1>HELLO – IF YOU SEE THIS, HTML IS WORKING</h1>
 </body>
 </html>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Toy Store Admin Panel</title>
+
+  <!-- ICONS -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #4F46E5;
+      --bg: #0F172A;
+      --card: #1E293B;
+      --text: #E5E7EB;
+      --inactive: #000000;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 240px;
+      background: #020617;
+      padding: 20px;
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .sidebar.active {
+      display: flex;
+    }
+
+    .menu-item {
+      padding: 12px 15px;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      color: var(--inactive);
+      transition: 0.3s;
+    }
+
+    .menu-item.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    /* MAIN */
+    .main {
+      flex: 1;
+      padding: 20px;
+    }
+
+    /* HEADER */
+    .header {
+      background: var(--primary);
+      padding: 15px 25px;
+      border-radius: 14px;
+      font-size: 22px;
+      font-weight: 600;
+    }
+
+    /* HOME CARDS */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      margin-top: 40px;
+    }
+
+    .card {
+      background: var(--card);
+      padding: 30px;
+      border-radius: 22px;
+      text-align: center;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .card:hover {
+      background: var(--primary);
+    }
+
+    .icon {
+      font-size: 40px;
+      margin-bottom: 10px;
+    }
+
+    /* CONTENT */
+    .content {
+      margin-top: 30px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div id="sidebarMenu"></div>
+    <div class="menu-item">⚙ Settings</div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="header">🧸 Toy Store Software Admin Panel</div>
+
+    <div id="home" class="cards"></div>
+
+    <div id="content" class="content"></div>
+  </div>
+
+  <script>
+    const menuItems = [
+      { name: "Invoice", icon: "🧾" },
+      { name: "Purchase", icon: "📦" },
+      { name: "Cash In Hand", icon: "💰" },
+      { name: "Profit", icon: "📈" },
+      { name: "Report", icon: "📊" },
+      { name: "Vendors", icon: "🏪" }
+    ];
+
+    const home = document.getElementById("home");
+    const sidebar = document.getElementById("sidebar");
+    const sidebarMenu = document.getElementById("sidebarMenu");
+    const content = document.getElementById("content");
+
+    let activeMenu = null;
+
+    function renderHome() {
+      home.innerHTML = "";
+      menuItems.forEach(item => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `<div class="icon">${item.icon}</div>${item.name}`;
+        card.onclick = () => selectMenu(item.name);
+        home.appendChild(card);
+      });
+    }
+
+    function renderSidebar() {
+      sidebarMenu.innerHTML = "";
+      menuItems.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "menu-item" + (activeMenu === item.name ? " active" : "");
+        div.textContent = `${item.icon} ${item.name}`;
+        div.onclick = () => selectMenu(item.name);
+        sidebarMenu.appendChild(div);
+      });
+    }
+
+    function selectMenu(name) {
+      activeMenu = name;
+      sidebar.classList.add("active");
+      home.innerHTML = "";
+      renderSidebar();
+      content.textContent = `${name} module will be implemented in next parts.`;
+    }
+
+    renderHome();
+  </script>
+</body>
+</html>
