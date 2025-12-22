@@ -1,61 +1,9 @@
 <!DOCTYPE html>
-</div>
-
-
-<script>
-const menuItems = [
-{ name: "Invoice", icon: "🧾" },
-{ name: "Purchase", icon: "📦" },
-{ name: "Cash In Hand", icon: "💰" },
-{ name: "Profit", icon: "📈" },
-{ name: "Report", icon: "📊" },
-{ name: "Vendors", icon: "🏪" }
-];
-
-
-const home = document.getElementById("home");
-const sidebar = document.getElementById("sidebar");
-const sidebarMenu = document.getElementById("sidebarMenu");
-const content = document.getElementById("content");
-
-
-let activeMenu = null;
-
-
-function renderHome() {
-home.innerHTML = "";
-menuItems.forEach(item => {
-const card = document.createElement("div");
-card.className = "card";
-card.innerHTML = `<div class="icon">${item.icon}</div>${item.name}`;
-card.onclick = () => selectMenu(item.name);
-home.appendChild(card);
-});
-}
-
-
-function renderSidebar() {
-sidebarMenu.innerHTML = "";
-menuItems.forEach(item => {
-const div = document.createElement("div");
-div.className = "menu-item" + (activeMenu === item.name ? " active" : "");
-div.textContent = `${item.icon} ${item.name}`;
-div.onclick = () => selectMenu(item.name);
-sidebarMenu.appendChild(div);
-});
-}
-
-
-function selectMenu(name) {
-activeMenu = name;
-sidebar.classList.add("active");
-home.innerHTML = "";
-renderSidebar();
-content.textContent = `${name} module will be implemented in next parts.`;
-}
-
-
-renderHome();
-</script>
+<html>
+<head>
+  <title>Test</title>
+</head>
+<body style="background:black;color:white;">
+  <h1>HELLO – IF YOU SEE THIS, HTML IS WORKING</h1>
 </body>
 </html>
