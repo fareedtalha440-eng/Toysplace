@@ -1,169 +1,256 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Toy Store POS – Pro Max</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Toy Store Software</title>
+
 <style>
 :root{
-  --blue:#0f172a;
-  --blue-light:#e0f2fe;
-  --bg:#f8fafc;
+  --primary:#0b2a4a;
+  --accent:#38bdf8;
+  --bg:#f4f6f8;
   --card:#ffffff;
   --shadow:0 10px 30px rgba(0,0,0,.12);
 }
 *{box-sizing:border-box}
-body{margin:0;font-family:Segoe UI,Arial;background:var(--bg)}
+body{
+  margin:0;
+  font-family:Segoe UI,Arial;
+  background:var(--bg);
+}
 
 /* LOGIN */
-#login{height:100vh;display:flex;align-items:center;justify-content:center}
-.login-box{background:#fff;padding:32px;width:320px;border-radius:14px;box-shadow:var(--shadow)}
-.login-box h2{text-align:center;margin:0 0 20px}
-.login-box input,.login-box button{width:100%;padding:12px;margin-top:12px;font-size:14px}
-.login-box button{background:var(--blue);color:#fff;border:none;border-radius:8px;cursor:pointer}
+#login{
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+.login-box{
+  width:340px;
+  background:#fff;
+  padding:30px;
+  border-radius:16px;
+  box-shadow:var(--shadow);
+}
+.login-box h2{text-align:center}
+.login-box input,.login-box button{
+  width:100%;
+  padding:12px;
+  margin-top:12px;
+}
+.login-box button{
+  background:var(--primary);
+  color:#fff;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+}
+#error{color:red;text-align:center}
 
-/* LAYOUT */
-#app{display:none;height:100vh}
-header{height:60px;background:var(--blue);color:#fff;display:flex;align-items:center;padding:0 20px;font-size:18px}
-.sidebar{width:230px;background:var(--blue);color:#fff;display:flex;flex-direction:column}
-.sidebar button{background:none;border:none;color:#cbd5e1;padding:14px 20px;text-align:left;cursor:pointer;font-size:15px}
-.sidebar button.active{background:var(--blue-light);color:#000;margin:6px;border-radius:12px;box-shadow:var(--shadow)}
+/* APP */
+#app{display:none;height:100vh;flex-direction:column}
+header{
+  height:60px;
+  background:var(--primary);
+  color:#fff;
+  display:flex;
+  align-items:center;
+  padding:0 20px;
+  font-size:18px;
+}
+.container{flex:1;display:flex}
+.sidebar{
+  width:220px;
+  background:var(--primary);
+  color:#cbd5e1;
+  display:flex;
+  flex-direction:column;
+}
+.sidebar button{
+  background:none;
+  border:none;
+  color:inherit;
+  padding:14px 20px;
+  text-align:left;
+  cursor:pointer;
+}
+.sidebar button.active{
+  background:var(--accent);
+  color:#fff;
+  border-radius:12px;
+  margin:6px;
+}
 .sidebar .bottom{margin-top:auto}
 main{flex:1;padding:20px;overflow:auto}
 
-/* CARDS */
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px}
-.card{background:var(--card);padding:24px;border-radius:16px;box-shadow:var(--shadow);cursor:pointer;font-size:18px}
+/* HOME */
+.cards{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:20px;
+}
+.card{
+  background:#fff;
+  padding:24px;
+  border-radius:16px;
+  box-shadow:var(--shadow);
+  font-size:18px;
+}
 
 /* TABLE */
-.table{width:100%;border-collapse:collapse;margin-top:10px}
-.table th,.table td{padding:8px;border-bottom:1px solid #e5e7eb;font-size:13px}
-.table th{text-align:left}
-.table input{width:100%;padding:6px}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{border-bottom:1px solid #e5e7eb;padding:8px;font-size:13px}
+td input{width:100%;padding:6px}
 
-/* SUMMARY */
-.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:20px}
-.sum-card{background:#fff;padding:20px;border-radius:16px;box-shadow:var(--shadow)}
-.sum-card input{width:100%;padding:8px;margin-top:6px}
+.summary{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:20px;
+  margin-top:20px;
+}
+.sum{
+  background:#fff;
+  padding:16px;
+  border-radius:16px;
+  box-shadow:var(--shadow);
+}
+.sum input{width:100%;padding:8px;margin-top:6px}
 
-button.add{margin-top:10px;padding:8px 14px;border:none;border-radius:10px;background:var(--blue);color:#fff;cursor:pointer}
+.add{
+  margin-top:10px;
+  padding:10px 14px;
+  background:var(--primary);
+  color:#fff;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+}
 </style>
 </head>
+
 <body>
 
 <!-- LOGIN -->
 <div id="login">
   <div class="login-box">
-    <h2>Developer Login</h2>
-    <input id="user" placeholder="Username" />
-    <input id="pass" type="password" placeholder="Password" />
+    <h2>Login</h2>
+    <input id="u" placeholder="Username">
+    <input id="p" type="password" placeholder="Password">
     <button onclick="login()">Login</button>
-    <p id="loginMsg" style="color:red"></p>
+    <div id="error"></div>
   </div>
 </div>
 
 <!-- APP -->
 <div id="app">
-  <div style="display:flex;flex-direction:column;width:100%">
-    <header>🧸 Toy Store POS – Pro Max</header>
-    <div style="display:flex;flex:1">
-      <div class="sidebar">
-        <button onclick="openHome()">🏠 Home</button>
-        <button onclick="openInvoice()">🧾 Invoice</button>
-        <button onclick="openPurchase()">📦 Purchase</button>
-        <button onclick="openVendors()">🏪 Vendors</button>
-        <div class="bottom">
-          <button onclick="openSettings()">⚙ Settings</button>
-        </div>
-      </div>
-      <main id="content"></main>
+<header>🧸 Toy Store Software</header>
+<div class="container">
+  <div class="sidebar">
+    <button class="active" onclick="home()">🏠 Home</button>
+    <button onclick="purchase()">📦 Purchase</button>
+    <button>🧾 Invoice</button>
+    <button>🏪 Vendors</button>
+    <div class="bottom">
+      <button>⚙ Settings</button>
     </div>
   </div>
+  <main id="view"></main>
+</div>
 </div>
 
 <script>
-/* AUTH */
-const DEV_USER='Dani', DEV_PASS='123';
+const USER='Dani', PASS='123';
+let rows=0;
+
 function login(){
-  if(user.value===DEV_USER && pass.value===DEV_PASS){
-    login.style.display='none'; app.style.display='flex'; openHome();
-  } else loginMsg.innerText='Invalid credentials';
+  if(u.value===USER && p.value===PASS){
+    login.style.display='none';
+    app.style.display='flex';
+    home();
+  } else error.textContent='Invalid Login';
 }
 
-/* STORAGE */
-let products=JSON.parse(localStorage.getItem('products')||'[]');
-let vendors=JSON.parse(localStorage.getItem('vendors')||'[]');
+const rs=n=>'Rs. '+Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2});
 
-/* HELPERS */
-const rs=n=>'Rs. '+n.toLocaleString('en-IN',{minimumFractionDigits:2});
-
-/* HOME */
-function openHome(){
-  content.innerHTML=`<div class='cards'>
-    <div class='card' onclick='openInvoice()'>🧾 Invoice</div>
-    <div class='card' onclick='openPurchase()'>📦 Purchase</div>
-    <div class='card' onclick='openVendors()'>🏪 Vendors</div>
-    <div class='card'>💰 Cash</div>
-    <div class='card'>📊 Profit</div>
-    <div class='card'>📑 Reports</div>
-  </div>`;
+function home(){
+  view.innerHTML=`
+    <div class="cards">
+      <div class="card">🧾 Invoice</div>
+      <div class="card">📦 Purchase</div>
+      <div class="card">🏪 Vendors</div>
+      <div class="card">💰 Cash</div>
+      <div class="card">📊 Profit</div>
+      <div class="card">📑 Reports</div>
+    </div>`;
 }
 
-/* PURCHASE */
-let pRows=1;
-function openPurchase(){
-  content.innerHTML=`<h2>Purchase</h2>
-  <table class='table' id='ptable'>
-  <tr><th>S No</th><th>Barcode</th><th>Item No</th><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>
-  </table>
-  <button class='add' onclick='addPRow()'>+ Add Item</button>
-  <div class='summary'>
-    <div class='sum-card'><b>Amount</b><div id='p_amt'>Rs. 0.00</div></div>
-    <div class='sum-card'><b>Discount</b>
-      <input id='p_drs' placeholder='Rs' oninput='discRs()'>
-      <input id='p_dpct' placeholder='%' oninput='discPct()'>
-    </div>
-    <div class='sum-card'><b>Total</b><div id='p_total'>Rs. 0.00</div></div>
-  </div>`;
-  addPRow();
+function purchase(){
+  rows=0;
+  view.innerHTML=`
+    <h2>Purchase</h2>
+    <table id="tbl">
+      <tr>
+        <th>S No</th><th>Barcode</th><th>Item No</th><th>Description</th>
+        <th>Qty</th><th>Rate</th><th>Amount</th>
+      </tr>
+    </table>
+    <button class="add" onclick="addRow()">+ Add Item</button>
+    <div class="summary">
+      <div class="sum"><b>Amount</b><div id="amt">Rs. 0.00</div></div>
+      <div class="sum"><b>Discount</b>
+        <input id="dRs" placeholder="Rs" oninput="discRs()">
+        <input id="dPc" placeholder="%" oninput="discPc()">
+      </div>
+      <div class="sum"><b>Total</b><div id="tot">Rs. 0.00</div></div>
+    </div>`;
+  addRow();
 }
-function addPRow(){
-  const t=document.getElementById('ptable');
-  const r=pRows++;
-  t.insertAdjacentHTML('beforeend',`<tr>
-    <td>${r}</td>
-    <td><input id='pb${r}' onblur='checkProduct(${r})'></td>
-    <td><input id='pi${r}'></td>
-    <td><input id='pd${r}'></td>
-    <td><input id='pq${r}' type='number' value='1' oninput='calcRow(${r})'></td>
-    <td><input id='pr${r}' type='number' oninput='calcRow(${r})'></td>
-    <td id='pa${r}'>Rs. 0.00</td>
-  </tr>`);
+
+function addRow(){
+  rows++;
+  tbl.insertAdjacentHTML('beforeend',`
+    <tr>
+      <td>${rows}</td>
+      <td><input></td>
+      <td><input></td>
+      <td><input></td>
+      <td><input type="number" value="1" id="q${rows}" oninput="calc(${rows})"></td>
+      <td><input type="number" id="r${rows}" oninput="calc(${rows})"></td>
+      <td id="a${rows}">Rs. 0.00</td>
+    </tr>`);
 }
-function checkProduct(r){
-  const code=document.getElementById('pb'+r).value;
-  if(!code) return;
-  let p=products.find(x=>x.barcode===code);
-  if(!p){
-    if(confirm('Product not found. Create new?')){
-      p={barcode:code,rate:parseFloat(pr[r]?.value)||0};
-      products.push(p); localStorage.setItem('products',JSON.stringify(products));
-    }
+
+function calc(i){
+  const q=+document.getElementById('q'+i).value||0;
+  const r=+document.getElementById('r'+i).value||0;
+  document.getElementById('a'+i).textContent=rs(q*r);
+  total();
+}
+
+function sum(){
+  let s=0;
+  for(let i=1;i<=rows;i++){
+    s+=+document.getElementById('a'+i).textContent.replace(/[^0-9.]/g,'')||0;
   }
+  return s;
 }
-function calcRow(r){
-  const q=+pq[r].value||0, rate=+pr[r].value||0;
-  const a=q*rate; document.getElementById('pa'+r).innerText=rs(a); calcTotal();
-}
-function sumAmt(){let s=0;for(let i=1;i<pRows;i++){const el=document.getElementById('pa'+i);if(el)s+=parseFloat(el.innerText.replace(/[^0-9.]/g,''))||0;}return s}
-function discRs(){const a=sumAmt();const d=+p_drs.value||0;p_dpct.value=a?(d/a*100).toFixed(2):0;calcTotal()}
-function discPct(){const a=sumAmt();const p=+p_dpct.value||0;p_drs.value=(a*p/100).toFixed(2);calcTotal()}
-function calcTotal(){const a=sumAmt(), d=+p_drs.value||0;p_amt.innerText=rs(a);p_total.innerText=rs(a-d)}
 
-/* PLACEHOLDERS */
-function openInvoice(){content.innerHTML='<h2>Invoice (Full logic same as Purchase – next)</h2>'}
-function openVendors(){content.innerHTML='<h2>Vendors (Full ledger coming next)</h2>'}
-function openSettings(){content.innerHTML='<h2>Settings</h2><p>Theme & Logins ready</p>'}
+function discRs(){
+  dPc.value=sum()?((+dRs.value/sum())*100).toFixed(2):'';
+  total();
+}
+function discPc(){
+  dRs.value=((sum()*+dPc.value)/100).toFixed(2);
+  total();
+}
+
+function total(){
+  amt.textContent=rs(sum());
+  tot.textContent=rs(sum()-(+dRs.value||0));
+}
 </script>
+
 </body>
 </html>
