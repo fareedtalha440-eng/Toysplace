@@ -21,7 +21,7 @@ body{
 }
 
 /* LOGIN */
-#login{
+#loginScreen{
   height:100vh;
   display:flex;
   justify-content:center;
@@ -133,12 +133,12 @@ td input{width:100%;padding:6px}
 <body>
 
 <!-- LOGIN -->
-<div id="login">
+<div id="loginScreen">
   <div class="login-box">
     <h2>Login</h2>
     <input id="u" placeholder="Username">
     <input id="p" type="password" placeholder="Password">
-    <button onclick="login()">Login</button>
+    <button onclick="doLogin()">Login</button>
     <div id="error"></div>
   </div>
 </div>
@@ -164,12 +164,14 @@ td input{width:100%;padding:6px}
 const USER='Dani', PASS='123';
 let rows=0;
 
-function login(){
+function doLogin(){
   if(u.value===USER && p.value===PASS){
-    login.style.display='none';
-    app.style.display='flex';
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('app').style.display='flex';
     home();
-  } else error.textContent='Invalid Login';
+  } else {
+    error.textContent='Invalid Login';
+  }
 }
 
 const rs=n=>'Rs. '+Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2});
