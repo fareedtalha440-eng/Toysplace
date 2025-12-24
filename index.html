@@ -8,102 +8,75 @@
 :root{
   --dark:#0b2a4a;
   --bg:#f4f6f8;
-  --card:#ffffff;
+  --white:#fff;
   --shadow:0 12px 30px rgba(0,0,0,.18);
 }
 *{box-sizing:border-box}
 body{margin:0;font-family:Segoe UI,Arial;background:var(--bg)}
-
 header{
-  height:70px;
-  background:var(--dark);
-  color:#fff;
-  display:flex;
-  align-items:center;
-  padding:0 28px;
-  font-size:22px;
-  font-weight:600;
+  height:70px;background:var(--dark);color:#fff;
+  display:flex;align-items:center;padding:0 28px;
+  font-size:22px;font-weight:600;
 }
 
 /* MAIN MENU */
-#menu{
-  height:calc(100vh - 70px);
-  display:flex;
-  justify-content:center;
-  align-items:center;
-}
-.menu-grid{
-  display:grid;
-  grid-template-columns:repeat(3,220px);
-  gap:28px;
-}
+#menu{height:calc(100vh - 70px);display:flex;justify-content:center;align-items:center}
+.menu-grid{display:grid;grid-template-columns:repeat(3,220px);gap:26px}
 .menu-item{
-  background:#fff;
-  padding:34px;
-  border-radius:22px;
-  box-shadow:var(--shadow);
-  font-size:20px;
-  text-align:center;
-  cursor:pointer;
-  transition:.3s;
+  background:#fff;padding:34px;border-radius:22px;
+  box-shadow:var(--shadow);font-size:20px;text-align:center;
+  cursor:pointer;transition:.3s;
 }
 .menu-item:hover{transform:translateY(-6px)}
 
 /* APP */
-#app{
-  display:none;
-  height:calc(100vh - 70px);
-}
+#app{display:none;height:calc(100vh - 70px)}
 .sidebar{
-  width:280px;
-  background:var(--dark);
-  color:#cbd5e1;
-  display:flex;
-  flex-direction:column;
+  width:280px;background:var(--dark);color:#cbd5e1;
+  display:flex;flex-direction:column;
 }
 .nav-btn{
-  background:none;
-  border:none;
-  color:inherit;
-  padding:18px 30px;
-  text-align:left;
-  font-size:17px;
-  cursor:pointer;
-  position:relative;
+  background:none;border:none;color:inherit;
+  padding:18px 30px;text-align:left;font-size:17px;
+  cursor:pointer;position:relative;
 }
 .nav-btn span{font-size:26px;margin-right:14px}
 .nav-btn.active{
-  color:#fff;
-  background:rgba(255,255,255,.08);
+  color:#fff;background:rgba(255,255,255,.08);
   box-shadow:var(--shadow);
 }
 .nav-btn.active::after{
-  content:'';
-  position:absolute;
-  bottom:6px;
-  left:30px;
-  width:65%;
-  height:3px;
-  background:#fff;
-  border-radius:6px;
+  content:'';position:absolute;bottom:6px;left:30px;
+  width:65%;height:3px;background:#fff;border-radius:6px;
 }
 .sidebar .bottom{margin-top:auto}
 main{flex:1;padding:28px;overflow:auto}
 
 /* TABLE */
-table{width:100%;border-collapse:collapse;margin-top:18px}
-th,td{padding:12px;border-bottom:1px solid #e5e7eb}
-td input{width:100%;padding:8px}
+table{width:100%;border-collapse:collapse;margin-top:14px}
+th,td{padding:10px;border-bottom:1px solid #e5e7eb}
+td input{width:100%;padding:6px}
 
-.add{
-  margin-top:14px;
-  padding:14px 20px;
-  background:var(--dark);
-  color:#fff;
-  border:none;
-  border-radius:14px;
+button.primary{
+  padding:12px 18px;background:var(--dark);
+  color:#fff;border:none;border-radius:12px;
   cursor:pointer;
 }
+.summary{
+  margin-top:18px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;
+}
+.summary div{
+  background:#fff;padding:14px;border-radius:14px;
+  box-shadow:var(--shadow);
+}
+.search-box{
+  position:absolute;background:#fff;box-shadow:var(--shadow);
+  width:100%;z-index:10;
+}
+.search-box div{
+  padding:8px;cursor:pointer;
+}
+.search-box div:hover{background:#e5e7eb}
 </style>
 </head>
 <body>
@@ -138,51 +111,162 @@ td input{width:100%;padding:8px}
 </div>
 
 <script>
-const menu = document.getElementById('menu');
-const app = document.getElementById('app');
-const sidebar = document.getElementById('sidebar');
-const view = document.getElementById('view');
+/* SAMPLE STOCK */
+let products=[
+ {barcode:'1001',item:'T001',desc:'Teddy Bear Large',rate:1500,stock:20},
+ {barcode:'1002',item:'T002',desc:'Teddy Bear Small',rate:1200,stock:30},
+ {barcode:'2001',item:'C001',desc:'Toy Car Red',rate:800,stock:40},
+ {barcode:'3001',item:'D001',desc:'Doll Pink',rate:1100,stock:25}
+];
 
-menu.addEventListener('click', e => {
-  const item = e.target.closest('.menu-item');
-  if(!item) return;
-  menu.style.display='none';
-  app.style.display='flex';
-  activate(item.dataset.page);
-});
+let invoices=[]; let currentInvoice=null;
 
-sidebar.addEventListener('click', e => {
-  const btn = e.target.closest('.nav-btn');
-  if(!btn) return;
-  activate(btn.dataset.page);
-});
+/* NAV */
+const menu=document.getElementById('menu');
+const app=document.getElementById('app');
+const sidebar=document.getElementById('sidebar');
+const view=document.getElementById('view');
 
+menu.onclick=e=>{
+ const m=e.target.closest('.menu-item');
+ if(!m)return;
+ menu.style.display='none';app.style.display='flex';
+ activate(m.dataset.page);
+}
+sidebar.onclick=e=>{
+ const b=e.target.closest('.nav-btn');
+ if(!b)return;activate(b.dataset.page);
+}
 function activate(page){
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  const activeBtn = document.querySelector(`.nav-btn[data-page=\"${page}\"]`);
-  if(activeBtn) activeBtn.classList.add('active');
-  render(page);
+ document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+ const btn=document.querySelector(`.nav-btn[data-page="${page}"]`);
+ if(btn)btn.classList.add('active');
+ render(page);
 }
 
+/* RENDER */
 function render(page){
-  if(page==='invoice' || page==='purchase'){
-    view.innerHTML = `
-      <h2>${page==='invoice'?'Invoice':'Purchase'}</h2>
-      <table>
-        <tr>
-          <th>S No</th><th>Barcode</th><th>Item</th>
-          <th>Qty</th><th>Rate</th><th>Amount</th>
-        </tr>
-      </table>
-      <button class="add">+ Add Item</button>
-    `;
-  }
-  if(page==='product') view.innerHTML='<h2>Product</h2>';
-  if(page==='reports') view.innerHTML='<h2>Reports</h2>';
-  if(page==='vendors') view.innerHTML='<h2>Vendor</h2>';
-  if(page==='settings') view.innerHTML='<h2>Setting</h2>';
+ if(page==='invoice') renderInvoiceList();
+ else view.innerHTML=`<h2>${page}</h2>`;
+}
+
+/* INVOICE LIST */
+function renderInvoiceList(){
+ view.innerHTML=`
+ <h2>Invoices</h2>
+ <button class="primary" onclick="newInvoice()">➕ New Invoice</button>
+ <table>
+  <tr><th>Bill No</th><th>Date</th><th>Total</th></tr>
+  ${invoices.map(i=>`<tr><td>${i.no}</td><td>${i.date}</td><td>Rs. ${i.total.toLocaleString()}.00</td></tr>`).join('')}
+ </table>`;
+}
+
+/* NEW INVOICE */
+function newInvoice(){
+ currentInvoice={no:invoices.length+1,date:new Date().toLocaleDateString(),items:[]};
+ view.innerHTML=`
+ <h2>Invoice #${currentInvoice.no}</h2>
+ <table id="invTable">
+ <tr>
+  <th>S No</th><th>Barcode</th><th>Item</th><th>Description</th>
+  <th>Qty</th><th>Rate</th><th>Disc Rs</th><th>Disc %</th><th>Amount</th>
+ </tr>
+ </table>
+ <button class="primary" onclick="addRow()">+ Add Product</button>
+ <div class="summary">
+  <div>Amount: <span id="sumAmt">0</span></div>
+  <div>Discount: <span id="sumDisc">0</span></div>
+  <div>Total: <span id="sumTotal">0</span></div>
+ </div>
+ <br>
+ <button class="primary" onclick="saveInvoice()">Save Invoice</button>
+ `;
+ addRow();
+}
+
+/* ADD ROW */
+function addRow(){
+ const t=document.getElementById('invTable');
+ const r=t.rows.length;
+ const row=t.insertRow();
+ row.innerHTML=`
+ <td>${r}</td>
+ <td style="position:relative"><input oninput="search(this,${r})"></td>
+ <td><input disabled></td>
+ <td><input disabled></td>
+ <td><input type="number" value="1" min="1" oninput="calc(${r})"></td>
+ <td><input disabled></td>
+ <td><input type="number" value="0" oninput="calc(${r})"></td>
+ <td><input type="number" value="0" oninput="calc(${r})"></td>
+ <td><input disabled></td>`;
+}
+
+/* SEARCH */
+function search(inp,r){
+ let q=inp.value.toLowerCase();
+ let box=document.createElement('div');box.className='search-box';
+ let res=products.filter(p=>p.barcode.includes(q)||p.item.includes(q)||p.desc.toLowerCase().includes(q)).slice(0,6);
+ box.innerHTML=res.map(p=>`<div onclick="selectProd(${r},'${p.barcode}')">${p.barcode} | ${p.desc}</div>`).join('');
+ inp.parentNode.querySelector('.search-box')?.remove();
+ if(q)inp.parentNode.appendChild(box);
+}
+
+/* SELECT PRODUCT */
+function selectProd(r,bc){
+ let p=products.find(x=>x.barcode===bc);
+ let row=document.getElementById('invTable').rows[r];
+ row.cells[1].children[0].value=p.barcode;
+ row.cells[2].children[0].value=p.item;
+ row.cells[3].children[0].value=p.desc;
+ row.cells[5].children[0].value=p.rate;
+ calc(r);
+ row.cells[1].querySelector('.search-box')?.remove();
+}
+
+/* CALC */
+function calc(r){
+ let row=document.getElementById('invTable').rows[r];
+ let qty=+row.cells[4].children[0].value;
+ let rate=+row.cells[5].children[0].value;
+ let dr=+row.cells[6].children[0].value;
+ let dp=+row.cells[7].children[0].value;
+ if(dp>0)dr=(rate*qty)*dp/100;
+ if(dr>0)dp=(dr/(rate*qty))*100;
+ row.cells[6].children[0].value=dr.toFixed(2);
+ row.cells[7].children[0].value=dp.toFixed(2);
+ let amt=(rate*qty)-dr;
+ row.cells[8].children[0].value=amt.toFixed(2);
+ summary();
+}
+
+/* SUMMARY */
+function summary(){
+ let sumA=0,sumD=0;
+ document.querySelectorAll('#invTable tr').forEach((r,i)=>{
+  if(i===0)return;
+  sumA+=+r.cells[5].children[0].value * +r.cells[4].children[0].value;
+  sumD+=+r.cells[6].children[0].value;
+ });
+ document.getElementById('sumAmt').innerText='Rs. '+sumA.toLocaleString()+'.00';
+ document.getElementById('sumDisc').innerText='Rs. '+sumD.toLocaleString()+'.00';
+ document.getElementById('sumTotal').innerText='Rs. '+(sumA-sumD).toLocaleString()+'.00';
+}
+
+/* SAVE */
+function saveInvoice(){
+ let total=0;
+ document.querySelectorAll('#invTable tr').forEach((r,i)=>{
+  if(i===0)return;
+  let bc=r.cells[1].children[0].value;
+  let qty=+r.cells[4].children[0].value;
+  let p=products.find(x=>x.barcode===bc);
+  if(qty>p.stock){alert('Stock not enough');throw'';}
+  p.stock-=qty;
+  total+=+r.cells[8].children[0].value;
+ });
+ invoices.push({no:currentInvoice.no,date:currentInvoice.date,total});
+ renderInvoiceList();
 }
 </script>
-
 </body>
-</html>
+  </html>
