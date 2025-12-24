@@ -1,174 +1,223 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Toy Store Software</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 :root{
- --dark:#0b2a4a;
- --light:#38bdf8;
- --bg:#f4f6f8;
- --card:#fff;
+  --dark:#0b2a4a;
+  --accent:#ffffff;
+  --bg:#f4f6f8;
+  --card:#ffffff;
+  --shadow:0 12px 32px rgba(0,0,0,.18);
 }
-body{margin:0;font-family:Segoe UI;background:var(--bg)}
-.hidden{display:none}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Segoe UI,Arial;
+  background:var(--bg);
+}
+
+/* APP */
+#app{height:100vh;display:flex;flex-direction:column}
 header{
- height:64px;background:var(--dark);color:#fff;
- display:flex;align-items:center;padding:0 24px;
- font-size:20px;font-weight:600
+  height:70px;
+  background:var(--dark);
+  color:#fff;
+  display:flex;
+  align-items:center;
+  padding:0 28px;
+  font-size:22px;
+  font-weight:600;
 }
-#app{display:none;height:100vh;flex-direction:column}
 .container{flex:1;display:flex}
+
+/* SIDEBAR */
 .sidebar{
- width:260px;background:var(--dark);color:#cbd5e1;
- display:flex;flex-direction:column
+  width:280px;
+  background:var(--dark);
+  color:#cbd5e1;
+  display:flex;
+  flex-direction:column;
+  padding-top:14px;
 }
-.nav{
- padding:18px 24px;cursor:pointer;font-size:16px;
+.nav-btn{
+  background:none;
+  border:none;
+  color:inherit;
+  padding:18px 30px;
+  text-align:left;
+  font-size:17px;
+  cursor:pointer;
+  position:relative;
+  transition:.3s;
 }
-.nav.active{
- color:#fff;
- background:rgba(255,255,255,.08);
- border-bottom:3px solid #fff;
+.nav-btn span{font-size:26px;margin-right:14px}
+.nav-btn.active{color:#fff;background:rgba(255,255,255,.08);box-shadow:var(--shadow)}
+.nav-btn.active::after{
+  content:'';
+  position:absolute;
+  bottom:6px;
+  left:30px;
+  width:65%;
+  height:3px;
+  background:#fff;
+  border-radius:6px;
 }
-main{flex:1;padding:24px;overflow:auto}
-.card{background:#fff;padding:24px;border-radius:14px}
-table{width:100%;border-collapse:collapse;margin-top:12px}
-th,td{border-bottom:1px solid #ddd;padding:8px}
-input,select{padding:6px;width:100%}
-button{
- background:var(--dark);color:#fff;border:none;
- padding:10px 16px;border-radius:8px;cursor:pointer
+
+main{flex:1;padding:28px;overflow:auto}
+
+/* DASHBOARD */
+.cards{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:26px;
 }
-.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:16px}
+.card{
+  background:#fff;
+  padding:30px;
+  border-radius:20px;
+  box-shadow:var(--shadow);
+  font-size:20px;
+}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;margin-top:18px}
+th,td{padding:12px;border-bottom:1px solid #e5e7eb;font-size:14px}
+td input{width:100%;padding:9px}
+
+.summary{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:22px;
+  margin-top:26px;
+}
+.sum{
+  background:#fff;
+  padding:22px;
+  border-radius:20px;
+  box-shadow:var(--shadow);
+}
+.sum input{width:100%;padding:10px;margin-top:8px}
+
+.add{
+  margin-top:14px;
+  padding:14px 20px;
+  background:var(--dark);
+  color:#fff;
+  border:none;
+  border-radius:14px;
+  cursor:pointer;
+}
 </style>
 </head>
 
 <body>
 
-
-
 <div id="app">
-<header>🧸 Toy Store Management</header>
+<header>🧸 Toy Store Management System</header>
 <div class="container">
-<div class="sidebar">
-<div class="nav active" data="home">🏠 Home</div>
-<div class="nav" data="invoice">🧾 Invoice</div>
-<div class="nav" data="purchase">📦 Purchase</div>
-<div class=
+  <div class="sidebar" id="sidebar">
+    <button class="nav-btn active" data-page="home"><span>🏠</span>Home</button>
+    <button class="nav-btn" data-page="invoice"><span>🧾</span>Invoice</button>
+    <button class="nav-btn" data-page="purchase"><span>📦</span>Purchase</button>
+    <button class="nav-btn" data-page="vendors"><span>🏪</span>Vendors</button>
+  </div>
+  <main id="view"></main>
+</div>
+</div>
 
-document.querySelectorAll('.nav').forEach(n=>{
- n.onclick=()=>{
-  document.querySelectorAll('.nav').forEach(x=>x.classList.remove('active'));
-  n.classList.add('active');
-  load(n.getAttribute('data'));
- }
-});
-
+<script>
+let rows=0;
 const rs=n=>'Rs. '+Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2});
 
-function load(page){
- if(page==='home'){
-  view.innerHTML=`<div class="card">Welcome to Toy Store Software</div>`;
- }
+sidebar.addEventListener('click',e=>{
+  const btn=e.target.closest('.nav-btn');
+  if(!btn) return;
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  render(btn.dataset.page);
+});
 
- if(page==='purchase' || page==='invoice'){
-  view.innerHTML=`
-  <h2>${page==='purchase'?'Purchase':'Invoice'}</h2>
-  <label>Select Vendor</label>
-  <select id="vsel">
-    <option value="">-- Select Vendor --</option>
-    ${vendors.map(v=>`<option>${v.name}</option>`).join('')}
-  </select>
-  <div id="ptable"></div>`;
-  vsel.onchange=()=>openTable(page);
- }
+function render(page){
+  if(page==='home'){
+    view.innerHTML=`
+    <div class="cards">
+      <div class="card">🧾 Invoice</div>
+      <div class="card">📦 Purchase</div>
+      <div class="card">🏪 Vendors</div>
+      <div class="card">💰 Cash In Hand</div>
+      <div class="card">📊 Profit</div>
+      <div class="card">📑 Reports</div>
+    </div>`;
+  }
 
- if(page==='vendors'){
-  view.innerHTML=`
-  <h2>Vendors <button style="float:right" onclick="addVendor()">➕</button></h2>
-  <table>
-  <tr><th>S No</th><th>No</th><th>Name</th><th>Balance</th><th>Last Purchase</th><th>Last Payment</th></tr>
-  ${vendors.map((v,i)=>`
-   <tr>
-    <td>${i+1}</td><td>${v.no}</td>
-    <td onclick="vendorDetail(${i})" style="color:blue;cursor:pointer">${v.name}</td>
-    <td>${rs(v.balance)}</td>
-    <td>${rs(v.lastPurchase)}</td>
-    <td>${rs(v.lastPayment)}</td>
-   </tr>`).join('')}
-  </table>`;
- }
+  if(page==='purchase' || page==='invoice'){
+    rows=0;
+    view.innerHTML=`
+      <h2>${page==='purchase'?'Purchase':'Invoice'}</h2>
+      <table id="tbl">
+        <tr>
+          <th>S No</th><th>Barcode</th><th>Item No</th><th>Description</th>
+          <th>Qty</th><th>Rate</th><th>Amount</th>
+        </tr>
+      </table>
+      <button class="add" id="addRow">+ Add Item</button>
+      <div class="summary">
+        <div class="sum"><b>Amount</b><div id="amt">Rs. 0.00</div></div>
+        <div class="sum"><b>Discount</b>
+          <input id="dRs" placeholder="Rs">
+          <input id="dPc" placeholder="%">
+        </div>
+        <div class="sum"><b>Total</b><div id="tot">Rs. 0.00</div></div>
+      </div>`;
+    document.getElementById('addRow').onclick=addRow;
+    dRs.oninput=discRs; dPc.oninput=discPc;
+    addRow();
+  }
 
- if(page==='settings'){
-  view.innerHTML=`<div class="card">Theme & Login Settings</div>`;
- }
+  if(page==='vendors'){
+    view.innerHTML=`<h2>Vendors</h2><p>Vendor list & ledger will be shown here</p>`;
+  }
 }
 
-function addVendor(){
- const name=prompt('Vendor Name');
- if(!name) return;
- vendors.push({
-  no:vendors.length+1,
-  name,
-  balance:0,
-  lastPurchase:0,
-  lastPayment:0
- });
- load('vendors');
-}
-
-function vendorDetail(i){
- const v=vendors[i];
- view.innerHTML=`<h3>${v.name}</h3><p>Ledger coming next</p>`;
-}
-
-function openTable(type){
- ptable.innerHTML=`
- <table id="tbl">
- <tr><th>S No</th><th>Barcode</th><th>Item No</th><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>
- </table>
- <button onclick="addRow()">+ Add</button>
- <div class="summary">
- <div class="card"><b>Amount</b><div id="amt">Rs.0.00</div></div>
- <div class="card"><b>Discount</b><input id="dr"><input id="dp"></div>
- <div class="card"><b>Total</b><div id="tot">Rs.0.00</div></div>
- </div>`;
- rows=0; addRow();
- dr.oninput=calcDiscRs; dp.oninput=calcDiscPc;
-}
-
-let rows=0;
 function addRow(){
- rows++;
- tbl.insertAdjacentHTML('beforeend',`
- <tr>
- <td>${rows}</td>
- <td><input></td>
- <td><input></td>
- <td><input></td>
- <td><input type="number" value="1" oninput="calc()"></td>
- <td><input type="number" oninput="calc()"></td>
- <td class="a">Rs.0.00</td>
- </tr>`);
+  rows++;
+  tbl.insertAdjacentHTML('beforeend',`
+    <tr>
+      <td>${rows}</td>
+      <td><input></td>
+      <td><input></td>
+      <td><input></td>
+      <td><input type="number" value="1" id="q${rows}"></td>
+      <td><input type="number" id="r${rows}"></td>
+      <td id="a${rows}">Rs. 0.00</td>
+    </tr>`);
+  document.getElementById('q'+rows).oninput=()=>calc(rows);
+  document.getElementById('r'+rows).oninput=()=>calc(rows);
 }
 
-function calc(){
- let sum=0;
- document.querySelectorAll('#tbl tr').forEach((r,i)=>{
-  if(i===0) return;
-  const q=r.children[4].children[0].value||0;
-  const rt=r.children[5].children[0].value||0;
-  const a=q*rt;
-  r.children[6].textContent=rs(a);
-  sum+=a;
- });
- amt.textContent=rs(sum);
- tot.textContent=rs(sum-(dr.value||0));
+function calc(i){
+  const q=+document.getElementById('q'+i).value||0;
+  const r=+document.getElementById('r'+i).value||0;
+  document.getElementById('a'+i).textContent=rs(q*r);
+  total();
 }
 
-function calcDiscRs(){ dp.value=((dr.value/amt.textContent.replace(/[^0-9.]/g,''))*100||0).toFixed(2); calc(); }
-function calcDiscPc(){ dr.value=(amt.textContent.replace(/[^0-9.]/g,'')*(dp.value/100)||0).toFixed(2); calc(); }
+function sum(){
+  let s=0;
+  for(let i=1;i<=rows;i++){
+    s+=+document.getElementById('a'+i).textContent.replace(/[^0-9.]/g,'')||0;
+  }
+  return s;
+}
+
+function discRs(){ dPc.value=sum()?((+dRs.value/sum())*100).toFixed(2):''; total(); }
+function discPc(){ dRs.value=((sum()*+dPc.value)/100).toFixed(2); total(); }
+function total(){ amt.textContent=rs(sum()); tot.textContent=rs(sum()-(+dRs.value||0)); }
+
+render('home');
 </script>
 </body>
 </html>
