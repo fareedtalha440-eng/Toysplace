@@ -1,242 +1,200 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <title>Toy Store Software</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <style>
 :root{
-  --dark:#0b2a4a;
-  --light:#ffffff;
-  --accent:#38bdf8;
-  --bg:#f4f6f8;
-  --card:#ffffff;
-  --shadow:0 10px 25px rgba(0,0,0,.15);
+ --dark:#0b2a4a;
+ --light:#38bdf8;
+ --bg:#f4f6f8;
+ --card:#fff;
 }
-body{
-  margin:0;
-  font-family:Segoe UI,Arial;
-  background:var(--bg);
-}
+body{margin:0;font-family:Segoe UI;background:var(--bg)}
+.hidden{display:none}
 header{
-  height:64px;
-  background:var(--dark);
-  color:#fff;
-  display:flex;
-  align-items:center;
-  padding:0 26px;
-  font-size:20px;
-  font-weight:600;
+ height:64px;background:var(--dark);color:#fff;
+ display:flex;align-items:center;padding:0 24px;
+ font-size:20px;font-weight:600
 }
-.container{display:flex;height:calc(100vh - 64px)}
+#app{display:none;height:100vh;flex-direction:column}
+.container{flex:1;display:flex}
 .sidebar{
-  width:260px;
-  background:var(--dark);
-  color:#cbd5e1;
-  display:flex;
-  flex-direction:column;
+ width:260px;background:var(--dark);color:#cbd5e1;
+ display:flex;flex-direction:column
 }
 .nav{
-  padding:18px 26px;
-  cursor:pointer;
-  font-size:16px;
-  position:relative;
+ padding:18px 24px;cursor:pointer;font-size:16px;
 }
-.nav span{font-size:22px;margin-right:12px}
 .nav.active{
-  color:#fff;
+ color:#fff;
+ background:rgba(255,255,255,.08);
+ border-bottom:3px solid #fff;
 }
-.nav.active::after{
-  content:'';
-  position:absolute;
-  bottom:6px;
-  left:26px;
-  width:60%;
-  height:3px;
-  background:#fff;
-  border-radius:4px;
-}
-.nav:hover{background:rgba(255,255,255,.08)}
-.bottom{margin-top:auto}
-main{
-  flex:1;
-  padding:26px;
-  overflow:auto;
-}
-.card{
-  background:#fff;
-  padding:22px;
-  border-radius:18px;
-  box-shadow:var(--shadow);
-  margin-bottom:20px;
-}
-table{width:100%;border-collapse:collapse}
-th,td{padding:10px;border-bottom:1px solid #e5e7eb}
-input,select{
-  padding:8px;
-  width:100%;
-}
+main{flex:1;padding:24px;overflow:auto}
+.card{background:#fff;padding:24px;border-radius:14px}
+table{width:100%;border-collapse:collapse;margin-top:12px}
+th,td{border-bottom:1px solid #ddd;padding:8px}
+input,select{padding:6px;width:100%}
 button{
-  padding:10px 16px;
-  background:var(--dark);
-  color:#fff;
-  border:none;
-  border-radius:10px;
-  cursor:pointer;
+ background:var(--dark);color:#fff;border:none;
+ padding:10px 16px;border-radius:8px;cursor:pointer
 }
-.summary{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:20px;
-}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:16px}
 </style>
 </head>
 
 <body>
 
-<header>🧸 Toy Store Management System</header>
+<!-- LOGIN -->
+<div id="login" style="height:100vh;display:flex;justify-content:center;align-items:center">
+<div class="card" style="width:340px">
+<h3 align="center">Login</h3>
+<input id="u" placeholder="Username"><br><br>
+<input id="p" type="password" placeholder="Password"><br><br>
+<button onclick="login()">Login</button>
+<p id="err" style="color:red;text-align:center"></p>
+</div>
+</div>
 
+<div id="app">
+<header>🧸 Toy Store Management</header>
 <div class="container">
-  <div class="sidebar" id="menu">
-    <div class="nav active" data-page="home"><span>🏠</span>Home</div>
-    <div class="nav" data-page="products"><span>📦</span>Products</div>
-    <div class="nav" data-page="invoice"><span>🧾</span>Invoice</div>
-    <div class="nav" data-page="purchase"><span>🛒</span>Purchase</div>
-    <div class="nav" data-page="vendors"><span>🏪</span>Vendors</div>
-    <div class="nav" data-page="settings"><span>⚙</span>Settings</div>
-  </div>
-  <main id="view"></main>
+<div class="sidebar">
+<div class="nav active" data="home">🏠 Home</div>
+<div class="nav" data="invoice">🧾 Invoice</div>
+<div class="nav" data="purchase">📦 Purchase</div>
+<div class="nav" data="vendors">🏪 Vendors</div>
+<div style="margin-top:auto" class="nav" data="settings">⚙ Settings</div>
+</div>
+<main id="view"></main>
+</div>
 </div>
 
 <script>
-/* ---------------- DATABASE ---------------- */
-const db={
-  products:JSON.parse(localStorage.getItem('products')||'[]'),
-  invoices:JSON.parse(localStorage.getItem('invoices')||'[]'),
-  vendors:JSON.parse(localStorage.getItem('vendors')||'[]'),
-};
-const save=()=> {
-  localStorage.setItem('products',JSON.stringify(db.products));
-  localStorage.setItem('invoices',JSON.stringify(db.invoices));
-  localStorage.setItem('vendors',JSON.stringify(db.vendors));
+const USER='Dani',PASS='123';
+let vendors=[],products=[];
+
+function login(){
+ if(u.value===USER && p.value===PASS){
+  login.style.display='none';
+  app.style.display='flex';
+  load('home');
+ } else err.textContent='Invalid Login';
 }
+
+document.querySelectorAll('.nav').forEach(n=>{
+ n.onclick=()=>{
+  document.querySelectorAll('.nav').forEach(x=>x.classList.remove('active'));
+  n.classList.add('active');
+  load(n.getAttribute('data'));
+ }
+});
+
 const rs=n=>'Rs. '+Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2});
 
-/* ---------------- NAVIGATION ---------------- */
-menu.onclick=e=>{
-  const n=e.target.closest('.nav');
-  if(!n) return;
-  document.querySelectorAll('.nav').forEach(b=>b.classList.remove('active'));
-  n.classList.add('active');
-  render(n.dataset.page);
-}
+function load(page){
+ if(page==='home'){
+  view.innerHTML=`<div class="card">Welcome to Toy Store Software</div>`;
+ }
 
-/* ---------------- RENDER ---------------- */
-function render(p){
-  if(p==='home') view.innerHTML=`
-    <div class="card"><h2>Dashboard</h2>
-    <p>Total Products: ${db.products.length}</p>
-    <p>Total Invoices: ${db.invoices.length}</p></div>`;
-
-  if(p==='products') productPage();
-  if(p==='invoice') invoicePage();
-  if(p==='purchase') purchasePage();
-  if(p==='vendors') vendorPage();
-  if(p==='settings') settingsPage();
-}
-
-/* ---------------- PRODUCTS ---------------- */
-function productPage(){
+ if(page==='purchase' || page==='invoice'){
   view.innerHTML=`
-    <div class="card">
-      <h2>Product Master</h2>
-      <input id="pb" placeholder="Barcode">
-      <input id="pn" placeholder="Name">
-      <input id="ps" placeholder="Stock">
-      <input id="pr" placeholder="Rate">
-      <button onclick="addProduct()">Add Product</button>
-    </div>
-    <div class="card">
-      <table>
-        <tr><th>Barcode</th><th>Name</th><th>Stock</th><th>Rate</th></tr>
-        ${db.products.map(p=>`
-          <tr><td>${p.b}</td><td>${p.n}</td><td>${p.s}</td><td>${rs(p.r)}</td></tr>`).join('')}
-      </table>
-    </div>`;
-}
-function addProduct(){
-  db.products.push({b:pb.value,n:pn.value,s:+ps.value,r:+pr.value});
-  save(); productPage();
+  <h2>${page==='purchase'?'Purchase':'Invoice'}</h2>
+  <label>Select Vendor</label>
+  <select id="vsel">
+    <option value="">-- Select Vendor --</option>
+    ${vendors.map(v=>`<option>${v.name}</option>`).join('')}
+  </select>
+  <div id="ptable"></div>`;
+  vsel.onchange=()=>openTable(page);
+ }
+
+ if(page==='vendors'){
+  view.innerHTML=`
+  <h2>Vendors <button style="float:right" onclick="addVendor()">➕</button></h2>
+  <table>
+  <tr><th>S No</th><th>No</th><th>Name</th><th>Balance</th><th>Last Purchase</th><th>Last Payment</th></tr>
+  ${vendors.map((v,i)=>`
+   <tr>
+    <td>${i+1}</td><td>${v.no}</td>
+    <td onclick="vendorDetail(${i})" style="color:blue;cursor:pointer">${v.name}</td>
+    <td>${rs(v.balance)}</td>
+    <td>${rs(v.lastPurchase)}</td>
+    <td>${rs(v.lastPayment)}</td>
+   </tr>`).join('')}
+  </table>`;
+ }
+
+ if(page==='settings'){
+  view.innerHTML=`<div class="card">Theme & Login Settings</div>`;
+ }
 }
 
-/* ---------------- INVOICE ---------------- */
-function invoicePage(){
-  view.innerHTML=`
-    <div class="card">
-      <h2>Invoices</h2>
-      <button onclick="newInvoice()">+ New Invoice</button>
-      <table>
-        <tr><th>No</th><th>Date</th><th>Total</th><th>Print</th></tr>
-        ${db.invoices.map((i,x)=>`
-          <tr><td>${x+1}</td><td>${i.d}</td><td>${rs(i.t)}</td>
-          <td><button onclick="printInvoice(${x})">Print</button></td></tr>`).join('')}
-      </table>
-    </div>`;
-}
-function newInvoice(){
-  const total=prompt("Enter total amount");
-  db.invoices.push({d:new Date().toLocaleDateString(),t:+total});
-  save(); invoicePage();
-}
-function printInvoice(i){
-  const w=window.open();
-  w.document.write(`<h1>Invoice</h1><p>Total: ${rs(db.invoices[i].t)}</p>`);
-  w.print();
-}
-
-/* ---------------- PURCHASE ---------------- */
-function purchasePage(){
-  view.innerHTML=`
-    <div class="card">
-      <h2>Purchase</h2>
-      <p>Purchase updates stock automatically</p>
-    </div>`;
-}
-
-/* ---------------- VENDORS ---------------- */
-function vendorPage(){
-  view.innerHTML=`
-    <div class="card">
-      <h2>Vendors</h2>
-      <input id="vn" placeholder="Vendor Name">
-      <button onclick="addVendor()">Add Vendor</button>
-    </div>
-    <div class="card">
-      <ul>${db.vendors.map(v=>`<li>${v.name} - Balance: ${rs(v.bal)}</li>`).join('')}</ul>
-    </div>`;
-}
 function addVendor(){
-  db.vendors.push({name:vn.value,bal:0});
-  save(); vendorPage();
+ const name=prompt('Vendor Name');
+ if(!name) return;
+ vendors.push({
+  no:vendors.length+1,
+  name,
+  balance:0,
+  lastPurchase:0,
+  lastPayment:0
+ });
+ load('vendors');
 }
 
-/* ---------------- SETTINGS ---------------- */
-function settingsPage(){
-  view.innerHTML=`
-    <div class="card">
-      <h2>Settings</h2>
-      <button onclick="toggleTheme()">Toggle Theme</button>
-      <p>User creation logic ready (login currently disabled)</p>
-    </div>`;
-}
-function toggleTheme(){
-  document.body.style.background=
-    document.body.style.background===''?'#1e293b':'';
+function vendorDetail(i){
+ const v=vendors[i];
+ view.innerHTML=`<h3>${v.name}</h3><p>Ledger coming next</p>`;
 }
 
-render('home');
+function openTable(type){
+ ptable.innerHTML=`
+ <table id="tbl">
+ <tr><th>S No</th><th>Barcode</th><th>Item No</th><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>
+ </table>
+ <button onclick="addRow()">+ Add</button>
+ <div class="summary">
+ <div class="card"><b>Amount</b><div id="amt">Rs.0.00</div></div>
+ <div class="card"><b>Discount</b><input id="dr"><input id="dp"></div>
+ <div class="card"><b>Total</b><div id="tot">Rs.0.00</div></div>
+ </div>`;
+ rows=0; addRow();
+ dr.oninput=calcDiscRs; dp.oninput=calcDiscPc;
+}
+
+let rows=0;
+function addRow(){
+ rows++;
+ tbl.insertAdjacentHTML('beforeend',`
+ <tr>
+ <td>${rows}</td>
+ <td><input></td>
+ <td><input></td>
+ <td><input></td>
+ <td><input type="number" value="1" oninput="calc()"></td>
+ <td><input type="number" oninput="calc()"></td>
+ <td class="a">Rs.0.00</td>
+ </tr>`);
+}
+
+function calc(){
+ let sum=0;
+ document.querySelectorAll('#tbl tr').forEach((r,i)=>{
+  if(i===0) return;
+  const q=r.children[4].children[0].value||0;
+  const rt=r.children[5].children[0].value||0;
+  const a=q*rt;
+  r.children[6].textContent=rs(a);
+  sum+=a;
+ });
+ amt.textContent=rs(sum);
+ tot.textContent=rs(sum-(dr.value||0));
+}
+
+function calcDiscRs(){ dp.value=((dr.value/amt.textContent.replace(/[^0-9.]/g,''))*100||0).toFixed(2); calc(); }
+function calcDiscPc(){ dr.value=(amt.textContent.replace(/[^0-9.]/g,'')*(dp.value/100)||0).toFixed(2); calc(); }
 </script>
-
 </body>
 </html>
