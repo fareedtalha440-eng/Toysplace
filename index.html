@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Toy Store Software</title>
@@ -11,22 +12,106 @@
   --shadow:0 12px 30px rgba(0,0,0,.18);
 }
 *{box-sizing:border-box}
-body{margin:0;font-family:Segoe UI,Arial;background:var(--bg)}/* HEADER */ header{ height:70px; background:var(--dark); color:#fff; display:flex; align-items:center; padding:0 28px; font-size:22px; font-weight:600; }
+body{margin:0;font-family:Segoe UI,Arial;background:var(--bg)}
 
-/* MAIN MENU */ #menu{ display:flex; justify-content:center; align-items:center; height:calc(100vh - 70px); } .menu-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:26px; width:80%; } .menu-item{ background:#fff; padding:34px; border-radius:22px; box-shadow:var(--shadow); font-size:20px; text-align:center; cursor:pointer; transition:.3s; } .menu-item:hover{transform:translateY(-6px)}
+header{
+  height:70px;
+  background:var(--dark);
+  color:#fff;
+  display:flex;
+  align-items:center;
+  padding:0 28px;
+  font-size:22px;
+  font-weight:600;
+}
 
-/* SIDEBAR */ #layout{display:none;height:calc(100vh - 70px)} .sidebar{ width:280px; background:var(--dark); color:#cbd5e1; display:flex; flex-direction:column; padding-top:14px; } .nav-btn{ background:none; border:none; color:inherit; padding:18px 30px; text-align:left; font-size:17px; cursor:pointer; position:relative; transition:.3s; } .nav-btn span{font-size:26px;margin-right:14px} .nav-btn.active{color:#fff;background:rgba(255,255,255,.08);box-shadow:var(--shadow)} .nav-btn.active::after{ content:''; position:absolute; bottom:6px; left:30px; width:65%; height:3px; background:#fff; border-radius:6px; } .sidebar .bottom{margin-top:auto}
+/* MAIN MENU */
+#menu{
+  height:calc(100vh - 70px);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+.menu-grid{
+  display:grid;
+  grid-template-columns:repeat(3,220px);
+  gap:28px;
+}
+.menu-item{
+  background:#fff;
+  padding:34px;
+  border-radius:22px;
+  box-shadow:var(--shadow);
+  font-size:20px;
+  text-align:center;
+  cursor:pointer;
+  transition:.3s;
+}
+.menu-item:hover{transform:translateY(-6px)}
 
+/* APP */
+#app{
+  display:none;
+  height:calc(100vh - 70px);
+}
+.sidebar{
+  width:280px;
+  background:var(--dark);
+  color:#cbd5e1;
+  display:flex;
+  flex-direction:column;
+}
+.nav-btn{
+  background:none;
+  border:none;
+  color:inherit;
+  padding:18px 30px;
+  text-align:left;
+  font-size:17px;
+  cursor:pointer;
+  position:relative;
+}
+.nav-btn span{font-size:26px;margin-right:14px}
+.nav-btn.active{
+  color:#fff;
+  background:rgba(255,255,255,.08);
+  box-shadow:var(--shadow);
+}
+.nav-btn.active::after{
+  content:'';
+  position:absolute;
+  bottom:6px;
+  left:30px;
+  width:65%;
+  height:3px;
+  background:#fff;
+  border-radius:6px;
+}
+.sidebar .bottom{margin-top:auto}
 main{flex:1;padding:28px;overflow:auto}
 
-/* TABLE */ table{width:100%;border-collapse:collapse;margin-top:18px} th,td{padding:12px;border-bottom:1px solid #e5e7eb;font-size:14px} td input{width:100%;padding:9px}
+/* TABLE */
+table{width:100%;border-collapse:collapse;margin-top:18px}
+th,td{padding:12px;border-bottom:1px solid #e5e7eb}
+td input{width:100%;padding:8px}
 
-.summary{ display:grid; grid-template-columns:repeat(3,1fr); gap:22px; margin-top:26px; } .sum{ background:#fff; padding:22px; border-radius:20px; box-shadow:var(--shadow); } .sum input{width:100%;padding:10px;margin-top:8px}
-
-.add{ margin-top:14px; padding:14px 20px; background:var(--dark); color:#fff; border:none; border-radius:14px; cursor:pointer; } </style>
-
+.add{
+  margin-top:14px;
+  padding:14px 20px;
+  background:var(--dark);
+  color:#fff;
+  border:none;
+  border-radius:14px;
+  cursor:pointer;
+}
+</style>
 </head>
-<body><header>🧸 Toy Store Management System</header><!-- MAIN MENU --><div id="menu">
+<body>
+
+<header>🧸 Toy Store Management System</header>
+
+<!-- MAIN MENU -->
+<div id="menu">
   <div class="menu-grid">
     <div class="menu-item" data-page="invoice">🧾 Invoice</div>
     <div class="menu-item" data-page="purchase">📦 Purchase</div>
@@ -35,7 +120,10 @@ main{flex:1;padding:28px;overflow:auto}
     <div class="menu-item" data-page="vendors">🏪 Vendor</div>
     <div class="menu-item" data-page="settings">⚙ Setting</div>
   </div>
-</div><!-- APP LAYOUT --><div id="layout">
+</div>
+
+<!-- APP -->
+<div id="app">
   <div class="sidebar" id="sidebar">
     <button class="nav-btn" data-page="invoice"><span>🧾</span>Invoice</button>
     <button class="nav-btn" data-page="purchase"><span>📦</span>Purchase</button>
@@ -47,97 +135,54 @@ main{flex:1;padding:28px;overflow:auto}
     </div>
   </div>
   <main id="view"></main>
-</div><script>
-let rows=0;
-const rs=n=>'Rs. '+Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:2});
+</div>
 
-// Main menu click
-document.getElementById('menu').addEventListener('click',e=>{
-  const item=e.target.closest('.menu-item');
+<script>
+const menu = document.getElementById('menu');
+const app = document.getElementById('app');
+const sidebar = document.getElementById('sidebar');
+const view = document.getElementById('view');
+
+menu.addEventListener('click', e => {
+  const item = e.target.closest('.menu-item');
   if(!item) return;
   menu.style.display='none';
-  layout.style.display='flex';
+  app.style.display='flex';
   activate(item.dataset.page);
 });
 
-// Sidebar navigation
-document.getElementById('sidebar').addEventListener('click',e=>{
-  const btn=e.target.closest('.nav-btn');
+sidebar.addEventListener('click', e => {
+  const btn = e.target.closest('.nav-btn');
   if(!btn) return;
   activate(btn.dataset.page);
 });
 
 function activate(page){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  const btn=document.querySelector(`.nav-btn[data-page="${page}"]`);
-  if(btn) btn.classList.add('active');
+  const activeBtn = document.querySelector(`.nav-btn[data-page=\"${page}\"]`);
+  if(activeBtn) activeBtn.classList.add('active');
   render(page);
 }
 
 function render(page){
-  if(page==='purchase' || page==='invoice'){
-    rows=0;
-    view.innerHTML=`
-      <h2>${page==='purchase'?'Purchase':'Invoice'}</h2>
-      <table id="tbl">
+  if(page==='invoice' || page==='purchase'){
+    view.innerHTML = `
+      <h2>${page==='invoice'?'Invoice':'Purchase'}</h2>
+      <table>
         <tr>
-          <th>S No</th><th>Barcode</th><th>Item No</th><th>Description</th>
+          <th>S No</th><th>Barcode</th><th>Item</th>
           <th>Qty</th><th>Rate</th><th>Amount</th>
         </tr>
       </table>
-      <button class="add" id="addRow">+ Add Item</button>
-      <div class="summary">
-        <div class="sum"><b>Amount</b><div id="amt">Rs. 0.00</div></div>
-        <div class="sum"><b>Discount</b>
-          <input id="dRs" placeholder="Rs">
-          <input id="dPc" placeholder="%">
-        </div>
-        <div class="sum"><b>Total</b><div id="tot">Rs. 0.00</div></div>
-      </div>`;
-    addRow();
-    addRowBtn();
+      <button class="add">+ Add Item</button>
+    `;
   }
-  if(page==='product') view.innerHTML='<h2>Product</h2><p>Product master coming here</p>';
-  if(page==='reports') view.innerHTML='<h2>Reports</h2><p>Reports will be generated here</p>';
-  if(page==='vendors') view.innerHTML='<h2>Vendor</h2><p>Vendor list & ledger here</p>';
-  if(page==='settings') view.innerHTML='<h2>Setting</h2><p>Theme & configuration</p>';
+  if(page==='product') view.innerHTML='<h2>Product</h2>';
+  if(page==='reports') view.innerHTML='<h2>Reports</h2>';
+  if(page==='vendors') view.innerHTML='<h2>Vendor</h2>';
+  if(page==='settings') view.innerHTML='<h2>Setting</h2>';
 }
+</script>
 
-function addRowBtn(){
-  document.getElementById('addRow').onclick=addRow;
-  dRs.oninput=discRs; dPc.oninput=discPc;
-}
-
-function addRow(){
-  rows++;
-  tbl.insertAdjacentHTML('beforeend',`
-    <tr>
-      <td>${rows}</td>
-      <td><input></td>
-      <td><input></td>
-      <td><input></td>
-      <td><input type="number" value="1" id="q${rows}"></td>
-      <td><input type="number" id="r${rows}"></td>
-      <td id="a${rows}">Rs. 0.00</td>
-    </tr>`);
-  document.getElementById('q'+rows).oninput=()=>calc(rows);
-  document.getElementById('r'+rows).oninput=()=>calc(rows);
-}
-
-function calc(i){
-  const q=+document.getElementById('q'+i).value||0;
-  const r=+document.getElementById('r'+i).value||0;
-  document.getElementById('a'+i).textContent=rs(q*r);
-  total();
-}
-
-function sum(){
-  let s=0;
-  for(let i=1;i<=rows;i++) s+=+document.getElementById('a'+i).textContent.replace(/[^0-9.]/g,'')||0;
-  return s;
-}
-function discRs(){ dPc.value=sum()?((+dRs.value/sum())*100).toFixed(2):''; total(); }
-function discPc(){ dRs.value=((sum()*+dPc.value)/100).toFixed(2); total(); }
-function total(){ amt.textContent=rs(sum()); tot.textContent=rs(sum()-(+dRs.value||0)); }
-</script></body>
+</body>
 </html>
