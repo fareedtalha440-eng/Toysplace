@@ -46,16 +46,7 @@ button{
 
 <body>
 
-<!-- LOGIN -->
-<div id="login" style="height:100vh;display:flex;justify-content:center;align-items:center">
-<div class="card" style="width:340px">
-<h3 align="center">Login</h3>
-<input id="u" placeholder="Username"><br><br>
-<input id="p" type="password" placeholder="Password"><br><br>
-<button onclick="login()">Login</button>
-<p id="err" style="color:red;text-align:center"></p>
-</div>
-</div>
+
 
 <div id="app">
 <header>🧸 Toy Store Management</header>
@@ -64,24 +55,7 @@ button{
 <div class="nav active" data="home">🏠 Home</div>
 <div class="nav" data="invoice">🧾 Invoice</div>
 <div class="nav" data="purchase">📦 Purchase</div>
-<div class="nav" data="vendors">🏪 Vendors</div>
-<div style="margin-top:auto" class="nav" data="settings">⚙ Settings</div>
-</div>
-<main id="view"></main>
-</div>
-</div>
-
-<script>
-const USER='Dani',PASS='123';
-let vendors=[],products=[];
-
-function login(){
- if(u.value===USER && p.value===PASS){
-  login.style.display='none';
-  app.style.display='flex';
-  load('home');
- } else err.textContent='Invalid Login';
-}
+<div class=
 
 document.querySelectorAll('.nav').forEach(n=>{
  n.onclick=()=>{
