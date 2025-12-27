@@ -1,193 +1,167 @@
-<!DOCTYPE html>
-<html>
+<!DOCTYPE html><html>
 <head>
 <meta charset="UTF-8">
 <title>Toysplace POS</title>
 <style>
-body{margin:0;font-family:Arial;background:#f4f7fb}
-header{background:#0b2d52;color:#fff;padding:12px 20px}
-nav button{
-  background:none;border:none;color:#fff;
-  font-size:15px;margin-right:15px;cursor:pointer
-}
-nav button.active{border-bottom:2px solid #fff}
-section{display:none;padding:20px}
+body{margin:0;font-family:Segoe UI,Arial;background:#f4f7fb}
+header{background:#0b2d52;color:#fff;padding:14px 24px}
+nav button{background:none;border:none;color:#fff;font-size:16px;margin-right:20px;cursor:pointer}
+nav button.active{border-bottom:3px solid #fff}
+section{display:none;padding:22px}
 section.active{display:block}
-.card{background:#fff;padding:15px;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.1)}
-table{width:100%;border-collapse:collapse;margin-top:10px}
-th,td{border:1px solid #ddd;padding:6px;font-size:13px}
+.card{background:#fff;padding:18px;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12)}
+.table{width:100%;border-collapse:collapse;margin-top:12px}
+th,td{border:1px solid #ddd;padding:8px;font-size:13px}
 th{background:#eef2f7}
-input,select{padding:5px;width:100%}
-button.action{background:#0b2d52;color:#fff;border:none;padding:6px 12px;cursor:pointer}
+input,select{padding:6px;width:100%}
+button.action{background:#0b2d52;color:#fff;border:none;padding:7px 14px;border-radius:4px;cursor:pointer}
 .right{text-align:right}
+.flex{display:flex;gap:10px;align-items:center}
 </style>
 </head>
-
 <body>
-
 <header>
-  <h2>Toysplace POS</h2>
-  <nav>
-    <button onclick="show('invoice')" id="b_invoice">Invoice</button>
-    <button onclick="show('purchase')" id="b_purchase">Purchase</button>
-    <button onclick="show('product')" id="b_product">Product</button>
-    <button onclick="show('vendor')" id="b_vendor">Vendor</button>
-    <button onclick="show('setting')" id="b_setting">Setting</button>
-  </nav>
-</header>
-
-<!-- DATA -->
-<script>
-let products = JSON.parse(localStorage.products||'[]');
-let vendors  = JSON.parse(localStorage.vendors||'[]');
-let invoices = JSON.parse(localStorage.invoices||'[]');
-let purchases= JSON.parse(localStorage.purchases||'[]');
+<h2>Toysplace POS</h2>
+<nav>
+<button id="b_invoice" onclick="show('invoice')">Invoice</button>
+<button id="b_purchase" onclick="show('purchase')">Purchase</button>
+<button id="b_product" onclick="show('product')">Product</button>
+<button id="b_vendor" onclick="show('vendor')">Vendor</button>
+</nav>
+</header><script>
+let products=JSON.parse(localStorage.products||'[]');
+let vendors=JSON.parse(localStorage.vendors||'[]');
+let invoices=JSON.parse(localStorage.invoices||'[]');
+let purchases=JSON.parse(localStorage.purchases||'[]');
 function save(){
  localStorage.products=JSON.stringify(products);
  localStorage.vendors=JSON.stringify(vendors);
  localStorage.invoices=JSON.stringify(invoices);
  localStorage.purchases=JSON.stringify(purchases);
 }
-</script>
-
-<!-- PRODUCT -->
-<section id="product">
-<div class="card">
-<h3>Products</h3>
-<table>
-<tr><th>#</th><th>Barcode</th><th>Item No</th><th>Description</th><th>Rate</th><th>Stock</th></tr>
-<tbody id="productTable"></tbody>
-</table>
-</div>
-</section>
-
-<!-- VENDOR -->
-<section id="vendor">
-<div class="card">
-<h3>Vendors</h3>
-<input id="vname" placeholder="Vendor Name">
-<button class="action" onclick="addVendor()">Add Vendor</button>
-<table>
-<tr><th>#</th><th>Name</th></tr>
-<tbody id="vendorTable"></tbody>
-</table>
-</div>
-</section>
-
-<!-- PURCHASE -->
-<section id="purchase">
-<div class="card">
-<h3>Purchase</h3>
-<select id="vendorSelect"></select>
-<table id="purchaseTable">
-<tr><th>#</th><th>Barcode</th><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>
-</table>
-<button class="action" onclick="addPurchaseRow()">Add Item</button>
-<h4 class="right">Total: Rs <span id="purchaseTotal">0</span></h4>
-<button class="action" onclick="savePurchase()">Done</button>
-</div>
-</section>
-
-<!-- INVOICE -->
-<section id="invoice">
-<div class="card">
-<h3>Invoice</h3>
-<table id="invoiceTable">
-<tr><th>#</th><th>Barcode</th><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>
-</table>
-<button class="action" onclick="addInvoiceRow()">Add Item</button>
-<h4 class="right">Discount Rs <input id="disc" value="0" oninput="calcInvoice()"></h4>
-<h3 class="right">Total: Rs <span id="invoiceTotal">0</span></h3>
-<button class="action" onclick="saveInvoice()">Done</button>
-</div>
-</section>
-
-<!-- SETTING -->
-<section id="setting">
-<div class="card">
-<h3>Setting</h3>
-<p>More options will be added later.</p>
-</div>
-</section>
-
-<script>
+</script><section id="invoice"></section>
+<section id="purchase"></section>
+<section id="product"></section>
+<section id="vendor"></section><script>
 function show(id){
  document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
  document.getElementById(id).classList.add('active');
  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
  document.getElementById('b_'+id).classList.add('active');
- render();
+ if(id==='invoice')renderInvoiceList();
+ if(id==='purchase')renderPurchaseList();
+ if(id==='product')renderProducts();
+ if(id==='vendor')renderVendors();
 }
 
-function render(){
- // Vendors
- vendorTable.innerHTML=vendors.map((v,i)=>`<tr><td>${i+1}</td><td>${v}</td></tr>`).join('');
- vendorSelect.innerHTML=vendors.map(v=>`<option>${v}</option>`).join('');
- // Products
- productTable.innerHTML=products.map((p,i)=>`<tr>
- <td>${i+1}</td><td>${p.barcode}</td><td>${p.item}</td><td>${p.desc}</td>
- <td class="right">${p.rate}</td><td>${p.stock}</td></tr>`).join('');
+// PRODUCT
+function renderProducts(){
+ product.innerHTML=`<div class='card'><h3>Products</h3>
+ <table class='table'><tr><th>#</th><th>Barcode</th><th>Item No</th><th>Description</th><th>Rate</th><th>Stock</th></tr>
+ ${products.map((p,i)=>`<tr><td>${i+1}</td><td>${p.barcode}</td><td>${p.item}</td><td>${p.desc}</td><td class='right'>Rs.${p.rate.toFixed(2)}</td><td>${p.stock}</td></tr>`).join('')}
+ </table></div>`;
 }
 
+// VENDOR
+function renderVendors(){
+ vendor.innerHTML=`<div class='card'><h3>Vendors <button class='action' onclick='addVendor()'>＋</button></h3>
+ <table class='table'><tr><th>#</th><th>Name</th><th>Balance</th></tr>
+ ${vendors.map((v,i)=>`<tr><td>${i+1}</td><td>${v.name}</td><td class='right'>Rs.${v.balance.toFixed(2)}</td></tr>`).join('')}
+ </table></div>`;
+}
 function addVendor(){
- if(!vname.value)return;
- vendors.push(vname.value);vname.value='';save();render();
+ let n=prompt('Vendor Name');if(!n)return;
+ vendors.push({name:n,balance:0});save();renderVendors();
 }
 
-// PURCHASE
-function addPurchaseRow(){
- purchaseTable.insertRow().innerHTML=
- `<td>*</td>
- <td><input></td>
- <td><input></td>
- <td><input type=number value=1></td>
- <td><input type=number value=0></td>
- <td class="right">0</td>`;
-}
-function savePurchase(){
- [...purchaseTable.rows].slice(1).forEach(r=>{
-  let b=r.cells[1].firstChild.value;
-  let d=r.cells[2].firstChild.value;
-  let q=+r.cells[3].firstChild.value;
-  let rate=+r.cells[4].firstChild.value;
-  let p=products.find(x=>x.barcode==b);
-  if(!p){products.push({barcode:b,item:b,desc:d,rate,stock:q});}
-  else p.stock+=q;
- });
- save();alert('Purchase Saved');render();
+// INVOICE LIST + NEW
+function renderInvoiceList(){
+ invoice.innerHTML=`<div class='card'>
+ <div class='flex'><h3 style='flex:1'>Invoices</h3><button class='action' onclick='newInvoice()'>New Invoice</button></div>
+ <table class='table'><tr><th>#</th><th>Date</th><th>Bill No</th><th>Products</th><th>Amount</th><th>Discount</th><th>Total</th><th>Time</th></tr>
+ ${invoices.slice(-100).map((inv,i)=>`<tr>
+ <td>${i+1}</td><td>${inv.date}</td><td>${inv.bill}</td><td>${inv.items}</td>
+ <td class='right'>Rs.${inv.amount.toFixed(2)}</td>
+ <td class='right'>Rs.${inv.discount.toFixed(2)} (${inv.discountP}%)</td>
+ <td class='right'>Rs.${inv.total.toFixed(2)}</td><td>${inv.time}</td></tr>`).join('')}
+ </table></div>`;
 }
 
-// INVOICE
-function addInvoiceRow(){
- invoiceTable.insertRow().innerHTML=
- `<td>*</td>
- <td><input onblur="pick(this)"></td>
- <td></td>
- <td><input type=number value=1></td>
- <td></td>
- <td></td>`;
+let currentInvoice=null;
+function newInvoice(){
+ currentInvoice={lines:[],discount:0};
+ invoice.innerHTML=`<div class='card'><h3>New Invoice</h3>
+ <table class='table' id='invTable'><tr><th>#</th><th>Barcode</th><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></table>
+ <button class='action' onclick='addInvRow()'>Add Item</button>
+ <div class='flex right'>Discount Rs <input type='number' value='0' oninput='currentInvoice.discount=+this.value;calcInv()'></div>
+ <h3 class='right'>Total: Rs <span id='invTotal'>0</span></h3>
+ <button class='action' onclick='saveInvoice()'>Save</button></div>`;
 }
-function pick(i){
- let p=products.find(x=>x.barcode==i.value);
+function addInvRow(){
+ let t=document.getElementById('invTable');
+ let r=t.insertRow();
+ r.innerHTML=`<td>${t.rows.length-1}</td><td><input onblur='pickInv(this)'></td><td></td><td><input type='number' value='1'></td><td></td><td></td>`;
+}
+function pickInv(i){
+ let p=products.find(x=>x.barcode===i.value);
  if(!p||p.stock<=0){alert('Out of stock');return;}
  let r=i.parentElement.parentElement;
- r.cells[2].innerText=p.desc;
- r.cells[4].innerText=p.rate;
- r.cells[5].innerText=p.rate;
- p.stock--;save();calcInvoice();
+ r.cells[2].innerText=p.desc;r.cells[4].innerText=p.rate;
+ r.cells[5].innerText=p.rate;p.stock--;save();calcInv();
 }
-function calcInvoice(){
- let sum=0;
- [...invoiceTable.rows].slice(1).forEach(r=>sum+=+r.cells[5].innerText||0);
- invoiceTotal.innerText=sum-+disc.value;
+function calcInv(){
+ let sum=0;[...invTable.rows].slice(1).forEach(r=>sum+=+r.cells[5].innerText||0);
+ invTotal.innerText=sum-currentInvoice.discount;
 }
 function saveInvoice(){
- invoices.push({total:invoiceTotal.innerText,date:new Date()});
- save();alert('Invoice Saved');render();
+ let sum=+invTotal.innerText+currentInvoice.discount;
+ let bill=invoices.length+1;
+ invoices.push({
+ bill,items:invTable.rows.length-1,
+ amount:sum,discount:currentInvoice.discount,
+ discountP:((currentInvoice.discount/sum)*100||0).toFixed(1),
+ total:+invTotal.innerText,date:new Date().toLocaleDateString(),
+ time:new Date().toLocaleTimeString()
+ });save();renderInvoiceList();
+}
+
+// PURCHASE LIST + NEW
+function renderPurchaseList(){
+ purchase.innerHTML=`<div class='card'><div class='flex'><h3 style='flex:1'>Purchase</h3>
+ <button class='action' onclick='newPurchase()'>New Purchase</button></div></div>`;
+}
+
+let currentPurchase=null;
+function newPurchase(){
+ currentPurchase={lines:[],vendor:null,retail:false};
+ purchase.innerHTML=`<div class='card'><h3>New Purchase</h3>
+ <select onchange='currentPurchase.vendor=this.value'>
+ <option value=''>Select Vendor</option>${vendors.map(v=>`<option>${v.name}</option>`).join('')}</select>
+ <label><input type='checkbox' onchange='currentPurchase.retail=this.checked'> Set Retail?</label>
+ <table class='table' id='purTable'><tr><th>#</th><th>Barcode</th><th>Item No</th><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th><th class='ret'>Retail</th></tr></table>
+ <button class='action' onclick='addPurRow()'>Add Item</button>
+ <button class='action' onclick='savePurchase()'>Save</button></div>`;
+}
+function addPurRow(){
+ let t=document.getElementById('purTable');
+ let r=t.insertRow();
+ r.innerHTML=`<td>${t.rows.length-1}</td><td><input></td><td><input></td><td><input></td>
+ <td><input type='number' value='1'></td><td><input type='number' value='0'></td><td class='right'>0</td><td><input></td>`;
+}
+function savePurchase(){
+ [...purTable.rows].slice(1).forEach(r=>{
+ let b=r.cells[1].firstChild.value;
+ let i=r.cells[2].firstChild.value;
+ let d=r.cells[3].firstChild.value;
+ let q=+r.cells[4].firstChild.value;
+ let rate=+r.cells[5].firstChild.value;
+ let retail=+r.cells[7].firstChild.value||rate;
+ let p=products.find(x=>x.barcode===b||x.item===i);
+ if(!p){products.push({barcode:b,item:i,desc:d,rate:retail,stock:q});}
+ else{p.stock+=q;if(currentPurchase.retail)p.rate=retail;}
+ });save();renderPurchaseList();
 }
 
 show('invoice');
-</script>
-
-</body>
+</script></body>
 </html>
