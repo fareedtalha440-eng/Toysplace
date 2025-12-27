@@ -58,25 +58,23 @@ th,td{padding:10px;border-bottom:1px solid #e5e7eb}
 td input{width:100%;padding:6px}
 
 button.primary{
-  padding:12px 18px;background:var(--dark);
-  color:#fff;border:none;border-radius:12px;
+  padding:10px 16px;background:var(--dark);
+  color:#fff;border:none;border-radius:10px;
   cursor:pointer;
 }
-.summary{
-  margin-top:18px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;
-}
-.summary div{
-  background:#fff;padding:14px;border-radius:14px;
-  box-shadow:var(--shadow);
-}
+
 .search-box{
   position:absolute;background:#fff;box-shadow:var(--shadow);
   width:100%;z-index:10;
 }
-.search-box div{
-  padding:8px;cursor:pointer;
-}
+.search-box div{padding:8px;cursor:pointer}
 .search-box div:hover{background:#e5e7eb}
+
+.filter{display:flex;gap:10px;margin-bottom:12px}
+.pagination{margin-top:12px}
+.pagination button{margin-right:6px}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}
+.summary div{background:#fff;padding:12px;border-radius:12px;box-shadow:var(--shadow)}
 </style>
 </head>
 <body>
@@ -90,19 +88,18 @@ button.primary{
     <div class="menu-item" data-page="purchase">📦 Purchase</div>
     <div class="menu-item" data-page="product">📦 Product</div>
     <div class="menu-item" data-page="reports">📑 Reports</div>
-    <div class="menu-item" data-page="vendors">🏪 Vendor</div>
+    <div class="menu-item" data-page="vendor">🏪 Vendor</div>
     <div class="menu-item" data-page="settings">⚙ Setting</div>
   </div>
 </div>
 
-<!-- APP -->
 <div id="app">
   <div class="sidebar" id="sidebar">
     <button class="nav-btn" data-page="invoice"><span>🧾</span>Invoice</button>
     <button class="nav-btn" data-page="purchase"><span>📦</span>Purchase</button>
     <button class="nav-btn" data-page="product"><span>📦</span>Product</button>
     <button class="nav-btn" data-page="reports"><span>📑</span>Reports</button>
-    <button class="nav-btn" data-page="vendors"><span>🏪</span>Vendor</button>
+    <button class="nav-btn" data-page="vendor"><span>🏪</span>Vendor</button>
     <div class="bottom">
       <button class="nav-btn" data-page="settings"><span>⚙</span>Setting</button>
     </div>
@@ -111,17 +108,17 @@ button.primary{
 </div>
 
 <script>
-/* SAMPLE STOCK */
+/* ---------- DATA ---------- */
 let products=[
  {barcode:'1001',item:'T001',desc:'Teddy Bear Large',rate:1500,stock:20},
  {barcode:'1002',item:'T002',desc:'Teddy Bear Small',rate:1200,stock:30},
  {barcode:'2001',item:'C001',desc:'Toy Car Red',rate:800,stock:40},
  {barcode:'3001',item:'D001',desc:'Doll Pink',rate:1100,stock:25}
 ];
+let invoices=[];
+let page=1;
 
-let invoices=[]; let currentInvoice=null;
-
-/* NAV */
+/* ---------- NAV ---------- */
 const menu=document.getElementById('menu');
 const app=document.getElementById('app');
 const sidebar=document.getElementById('sidebar');
@@ -137,58 +134,107 @@ sidebar.onclick=e=>{
  const b=e.target.closest('.nav-btn');
  if(!b)return;activate(b.dataset.page);
 }
-function activate(page){
+function activate(p){
  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
- const btn=document.querySelector(`.nav-btn[data-page="${page}"]`);
- if(btn)btn.classList.add('active');
- render(page);
+ document.querySelector(`.nav-btn[data-page="${p}"]`)?.classList.add('active');
+ if(p==='invoice') renderInvoiceList();
+ else view.innerHTML=`<h2>${p}</h2>`;
 }
 
-/* RENDER */
-function render(page){
- if(page==='invoice') renderInvoiceList();
- else view.innerHTML=`<h2>${page}</h2>`;
-}
+/* ---------- INVOICE LIST ---------- */
+function renderInvoiceList(filter=null){
+ let list=invoices;
+ if(filter){
+  list=list.filter(i=>{
+   if(filter.date)return i.date===filter.date;
+   if(filter.month)return i.month===filter.month;
+   if(filter.year)return i.year===filter.year;
+  });
+ }
+ let start=(page-1)*100;
+ let show=list.slice(start,start+100);
 
-/* INVOICE LIST */
-function renderInvoiceList(){
  view.innerHTML=`
  <h2>Invoices</h2>
+ <div class="filter">
+  <input type="date" id="fDate">
+  <input type="month" id="fMonth">
+  <input type="number" placeholder="Year" id="fYear">
+  <button class="primary" onclick="applyFilter()">Filter</button>
+ </div>
  <button class="primary" onclick="newInvoice()">➕ New Invoice</button>
+
  <table>
-  <tr><th>Bill No</th><th>Date</th><th>Total</th></tr>
-  ${invoices.map(i=>`<tr><td>${i.no}</td><td>${i.date}</td><td>Rs. ${i.total.toLocaleString()}.00</td></tr>`).join('')}
- </table>`;
+ <tr>
+  <th>Bill</th><th>Date</th><th>Time</th><th>Products</th>
+  <th>Subtotal</th><th>Discount</th><th>Total</th>
+ </tr>
+ ${show.map(i=>`
+ <tr>
+  <td>${i.no}</td>
+  <td>${i.date}</td>
+  <td>${i.time}</td>
+  <td>${i.count}</td>
+  <td>Rs. ${i.sub.toLocaleString()}.00</td>
+  <td>Rs. ${i.disc.toLocaleString()} (${i.discp}%)</td>
+  <td>Rs. ${i.total.toLocaleString()}.00</td>
+ </tr>`).join('')}
+ </table>
+
+ <div class="pagination">
+ ${Array.from({length:Math.ceil(list.length/100)},(_,i)=>`<button onclick="page=${i+1};renderInvoiceList()"> ${i+1} </button>`).join('')}
+ </div>
+ `;
 }
 
-/* NEW INVOICE */
+function applyFilter(){
+ let d=document.getElementById('fDate').value;
+ let m=document.getElementById('fMonth').value;
+ let y=document.getElementById('fYear').value;
+ page=1;
+ renderInvoiceList({date:d||null,month:m||null,year:y||null});
+}
+
+/* ---------- NEW INVOICE ---------- */
 function newInvoice(){
- currentInvoice={no:invoices.length+1,date:new Date().toLocaleDateString(),items:[]};
+ let now=new Date();
+ let inv={
+  no:invoices.length+1,
+  date:now.toLocaleDateString(),
+  time:now.toLocaleTimeString(),
+  month:now.getMonth()+1,
+  year:now.getFullYear(),
+  items:[],
+  invDisc:0,invDiscP:0
+ };
  view.innerHTML=`
- <h2>Invoice #${currentInvoice.no}</h2>
+ <h2>Invoice #${inv.no}</h2>
  <table id="invTable">
  <tr>
-  <th>S No</th><th>Barcode</th><th>Item</th><th>Description</th>
-  <th>Qty</th><th>Rate</th><th>Disc Rs</th><th>Disc %</th><th>Amount</th>
+  <th>#</th><th>Barcode</th><th>Item</th><th>Description</th>
+  <th>Qty</th><th>Rate</th><th>D Rs</th><th>D %</th><th>Amount</th>
  </tr>
  </table>
  <button class="primary" onclick="addRow()">+ Add Product</button>
+
  <div class="summary">
-  <div>Amount: <span id="sumAmt">0</span></div>
-  <div>Discount: <span id="sumDisc">0</span></div>
-  <div>Total: <span id="sumTotal">0</span></div>
+  <div>Subtotal: <span id="sub">0</span></div>
+  <div>Inv Disc Rs <input id="idr" type="number" oninput="invDiscCalc('rs')"></div>
+  <div>Inv Disc % <input id="idp" type="number" oninput="invDiscCalc('p')"></div>
+  <div>Total: <span id="total">0</span></div>
  </div>
  <br>
  <button class="primary" onclick="saveInvoice()">Save Invoice</button>
  `;
+ window.currentInv=inv;
  addRow();
 }
 
-/* ADD ROW */
+/* ---------- ROW / SEARCH / CALC ---------- */
 function addRow(){
- const t=document.getElementById('invTable');
- const r=t.rows.length;
- const row=t.insertRow();
+ let t=document.getElementById('invTable');
+ let r=t.rows.length;
+ let row=t.insertRow();
  row.innerHTML=`
  <td>${r}</td>
  <td style="position:relative"><input oninput="search(this,${r})"></td>
@@ -201,17 +247,16 @@ function addRow(){
  <td><input disabled></td>`;
 }
 
-/* SEARCH */
 function search(inp,r){
  let q=inp.value.toLowerCase();
- let box=document.createElement('div');box.className='search-box';
- let res=products.filter(p=>p.barcode.includes(q)||p.item.includes(q)||p.desc.toLowerCase().includes(q)).slice(0,6);
- box.innerHTML=res.map(p=>`<div onclick="selectProd(${r},'${p.barcode}')">${p.barcode} | ${p.desc}</div>`).join('');
  inp.parentNode.querySelector('.search-box')?.remove();
- if(q)inp.parentNode.appendChild(box);
+ if(!q)return;
+ let res=products.filter(p=>p.barcode.includes(q)||p.item.includes(q)||p.desc.toLowerCase().includes(q)).slice(0,6);
+ let box=document.createElement('div');box.className='search-box';
+ box.innerHTML=res.map(p=>`<div onclick="selectProd(${r},'${p.barcode}')">${p.barcode} | ${p.desc}</div>`).join('');
+ inp.parentNode.appendChild(box);
 }
 
-/* SELECT PRODUCT */
 function selectProd(r,bc){
  let p=products.find(x=>x.barcode===bc);
  let row=document.getElementById('invTable').rows[r];
@@ -219,54 +264,70 @@ function selectProd(r,bc){
  row.cells[2].children[0].value=p.item;
  row.cells[3].children[0].value=p.desc;
  row.cells[5].children[0].value=p.rate;
- calc(r);
  row.cells[1].querySelector('.search-box')?.remove();
+ calc(r);
 }
 
-/* CALC */
 function calc(r){
  let row=document.getElementById('invTable').rows[r];
  let qty=+row.cells[4].children[0].value;
  let rate=+row.cells[5].children[0].value;
  let dr=+row.cells[6].children[0].value;
  let dp=+row.cells[7].children[0].value;
- if(dp>0)dr=(rate*qty)*dp/100;
- if(dr>0)dp=(dr/(rate*qty))*100;
+ let base=qty*rate;
+ if(dp>0)dr=base*dp/100;
+ if(dr>0)dp=(dr/base)*100;
  row.cells[6].children[0].value=dr.toFixed(2);
  row.cells[7].children[0].value=dp.toFixed(2);
- let amt=(rate*qty)-dr;
- row.cells[8].children[0].value=amt.toFixed(2);
- summary();
+ row.cells[8].children[0].value=(base-dr).toFixed(2);
+ updateSummary();
 }
 
-/* SUMMARY */
-function summary(){
- let sumA=0,sumD=0;
+function updateSummary(){
+ let sub=0;
  document.querySelectorAll('#invTable tr').forEach((r,i)=>{
   if(i===0)return;
-  sumA+=+r.cells[5].children[0].value * +r.cells[4].children[0].value;
-  sumD+=+r.cells[6].children[0].value;
+  sub+=+r.cells[8].children[0].value;
  });
- document.getElementById('sumAmt').innerText='Rs. '+sumA.toLocaleString()+'.00';
- document.getElementById('sumDisc').innerText='Rs. '+sumD.toLocaleString()+'.00';
- document.getElementById('sumTotal').innerText='Rs. '+(sumA-sumD).toLocaleString()+'.00';
+ document.getElementById('sub').innerText='Rs. '+sub.toLocaleString()+'.00';
+ invDiscCalc();
 }
 
-/* SAVE */
+/* ---------- INVOICE DISCOUNT ---------- */
+function invDiscCalc(mode){
+ let sub=parseFloat(document.getElementById('sub').innerText.replace(/[^\d]/g,''))||0;
+ let dr=document.getElementById('idr');
+ let dp=document.getElementById('idp');
+ if(mode==='rs') dp.value=((dr.value/sub)*100||0).toFixed(2);
+ if(mode==='p') dr.value=(sub*dp.value/100||0).toFixed(2);
+ let total=sub-(+dr.value||0);
+ document.getElementById('total').innerText='Rs. '+total.toLocaleString()+'.00';
+}
+
+/* ---------- SAVE ---------- */
 function saveInvoice(){
- let total=0;
- document.querySelectorAll('#invTable tr').forEach((r,i)=>{
-  if(i===0)return;
+ let t=document.getElementById('invTable');
+ let sub=0,count=0;
+ for(let i=1;i<t.rows.length;i++){
+  let r=t.rows[i];
   let bc=r.cells[1].children[0].value;
+  if(!bc)continue;
   let qty=+r.cells[4].children[0].value;
   let p=products.find(x=>x.barcode===bc);
-  if(qty>p.stock){alert('Stock not enough');throw'';}
+  if(qty>p.stock){alert('Stock not enough');return;}
   p.stock-=qty;
-  total+=+r.cells[8].children[0].value;
+  sub+=+r.cells[8].children[0].value;
+  count++;
+ }
+ let dr=+document.getElementById('idr').value||0;
+ let dp=+document.getElementById('idp').value||0;
+ invoices.unshift({
+  ...currentInv,
+  sub,disc:dr,discp:dp,
+  total:sub-dr,count
  });
- invoices.push({no:currentInvoice.no,date:currentInvoice.date,total});
  renderInvoiceList();
 }
 </script>
 </body>
-  </html>
+</html>
