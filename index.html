@@ -1,229 +1,150 @@
-<!DOCTYPE html>
-<html>
+<!DOCTYPE html><html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <title>Toysplace POS</title>
 <style>
-body{margin:0;font-family:Segoe UI;background:#f4f7fb}
-header{background:#0b2d52;color:white;padding:15px 25px;font-size:22px}
-.menu{display:flex;gap:25px;margin-top:10px}
-.menu div{cursor:pointer}
-.menu .active{border-bottom:3px solid white}
-.container{display:flex}
-.sidebar{width:220px;background:#0b2d52;color:white;display:none}
-.sidebar div{padding:15px;cursor:pointer}
-.content{flex:1;padding:20px}
-table{width:100%;border-collapse:collapse;background:white}
-th,td{padding:8px;border-bottom:1px solid #ddd}
-th{background:#e8eef7}
-input{padding:6px}
-button{background:#0b2d52;color:white;border:none;padding:8px 14px;cursor:pointer}
-.searchBox{position:absolute;background:white;border:1px solid #ccc;width:380px}
-.searchBox div{padding:6px;cursor:pointer}
-.searchBox div:hover{background:#e6f0ff}
+:root{
+  --blue:#0b2d52;
+  --light:#f4f7fb;
+}
+*{box-sizing:border-box;font-family:Segoe UI,Arial}
+body{margin:0;background:var(--light)}
+header{background:var(--blue);color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between}
+header h1{margin:0;font-size:22px}
+.menu{display:flex;gap:28px}
+.menu div{cursor:pointer;font-size:17px;padding-bottom:6px}
+.menu .active{border-bottom:3px solid #fff}
+.app{display:flex;min-height:calc(100vh - 64px)}
+.sidebar{width:240px;background:var(--blue);color:#fff;display:none;flex-direction:column;justify-content:space-between}
+.sidebar .item{padding:14px 20px;cursor:pointer}
+.sidebar .item.active{background:#fff;color:var(--blue);box-shadow:0 8px 20px rgba(0,0,0,.3)}
+.sidebar .setting{padding:15px;opacity:.85}
+.content{flex:1;padding:22px}
+.card{background:#fff;border-radius:6px;padding:18px;box-shadow:0 4px 15px rgba(0,0,0,.1)}
+.table{width:100%;border-collapse:collapse;margin-top:10px}
+.table th,.table td{border:1px solid #ddd;padding:6px;font-size:13px}
+.table th{background:#eef2f7}
+input{padding:6px;font-size:13px;width:100%}
+button{background:var(--blue);color:#fff;border:none;padding:8px 14px;cursor:pointer}
+.right{text-align:right}
+.flex{display:flex;gap:10px;align-items:center}
 </style>
 </head>
-
 <body>
-
 <header>
-Toysplace POS
-<div class="menu">
-<div onclick="openModule('invoice')">Invoice</div>
-<div onclick="openModule('purchase')">Purchase</div>
-<div onclick="openModule('product')">Product</div>
-<div onclick="openModule('vendor')">Vendor</div>
-</div>
+  <h1>Toysplace POS</h1>
+  <div class="menu" id="menu">
+    <div data-v="invoice">Invoice</div>
+    <div data-v="purchase">Purchase</div>
+    <div data-v="product">Product</div>
+    <div data-v="vendor">Vendor</div>
+    <div data-v="reports">Reports</div>
+    <div data-v="setting">Setting</div>
+  </div>
 </header>
-
-<div class="container">
-<div class="sidebar" id="sidebar"></div>
-<div class="content" id="content"></div>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div id="sideItems"></div>
+    <div class="setting">⚙ Settings</div>
+  </aside>
+  <main class="content" id="content"></main>
 </div>
-
 <script>
-/* ================= DATA ================= */
-let products=[
- {barcode:"111",item:"T001",desc:"Toy Car",rate:500,stock:20}
-];
+// ===== STATE =====
+const S={
+ products:JSON.parse(localStorage.getItem('products')||'[]'),
+ vendors:JSON.parse(localStorage.getItem('vendors')||'[]'),
+ invoices:JSON.parse(localStorage.getItem('invoices')||'[]'),
+ purchases:JSON.parse(localStorage.getItem('purchases')||'[]'),
+ view:null,current:null
+};
+const save=()=>{
+ localStorage.setItem('products',JSON.stringify(S.products));
+ localStorage.setItem('vendors',JSON.stringify(S.vendors));
+ localStorage.setItem('invoices',JSON.stringify(S.invoices));
+ localStorage.setItem('purchases',JSON.stringify(S.purchases));
+};// ===== NAV ===== document.getElementById('menu').onclick=e=>{ if(!e.target.dataset.v)return; document.querySelectorAll('.menu div').forEach(x=>x.classList.remove('active')); e.target.classList.add('active'); S.view=e.target.dataset.v; renderSidebar();render(); }; function renderSidebar(){ sidebar.style.display='flex'; sideItems.innerHTML=''; ['New','List'].forEach(t=>{ let d=document.createElement('div'); d.className='item';d.textContent=t; d.onclick=()=>{document.querySelectorAll('.item').forEach(x=>x.classList.remove('active'));d.classList.add('active');}; sideItems.appendChild(d); }); }
 
-let vendors=[];
-let purchases=[];
-let vendorNo=1;
+// ===== RENDER ===== function render(){ if(S.view==='product')productView(); else if(S.view==='vendor')vendorView(); else if(S.view==='purchase')purchaseView(); else if(S.view==='invoice')invoiceView(); else content.innerHTML='<div class="card">Module ready</div>'; }
 
-/* ================= NAV ================= */
-function openModule(m){
- document.querySelectorAll('.menu div').forEach(d=>d.classList.remove('active'));
- event.target.classList.add('active');
- sidebar.style.display="none";
- if(m==="purchase") vendorSelect();
- if(m==="vendor") vendorList();
+// ===== PRODUCT ===== function productView(){ content.innerHTML=`<div class='card'><h3>Products</h3>
+
+ <table class='table'><tr><th>#</th><th>Barcode</th><th>Item No</th><th>Description</th><th>Rate</th><th>Stock</th></tr>
+ ${S.products.map((p,i)=>`<tr><td>${i+1}</td><td>${p.barcode}</td><td>${p.item}</td><td>${p.desc}</td><td class='right'>Rs.${p.rate.toFixed(2)}</td><td>${p.stock}</td></tr>`).join('')}
+ </table></div>`;
+}// ===== VENDOR ===== function vendorView(){ content.innerHTML=`<div class='card'><h3>Vendors <button onclick='addVendor()'>＋</button></h3>
+
+ <table class='table'><tr><th>#</th><th>Name</th><th>Balance</th></tr>
+ ${S.vendors.map((v,i)=>`<tr><td>${i+1}</td><td>${v.name}</td><td class='right'>Rs.${v.balance.toFixed(2)}</td></tr>`).join('')}
+ </table></div>`;
 }
-
-/* ================= VENDOR ================= */
-function vendorList(){
- content.innerHTML=`
- <h2>Vendors <button onclick="addVendor()">➕</button></h2>
- <table>
- <tr><th>S No</th><th>Vendor No</th><th>Name</th><th>Balance</th><th>Last Purchase</th><th>Last Payment</th></tr>
- ${vendors.map((v,i)=>`
- <tr onclick="vendorDetail(${v.no})">
- <td>${i+1}</td><td>${v.no}</td><td>${v.name}</td>
- <td>Rs. ${v.balance}</td>
- <td>${v.lastPurchase||0}</td>
- <td>${v.lastPayment||0}</td>
- </tr>`).join("")}
- </table>`;
-}
-
 function addVendor(){
- content.innerHTML=`
- <h2>New Vendor</h2>
- Name* <input id="vn"><br><br>
- Location <input id="vl"><br><br>
- Opening Balance <input id="vb" type="number" value="0"><br><br>
- Limit Alert <input><br><br>
- Credit Limit <input><br><br>
- <button onclick="saveVendor()">Done</button>`;
-}
+ let n=prompt('Vendor Name');if(!n)return;
+ S.vendors.push({name:n,balance:0});save();vendorView();
+}// ===== PURCHASE ===== function purchaseView(){ if(!S.vendors.length){content.innerHTML='<div class="card">Add vendor first</div>';return;} if(!S.current)S.current={lines:[]}; content.innerHTML=`<div class='card'>
 
-function saveVendor(){
- vendors.push({
-   no:vendorNo++,
-   name:vn.value,
-   balance:+vb.value,
-   lastPurchase:0,
-   lastPayment:0,
-   ledger:[]
+ <h3>Purchase</h3>
+ <table class='table' id='pt'><tr><th>#</th><th>Barcode</th><th>Item</th><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></table>
+ <button onclick='addPurchaseLine()'>Add Item</button>
+ <div class='right'><b>Total: Rs.${purchaseTotal().toFixed(2)}</b></div>
+ <button onclick='finishPurchase()'>Done</button></div>`;
+ renderPurchaseLines();
+}
+function addPurchaseLine(){S.current.lines.push({barcode:'',item:'',desc:'',qty:1,rate:0});renderPurchaseLines();}
+function renderPurchaseLines(){
+ let t=document.getElementById('pt');t.innerHTML=t.rows[0].outerHTML;
+ S.current.lines.forEach((l,i)=>{
+ let r=t.insertRow();
+ r.innerHTML=`<td>${i+1}</td>
+ <td><input oninput='S.current.lines[${i}].barcode=this.value'></td>
+ <td><input oninput='S.current.lines[${i}].item=this.value'></td>
+ <td><input oninput='S.current.lines[${i}].desc=this.value'></td>
+ <td><input type='number' value='${l.qty}' oninput='S.current.lines[${i}].qty=+this.value'></td>
+ <td><input type='number' value='${l.rate}' oninput='S.current.lines[${i}].rate=+this.value'></td>
+ <td class='right'>Rs.${(l.qty*l.rate).toFixed(2)}</td>`;
  });
- vendorList();
 }
-
-function vendorDetail(no){
- let v=vendors.find(x=>x.no===no);
- content.innerHTML=`
- <h2>${v.name}</h2>
- <table>
- <tr><th>Date</th><th>Type</th><th>Amount</th><th>Balance</th></tr>
- ${v.ledger.map(l=>`
- <tr><td>${l.date}</td><td>${l.type}</td><td>${l.amount}</td><td>${l.balance}</td></tr>
- `).join("")}
- </table>`;
-}
-
-/* ================= PURCHASE ================= */
-let currentVendor=null;
-let purchaseItems=[];
-
-function vendorSelect(){
- content.innerHTML=`
- <h2>Select Vendor</h2>
- ${vendors.map(v=>`
- <button onclick="startPurchase(${v.no})">${v.name}</button><br><br>`).join("")}`;
-}
-
-function startPurchase(no){
- currentVendor=vendors.find(v=>v.no===no);
- purchaseItems=[];
- renderPurchase();
-}
-
-function renderPurchase(){
- content.innerHTML=`
- <h2>Purchase - ${currentVendor.name}</h2>
- <table id="pTable">
- <tr><th>S No</th><th>Barcode</th><th>Item No</th><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>
- </table>
- <button onclick="addPurchaseRow()">Add Item</button>
- <h3>Total: Rs. <span id="ptotal">0</span></h3>
- Discount: <input id="pdr" type="number" value="0"> Rs
- <input id="pdp" type="number" value="0"> %
- <br><br>
- <button onclick="finalPurchase()">Done</button>`;
-}
-
-function addPurchaseRow(){
- let t=pTable.insertRow();
- t.insertCell().innerText=pTable.rows.length-1;
- t.insertCell().innerHTML=`<input oninput="searchProduct(this)">`;
- t.insertCell().innerHTML=`<input oninput="searchProduct(this)">`;
- t.insertCell().innerHTML=`<input oninput="searchProduct(this)">`;
- t.insertCell().innerHTML=`<input type="number" value="1" oninput="calcPurchase()">`;
- t.insertCell().innerHTML=`<input type="number" oninput="calcPurchase()">`;
- t.insertCell().innerText=0;
-}
-
-function searchProduct(inp){
- let val=inp.value.toLowerCase();
- let box=document.createElement("div");
- box.className="searchBox";
- let found=false;
- products.filter(p=>
-   p.barcode.includes(val)||p.item.toLowerCase().includes(val)||p.desc.toLowerCase().includes(val)
- ).slice(0,6).forEach(p=>{
-   found=true;
-   let d=document.createElement("div");
-   d.innerText=`${p.barcode} | ${p.item} | ${p.desc}`;
-   d.onclick=()=>{
-     let r=inp.parentElement.parentElement;
-     r.cells[1].children[0].value=p.barcode;
-     r.cells[2].children[0].value=p.item;
-     r.cells[3].children[0].value=p.desc;
-     r.cells[5].children[0].value=p.rate;
-     calcPurchase();
-     box.remove();
-   };
-   box.appendChild(d);
+function purchaseTotal(){return S.current.lines.reduce((a,l)=>a+l.qty*l.rate,0)}
+function finishPurchase(){
+ S.current.lines.forEach(l=>{
+ let p=S.products.find(x=>x.barcode===l.barcode);
+ if(!p){p={barcode:l.barcode,item:l.item,desc:l.desc,rate:l.rate,stock:0};S.products.push(p);} 
+ p.stock+=l.qty;
  });
- if(!found && val.length>2){
-   if(confirm("Product not found. Create new?")){
-     products.push({
-       barcode:inp.value,
-       item:"NEW"+products.length,
-       desc:inp.value,
-       rate:0,
-       stock:0
-     });
-     alert("Product Created");
-   }
- }
- inp.parentElement.appendChild(box);
-}
+ S.purchases.push({...S.current,total:purchaseTotal(),date:new Date()});
+ S.current=null;save();purchaseView();
+}// ===== INVOICE ===== function invoiceView(){ if(!S.current)S.current={lines:[],disc:0}; content.innerHTML=`<div class='card'>
 
-function calcPurchase(){
- let total=0;
- [...pTable.rows].slice(1).forEach(r=>{
-   let qty=r.cells[4].children[0].value;
-   let rate=r.cells[5].children[0].value;
-   let amt=qty*rate;
-   r.cells[6].innerText=amt;
-   total+=amt;
- });
- if(event.target===pdr) pdp.value=(pdr.value/total*100)||0;
- if(event.target===pdp) pdr.value=(total*(pdp.value/100));
- ptotal.innerText=(total-pdr.value).toFixed(2);
+ <h3>Invoice</h3>
+ <table class='table' id='it'><tr><th>#</th><th>Barcode</th><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></table>
+ <button onclick='addInvoiceLine()'>Add Item</button>
+ <div class='flex right'>Discount Rs <input style='width:80px' type='number' oninput='S.current.disc=+this.value;invoiceView()' value='${S.current.disc}'></div>
+ <div class='right'><b>Total: Rs.${invoiceTotal().toFixed(2)}</b></div>
+ <button onclick='finishInvoice()'>Done</button></div>`;
+ renderInvoiceLines();
 }
-
-function finalPurchase(){
- [...pTable.rows].slice(1).forEach(r=>{
-   let b=r.cells[1].children[0].value;
-   let q=+r.cells[4].children[0].value;
-   let rate=+r.cells[5].children[0].value;
-   let p=products.find(x=>x.barcode===b);
-   p.stock+=q;
-   p.rate=rate;
+function addInvoiceLine(){S.current.lines.push({barcode:'',desc:'',qty:1,rate:0});renderInvoiceLines();}
+function renderInvoiceLines(){
+ let t=document.getElementById('it');t.innerHTML=t.rows[0].outerHTML;
+ S.current.lines.forEach((l,i)=>{
+ let r=t.insertRow();
+ r.innerHTML=`<td>${i+1}</td>
+ <td><input onblur='pickProduct(${i},this.value)'></td>
+ <td>${l.desc}</td>
+ <td><input type='number' value='${l.qty}' oninput='S.current.lines[${i}].qty=+this.value'></td>
+ <td class='right'>Rs.${l.rate.toFixed(2)}</td>
+ <td class='right'>Rs.${(l.qty*l.rate).toFixed(2)}</td>`;
  });
- let amt=+ptotal.innerText;
- currentVendor.balance+=amt;
- currentVendor.lastPurchase=amt;
- currentVendor.ledger.push({
-   date:new Date().toLocaleDateString(),
-   type:"Purchase",
-   amount:amt,
-   balance:currentVendor.balance
- });
- alert("Purchase Saved");
- vendorList();
+}
+function pickProduct(i,code){
+ let p=S.products.find(x=>x.barcode===code);
+ if(!p||p.stock<=0){alert('Not in stock');return;}
+ p.stock--;S.current.lines[i].desc=p.desc;S.current.lines[i].rate=p.rate;save();invoiceView();
+}
+function invoiceTotal(){return S.current.lines.reduce((a,l)=>a+l.qty*l.rate,0)-S.current.disc}
+function finishInvoice(){
+ S.invoices.push({lines:S.current.lines,total:invoiceTotal(),date:new Date()});
+ S.current=null;save();invoiceView();
 }
 </script>
 </body>
