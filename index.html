@@ -2,224 +2,124 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Toysplace Dani Test</title>
-
+<title>Toysplace POS</title>
 <style>
-body{margin:0;font-family:Segoe UI;background:#f2f5f9}
-header{background:#0b2d4d;color:white;padding:15px;font-size:22px}
-nav{display:flex;gap:30px;padding:10px 20px;background:white}
-nav span{cursor:pointer;padding-bottom:6px}
-nav .active{border-bottom:3px solid #0b2d4d;font-weight:600}
-
-section{padding:15px;display:none}
-table{width:100%;border-collapse:collapse;background:white}
-th,td{border:1px solid #ccc;padding:6px;text-align:center}
-input,select{padding:5px}
-button{background:#0b2d4d;color:white;border:none;padding:8px 14px;cursor:pointer}
-button:hover{opacity:.9}
-
-.card{background:#e8f1ff;padding:10px;margin-top:10px}
-.big-summary{display:flex;gap:20px;margin-top:15px}
-.big-summary div{flex:1;background:#0b2d4d;color:white;padding:10px;font-size:18px}
-
-.search-box div{cursor:pointer;padding:4px}
-.search-box div:hover{background:#dce8ff}
+  body { font-family: Arial; background-color: #0a1a2f; color: #eaeef5; padding: 20px; }
+  h1 { color: #1e90ff; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  th, td { border: 1px solid #444; padding: 8px; text-align: left; }
+  th { background-color: #1e2a4a; }
+  input { padding: 5px; margin: 2px; }
+  button { padding: 5px 10px; margin: 5px; background-color: #1e90ff; color: white; border: none; cursor: pointer; }
+  button:hover { background-color: #0d6efd; }
+  .section { margin-bottom: 30px; }
 </style>
 </head>
-
 <body>
 
-<header>Toysplace Dani Test</header>
+<h1>Toysplace POS</h1>
 
-<nav>
-<span onclick="openTab('invoice')" class="active">Invoice</span>
-<span onclick="openTab('purchase')">Purchase</span>
-<span onclick="openTab('vendor')">Vendor</span>
-</nav>
+<div class="section">
+<h2>Products</h2>
+<input id="prodName" placeholder="Product Name">
+<input id="prodRate" placeholder="Rate">
+<input id="prodStock" placeholder="Stock">
+<button onclick="addProduct()">Add Product</button>
+<table id="productTable">
+<tr><th>ID</th><th>Name</th><th>Rate</th><th>Stock</th></tr>
+</table>
+</div>
 
-<section id="invoice"></section>
-<section id="purchase"></section>
-<section id="vendor"></section>
+<div class="section">
+<h2>Invoice</h2>
+<select id="invoiceProduct"></select>
+<input id="invoiceQty" placeholder="Qty" type="number">
+<button onclick="addInvoiceItem()">Add Item</button>
+<table id="invoiceTable">
+<tr><th>Product</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>
+</table>
+<p>Total: <span id="invoiceTotal">0</span></p>
+<button onclick="saveInvoice()">Save Invoice</button>
+</div>
+
+<div class="section">
+<h2>Purchase</h2>
+<select id="purchaseProduct"></select>
+<input id="purchaseQty" placeholder="Qty" type="number">
+<button onclick="purchaseItem()">Purchase</button>
+<table id="purchaseTable">
+<tr><th>Product</th><th>Qty</th><th>New Stock</th></tr>
+</table>
+</div>
 
 <script>
-/* ---------------- DATA ---------------- */
-let products=[]
-let stock={}
-let invoices=[]
-let vendors=[]
+let products = [];
+let invoiceItems = [];
 
-/* ---------------- NAV ---------------- */
-function openTab(id){
- document.querySelectorAll('nav span').forEach(x=>x.classList.remove('active'))
- event.target.classList.add('active')
- document.querySelectorAll('section').forEach(s=>s.style.display='none')
- document.getElementById(id).style.display='block'
- render()
+function addProduct() {
+  const name = document.getElementById("prodName").value;
+  const rate = parseFloat(document.getElementById("prodRate").value);
+  const stock = parseInt(document.getElementById("prodStock").value);
+  if(!name || !rate || isNaN(stock)) { alert("Fill all fields"); return; }
+  const id = products.length + 1;
+  products.push({id, name, rate, stock});
+  renderProducts();
 }
 
-/* ---------------- UTIL ---------------- */
-const rs=n=>"Rs. "+n.toLocaleString(undefined,{minimumFractionDigits:2})
-
-/* ---------------- SEARCH ---------------- */
-function searchProduct(q){
- if(!q)return[]
- return products.filter(p=>
-  p.barcode.includes(q)||
-  p.item.includes(q)||
-  p.desc.toLowerCase().includes(q.toLowerCase())
- ).slice(0,6)
+function renderProducts() {
+  const table = document.getElementById("productTable");
+  const invoiceSelect = document.getElementById("invoiceProduct");
+  const purchaseSelect = document.getElementById("purchaseProduct");
+  table.innerHTML = "<tr><th>ID</th><th>Name</th><th>Rate</th><th>Stock</th></tr>";
+  invoiceSelect.innerHTML = "";
+  purchaseSelect.innerHTML = "";
+  products.forEach(p => {
+    table.innerHTML += `<tr><td>${p.id}</td><td>${p.name}</td><td>${p.rate}</td><td>${p.stock}</td></tr>`;
+    invoiceSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+    purchaseSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+  });
 }
 
-/* ---------------- INVOICE ---------------- */
-let currentInvoice=null
-
-function newInvoice(){
- currentInvoice={items:[],date:new Date(),disc:0}
+function addInvoiceItem() {
+  const prodId = parseInt(document.getElementById("invoiceProduct").value);
+  const qty = parseInt(document.getElementById("invoiceQty").value);
+  const product = products.find(p => p.id === prodId);
+  if(qty > product.stock) { alert("Not enough stock"); return; }
+  const amount = product.rate * qty;
+  invoiceItems.push({prodId, qty, rate: product.rate, amount});
+  product.stock -= qty;
+  renderInvoice();
+  renderProducts();
 }
 
-function addInvoiceItem(p){
- if(stock[p.item]<=0)return alert("Out of stock")
- currentInvoice.items.push({p,qty:1,disc:0})
- stock[p.item]--
- render()
+function renderInvoice() {
+  const table = document.getElementById("invoiceTable");
+  let total = 0;
+  table.innerHTML = "<tr><th>Product</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>";
+  invoiceItems.forEach(item => {
+    const product = products.find(p => p.id === item.prodId);
+    table.innerHTML += `<tr><td>${product.name}</td><td>${item.qty}</td><td>${item.rate}</td><td>${item.amount}</td></tr>`;
+    total += item.amount;
+  });
+  document.getElementById("invoiceTotal").innerText = total;
 }
 
-function saveInvoice(){
- invoices.push(currentInvoice)
- currentInvoice=null
- render()
+function saveInvoice() {
+  if(invoiceItems.length === 0) { alert("No items"); return; }
+  alert("Invoice saved! Total: " + document.getElementById("invoiceTotal").innerText);
+  invoiceItems = [];
+  renderInvoice();
 }
 
-function renderInvoice(){
- let h=`<button onclick="newInvoice()">New Invoice</button><br><br>`
-
- h+=`<table><tr>
- <th>S No</th><th>Date</th><th>Bill No</th><th>Products</th>
- <th>Amount</th><th>Discount</th><th>Total</th><th>Time</th></tr>`
-
- invoices.slice(-100).forEach((i,idx)=>{
- let amt=i.items.reduce((s,x)=>s+x.qty*x.p.rate,0)
- let d=i.disc
- h+=`<tr>
- <td>${idx+1}</td>
- <td>${i.date.toLocaleDateString()}</td>
- <td onclick="currentInvoice=invoices[${idx}]" style="cursor:pointer">${1000+idx}</td>
- <td>${i.items.length}</td>
- <td>${rs(amt)}</td>
- <td>${rs(d)} (${amt?((d/amt)*100).toFixed(2):0}%)</td>
- <td>${rs(amt-d)}</td>
- <td>${i.date.toLocaleTimeString()}</td></tr>`
- })
- h+=`</table>`
-
- if(currentInvoice){
- let amt=currentInvoice.items.reduce((s,x)=>s+x.qty*x.p.rate,0)
- let total=amt-currentInvoice.disc
-
- h+=`<div class="card">
- <h3>Invoice Editor</h3>
- Search <input onkeyup="showInvoiceSearch(this.value)">
- <div class="search-box" id="invSearch"></div>
-
- <table><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Disc</th><th>Amount</th></tr>`
-
- currentInvoice.items.forEach(x=>{
- let a=x.qty*x.p.rate-x.disc
- h+=`<tr>
- <td>${x.p.desc}</td>
- <td><input value="${x.qty}" onchange="x.qty=this.value"></td>
- <td>${rs(x.p.rate)}</td>
- <td><input value="${x.disc}" onchange="x.disc=this.value"></td>
- <td>${rs(a)}</td></tr>`
- })
-
- h+=`</table>
-
- <div class="big-summary">
- <div>Amount<br>${rs(amt)}</div>
- <div>Discount<br>
- <input value="${currentInvoice.disc}" onchange="currentInvoice.disc=this.value">
- <input value="${amt?((currentInvoice.disc/amt)*100).toFixed(2):0}">
- </div>
- <div>Total<br>${rs(total)}</div>
- </div>
-
- <br><button onclick="saveInvoice()">Save Invoice</button>
- </div>`
- }
-
- document.getElementById("invoice").innerHTML=h
+function purchaseItem() {
+  const prodId = parseInt(document.getElementById("purchaseProduct").value);
+  const qty = parseInt(document.getElementById("purchaseQty").value);
+  const product = products.find(p => p.id === prodId);
+  product.stock += qty;
+  const table = document.getElementById("purchaseTable");
+  table.innerHTML += `<tr><td>${product.name}</td><td>${qty}</td><td>${product.stock}</td></tr>`;
+  renderProducts();
 }
-
-function showInvoiceSearch(q){
- let r=searchProduct(q)
- let h=''
- r.forEach(p=>h+=`<div onclick='addInvoiceItem(${JSON.stringify(p)})'>${p.desc}</div>`)
- document.getElementById("invSearch").innerHTML=h
-}
-
-/* ---------------- PURCHASE ---------------- */
-function renderPurchase(){
- let h=`<button onclick="newPurchase()">New Purchase</button>`
- document.getElementById("purchase").innerHTML=h
-}
-
-function newPurchase(){
- let vname=prompt("Vendor Name")
- if(!vname)return
- let v=vendors.find(x=>x.name===vname)
- if(!v){v={name:vname,balance:0,lastP:0};vendors.push(v)}
-
- let code=prompt("Barcode")
- let p=products.find(x=>x.barcode===code)
- if(!p){
- if(confirm("Create New Product?")){
- p={
-  barcode:code,
-  item:prompt("Item No"),
-  desc:prompt("Description"),
-  rate:parseFloat(prompt("Rate"))
- }
- products.push(p)
- stock[p.item]=0
- }
- }
-
- let qty=parseInt(prompt("Qty"))
- let rate=parseFloat(prompt("Rate"))
- let retail=confirm("Set Retail Rate?")
- if(retail)p.rate=parseFloat(prompt("Retail Rate"))
-
- stock[p.item]+=qty
- let amt=qty*rate
- v.balance+=amt
- v.lastP=amt
- render()
-}
-
-/* ---------------- VENDOR ---------------- */
-function renderVendor(){
- let h=`<table><tr>
- <th>S No</th><th>Name</th><th>Balance</th><th>Last Purchase</th></tr>`
- vendors.forEach((v,i)=>{
- h+=`<tr>
- <td>${i+1}</td>
- <td>${v.name}</td>
- <td>${rs(v.balance)}</td>
- <td>${rs(v.lastP||0)}</td></tr>`
- })
- h+=`</table>`
- document.getElementById("vendor").innerHTML=h
-}
-
-/* ---------------- RENDER ---------------- */
-function render(){
- renderInvoice()
- renderPurchase()
- renderVendor()
-}
-
-openTab('invoice')
 </script>
 
 </body>
