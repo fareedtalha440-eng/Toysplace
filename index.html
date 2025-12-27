@@ -1,333 +1,292 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Toy Store Software</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Toysplace Dani Test</title>
+
 <style>
-:root{
-  --dark:#0b2a4a;
-  --bg:#f4f6f8;
-  --white:#fff;
-  --shadow:0 12px 30px rgba(0,0,0,.18);
+body{
+    margin:0;
+    font-family:Segoe UI, sans-serif;
+    background:#f4f7fb;
 }
-*{box-sizing:border-box}
-body{margin:0;font-family:Segoe UI,Arial;background:var(--bg)}
 header{
-  height:70px;background:var(--dark);color:#fff;
-  display:flex;align-items:center;padding:0 28px;
-  font-size:22px;font-weight:600;
+    background:#0b2d52;
+    color:white;
+    padding:15px 25px;
+    font-size:22px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
 }
-
-/* MAIN MENU */
-#menu{height:calc(100vh - 70px);display:flex;justify-content:center;align-items:center}
-.menu-grid{display:grid;grid-template-columns:repeat(3,220px);gap:26px}
-.menu-item{
-  background:#fff;padding:34px;border-radius:22px;
-  box-shadow:var(--shadow);font-size:20px;text-align:center;
-  cursor:pointer;transition:.3s;
+.menu{
+    display:flex;
+    gap:25px;
 }
-.menu-item:hover{transform:translateY(-6px)}
-
-/* APP */
-#app{display:none;height:calc(100vh - 70px)}
+.menu div{
+    cursor:pointer;
+    padding-bottom:5px;
+    font-size:18px;
+}
+.menu .active{
+    border-bottom:3px solid white;
+}
+.container{
+    display:flex;
+}
 .sidebar{
-  width:280px;background:var(--dark);color:#cbd5e1;
-  display:flex;flex-direction:column;
+    width:220px;
+    background:#0b2d52;
+    color:white;
+    display:none;
+    flex-direction:column;
+    padding-top:20px;
 }
-.nav-btn{
-  background:none;border:none;color:inherit;
-  padding:18px 30px;text-align:left;font-size:17px;
-  cursor:pointer;position:relative;
+.sidebar div{
+    padding:15px 20px;
+    cursor:pointer;
 }
-.nav-btn span{font-size:26px;margin-right:14px}
-.nav-btn.active{
-  color:#fff;background:rgba(255,255,255,.08);
-  box-shadow:var(--shadow);
+.sidebar .active{
+    background:#ffffff;
+    color:#0b2d52;
+    box-shadow:0 5px 15px rgba(0,0,0,.2);
 }
-.nav-btn.active::after{
-  content:'';position:absolute;bottom:6px;left:30px;
-  width:65%;height:3px;background:#fff;border-radius:6px;
+.content{
+    flex:1;
+    padding:20px;
 }
-.sidebar .bottom{margin-top:auto}
-main{flex:1;padding:28px;overflow:auto}
-
-/* TABLE */
-table{width:100%;border-collapse:collapse;margin-top:14px}
-th,td{padding:10px;border-bottom:1px solid #e5e7eb}
-td input{width:100%;padding:6px}
-
-button.primary{
-  padding:10px 16px;background:var(--dark);
-  color:#fff;border:none;border-radius:10px;
-  cursor:pointer;
+table{
+    width:100%;
+    border-collapse:collapse;
+    background:white;
 }
-
-.search-box{
-  position:absolute;background:#fff;box-shadow:var(--shadow);
-  width:100%;z-index:10;
+th,td{
+    padding:10px;
+    border-bottom:1px solid #ddd;
 }
-.search-box div{padding:8px;cursor:pointer}
-.search-box div:hover{background:#e5e7eb}
-
-.filter{display:flex;gap:10px;margin-bottom:12px}
-.pagination{margin-top:12px}
-.pagination button{margin-right:6px}
-.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}
-.summary div{background:#fff;padding:12px;border-radius:12px;box-shadow:var(--shadow)}
+th{
+    background:#e8eef7;
+}
+input{
+    padding:6px;
+}
+button{
+    background:#0b2d52;
+    color:white;
+    border:none;
+    padding:8px 15px;
+    cursor:pointer;
+}
+.searchBox{
+    position:absolute;
+    background:white;
+    border:1px solid #ccc;
+    width:400px;
+    max-height:180px;
+    overflow:auto;
+}
+.searchBox div{
+    padding:8px;
+    cursor:pointer;
+}
+.searchBox div:hover{
+    background:#e6f0ff;
+}
+.print{
+    display:none;
+}
+@media print{
+    body *{visibility:hidden;}
+    .print, .print *{visibility:visible;}
+    .print{position:absolute;top:0;left:0;width:100%;}
+}
 </style>
 </head>
+
 <body>
 
-<header>🧸 Toy Store Management System</header>
-
-<!-- MAIN MENU -->
-<div id="menu">
-  <div class="menu-grid">
-    <div class="menu-item" data-page="invoice">🧾 Invoice</div>
-    <div class="menu-item" data-page="purchase">📦 Purchase</div>
-    <div class="menu-item" data-page="product">📦 Product</div>
-    <div class="menu-item" data-page="reports">📑 Reports</div>
-    <div class="menu-item" data-page="vendor">🏪 Vendor</div>
-    <div class="menu-item" data-page="settings">⚙ Setting</div>
-  </div>
-</div>
-
-<div id="app">
-  <div class="sidebar" id="sidebar">
-    <button class="nav-btn" data-page="invoice"><span>🧾</span>Invoice</button>
-    <button class="nav-btn" data-page="purchase"><span>📦</span>Purchase</button>
-    <button class="nav-btn" data-page="product"><span>📦</span>Product</button>
-    <button class="nav-btn" data-page="reports"><span>📑</span>Reports</button>
-    <button class="nav-btn" data-page="vendor"><span>🏪</span>Vendor</button>
-    <div class="bottom">
-      <button class="nav-btn" data-page="settings"><span>⚙</span>Setting</button>
+<header>
+    <div>Toysplace POS</div>
+    <div class="menu">
+        <div onclick="openModule('invoice')">Invoice</div>
+        <div onclick="openModule('purchase')">Purchase</div>
+        <div onclick="openModule('product')">Product</div>
+        <div onclick="openModule('report')">Reports</div>
+        <div onclick="openModule('vendor')">Vendor</div>
+        <div onclick="openModule('setting')">⚙</div>
     </div>
-  </div>
-  <main id="view"></main>
+</header>
+
+<div class="container">
+    <div class="sidebar" id="sidebar"></div>
+    <div class="content" id="content"></div>
 </div>
+
+<div class="print" id="printArea"></div>
 
 <script>
-/* ---------- DATA ---------- */
-let products=[
- {barcode:'1001',item:'T001',desc:'Teddy Bear Large',rate:1500,stock:20},
- {barcode:'1002',item:'T002',desc:'Teddy Bear Small',rate:1200,stock:30},
- {barcode:'2001',item:'C001',desc:'Toy Car Red',rate:800,stock:40},
- {barcode:'3001',item:'D001',desc:'Doll Pink',rate:1100,stock:25}
+/* ------------------ DATA ------------------ */
+let products = [
+    {barcode:"111", item:"T001", desc:"Toy Car", rate:500, stock:50},
+    {barcode:"222", item:"T002", desc:"Doll", rate:800, stock:30}
 ];
-let invoices=[];
-let page=1;
+let invoices = [];
+let invoiceNo = 1;
 
-/* ---------- NAV ---------- */
-const menu=document.getElementById('menu');
-const app=document.getElementById('app');
-const sidebar=document.getElementById('sidebar');
-const view=document.getElementById('view');
-
-menu.onclick=e=>{
- const m=e.target.closest('.menu-item');
- if(!m)return;
- menu.style.display='none';app.style.display='flex';
- activate(m.dataset.page);
-}
-sidebar.onclick=e=>{
- const b=e.target.closest('.nav-btn');
- if(!b)return;activate(b.dataset.page);
-}
-function activate(p){
- document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
- document.querySelector(`.nav-btn[data-page="${p}"]`)?.classList.add('active');
- if(p==='invoice') renderInvoiceList();
- else view.innerHTML=`<h2>${p}</h2>`;
+/* ------------------ UI ------------------ */
+function openModule(name){
+    document.querySelectorAll('.menu div').forEach(m=>m.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('sidebar').style.display="flex";
+    if(name==="invoice") loadInvoiceList();
+    if(name==="purchase") loadPurchase();
+    if(name==="product") loadProduct();
 }
 
-/* ---------- INVOICE LIST ---------- */
-function renderInvoiceList(filter=null){
- let list=invoices;
- if(filter){
-  list=list.filter(i=>{
-   if(filter.date)return i.date===filter.date;
-   if(filter.month)return i.month===filter.month;
-   if(filter.year)return i.year===filter.year;
-  });
- }
- let start=(page-1)*100;
- let show=list.slice(start,start+100);
-
- view.innerHTML=`
- <h2>Invoices</h2>
- <div class="filter">
-  <input type="date" id="fDate">
-  <input type="month" id="fMonth">
-  <input type="number" placeholder="Year" id="fYear">
-  <button class="primary" onclick="applyFilter()">Filter</button>
- </div>
- <button class="primary" onclick="newInvoice()">➕ New Invoice</button>
-
- <table>
- <tr>
-  <th>Bill</th><th>Date</th><th>Time</th><th>Products</th>
-  <th>Subtotal</th><th>Discount</th><th>Total</th>
- </tr>
- ${show.map(i=>`
- <tr>
-  <td>${i.no}</td>
-  <td>${i.date}</td>
-  <td>${i.time}</td>
-  <td>${i.count}</td>
-  <td>Rs. ${i.sub.toLocaleString()}.00</td>
-  <td>Rs. ${i.disc.toLocaleString()} (${i.discp}%)</td>
-  <td>Rs. ${i.total.toLocaleString()}.00</td>
- </tr>`).join('')}
- </table>
-
- <div class="pagination">
- ${Array.from({length:Math.ceil(list.length/100)},(_,i)=>`<button onclick="page=${i+1};renderInvoiceList()"> ${i+1} </button>`).join('')}
- </div>
- `;
+/* ------------------ INVOICE LIST ------------------ */
+function loadInvoiceList(){
+    content.innerHTML = `
+    <h2>Invoices <button onclick="newInvoice()">➕ New</button></h2>
+    <table>
+        <tr>
+            <th>Bill No</th><th>Date</th><th>Time</th><th>Items</th><th>Discount</th><th>Total</th>
+        </tr>
+        ${invoices.map(i=>`
+            <tr onclick="editInvoice(${i.no})">
+                <td>${i.no}</td>
+                <td>${i.date}</td>
+                <td>${i.time}</td>
+                <td>${i.items.length}</td>
+                <td>Rs. ${i.discount.toFixed(2)}</td>
+                <td>Rs. ${i.total.toFixed(2)}</td>
+            </tr>`).join("")}
+    </table>`;
 }
 
-function applyFilter(){
- let d=document.getElementById('fDate').value;
- let m=document.getElementById('fMonth').value;
- let y=document.getElementById('fYear').value;
- page=1;
- renderInvoiceList({date:d||null,month:m||null,year:y||null});
-}
+/* ------------------ NEW / EDIT INVOICE ------------------ */
+let currentInvoice=null;
 
-/* ---------- NEW INVOICE ---------- */
 function newInvoice(){
- let now=new Date();
- let inv={
-  no:invoices.length+1,
-  date:now.toLocaleDateString(),
-  time:now.toLocaleTimeString(),
-  month:now.getMonth()+1,
-  year:now.getFullYear(),
-  items:[],
-  invDisc:0,invDiscP:0
- };
- view.innerHTML=`
- <h2>Invoice #${inv.no}</h2>
- <table id="invTable">
- <tr>
-  <th>#</th><th>Barcode</th><th>Item</th><th>Description</th>
-  <th>Qty</th><th>Rate</th><th>D Rs</th><th>D %</th><th>Amount</th>
- </tr>
- </table>
- <button class="primary" onclick="addRow()">+ Add Product</button>
-
- <div class="summary">
-  <div>Subtotal: <span id="sub">0</span></div>
-  <div>Inv Disc Rs <input id="idr" type="number" oninput="invDiscCalc('rs')"></div>
-  <div>Inv Disc % <input id="idp" type="number" oninput="invDiscCalc('p')"></div>
-  <div>Total: <span id="total">0</span></div>
- </div>
- <br>
- <button class="primary" onclick="saveInvoice()">Save Invoice</button>
- `;
- window.currentInv=inv;
- addRow();
+    currentInvoice={
+        no:invoiceNo++,
+        date:new Date().toLocaleDateString(),
+        time:new Date().toLocaleTimeString(),
+        items:[],
+        discount:0,
+        total:0
+    };
+    renderInvoice();
 }
 
-/* ---------- ROW / SEARCH / CALC ---------- */
-function addRow(){
- let t=document.getElementById('invTable');
- let r=t.rows.length;
- let row=t.insertRow();
- row.innerHTML=`
- <td>${r}</td>
- <td style="position:relative"><input oninput="search(this,${r})"></td>
- <td><input disabled></td>
- <td><input disabled></td>
- <td><input type="number" value="1" min="1" oninput="calc(${r})"></td>
- <td><input disabled></td>
- <td><input type="number" value="0" oninput="calc(${r})"></td>
- <td><input type="number" value="0" oninput="calc(${r})"></td>
- <td><input disabled></td>`;
+function editInvoice(no){
+    currentInvoice = invoices.find(i=>i.no===no);
+    renderInvoice();
 }
 
-function search(inp,r){
- let q=inp.value.toLowerCase();
- inp.parentNode.querySelector('.search-box')?.remove();
- if(!q)return;
- let res=products.filter(p=>p.barcode.includes(q)||p.item.includes(q)||p.desc.toLowerCase().includes(q)).slice(0,6);
- let box=document.createElement('div');box.className='search-box';
- box.innerHTML=res.map(p=>`<div onclick="selectProd(${r},'${p.barcode}')">${p.barcode} | ${p.desc}</div>`).join('');
- inp.parentNode.appendChild(box);
+function renderInvoice(){
+    content.innerHTML=`
+    <h2>Invoice #${currentInvoice.no}</h2>
+    <table id="invTable">
+        <tr>
+            <th>Barcode</th><th>Item No</th><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th>
+        </tr>
+    </table>
+    <button onclick="addRow()">Add Item</button>
+    <h3>Total: Rs. <span id="total">0</span></h3>
+    Discount: 
+    <input id="discRs" type="number" value="0"> Rs
+    <input id="discPct" type="number" value="0"> %
+    <br><br>
+    <button onclick="finalize()">Done</button>
+    <button onclick="printInvoice()">Print</button>
+    `;
+    currentInvoice.items.forEach(addRow);
+    calcTotal();
 }
 
-function selectProd(r,bc){
- let p=products.find(x=>x.barcode===bc);
- let row=document.getElementById('invTable').rows[r];
- row.cells[1].children[0].value=p.barcode;
- row.cells[2].children[0].value=p.item;
- row.cells[3].children[0].value=p.desc;
- row.cells[5].children[0].value=p.rate;
- row.cells[1].querySelector('.search-box')?.remove();
- calc(r);
+/* ------------------ ADD ROW ------------------ */
+function addRow(item){
+    let row=document.getElementById("invTable").insertRow();
+    let b=row.insertCell(), i=row.insertCell(), d=row.insertCell(),
+        q=row.insertCell(), r=row.insertCell(), a=row.insertCell();
+    b.innerHTML=`<input oninput="search(this)">`;
+    i.innerHTML=`<input oninput="search(this)">`;
+    d.innerHTML=`<input oninput="search(this)">`;
+    q.innerHTML=`<input type="number" value="${item?item.qty:1}" oninput="update()">`;
+    r.innerHTML=`<input disabled>`;
+    a.innerHTML=`0`;
 }
 
-function calc(r){
- let row=document.getElementById('invTable').rows[r];
- let qty=+row.cells[4].children[0].value;
- let rate=+row.cells[5].children[0].value;
- let dr=+row.cells[6].children[0].value;
- let dp=+row.cells[7].children[0].value;
- let base=qty*rate;
- if(dp>0)dr=base*dp/100;
- if(dr>0)dp=(dr/base)*100;
- row.cells[6].children[0].value=dr.toFixed(2);
- row.cells[7].children[0].value=dp.toFixed(2);
- row.cells[8].children[0].value=(base-dr).toFixed(2);
- updateSummary();
+/* ------------------ SEARCH ------------------ */
+function search(inp){
+    let box=document.createElement("div");
+    box.className="searchBox";
+    let val=inp.value.toLowerCase();
+    products.filter(p=>
+        p.barcode.includes(val) ||
+        p.item.toLowerCase().includes(val) ||
+        p.desc.toLowerCase().includes(val)
+    ).slice(0,6).forEach(p=>{
+        let d=document.createElement("div");
+        d.innerText=`${p.barcode} | ${p.item} | ${p.desc}`;
+        d.onclick=()=>{
+            let row=inp.parentElement.parentElement;
+            row.cells[0].children[0].value=p.barcode;
+            row.cells[1].children[0].value=p.item;
+            row.cells[2].children[0].value=p.desc;
+            row.cells[4].children[0].value=p.rate;
+            row.cells[5].innerText=p.rate;
+            update();
+            box.remove();
+        };
+        box.appendChild(d);
+    });
+    inp.parentElement.appendChild(box);
 }
 
-function updateSummary(){
- let sub=0;
- document.querySelectorAll('#invTable tr').forEach((r,i)=>{
-  if(i===0)return;
-  sub+=+r.cells[8].children[0].value;
- });
- document.getElementById('sub').innerText='Rs. '+sub.toLocaleString()+'.00';
- invDiscCalc();
+/* ------------------ CALC ------------------ */
+function update(){
+    let total=0;
+    document.querySelectorAll("#invTable tr").forEach((r,idx)=>{
+        if(idx===0) return;
+        let qty=r.cells[3].children[0].value;
+        let rate=r.cells[4].children[0].value;
+        let amt=qty*rate;
+        r.cells[5].innerText=amt;
+        total+=amt;
+    });
+    let dr=+discRs.value;
+    let dp=+discPct.value;
+    if(event.target===discRs) discPct.value=((dr/total)*100)||0;
+    if(event.target===discPct) discRs.value=(total*(dp/100));
+    document.getElementById("total").innerText=(total-discRs.value).toFixed(2);
 }
 
-/* ---------- INVOICE DISCOUNT ---------- */
-function invDiscCalc(mode){
- let sub=parseFloat(document.getElementById('sub').innerText.replace(/[^\d]/g,''))||0;
- let dr=document.getElementById('idr');
- let dp=document.getElementById('idp');
- if(mode==='rs') dp.value=((dr.value/sub)*100||0).toFixed(2);
- if(mode==='p') dr.value=(sub*dp.value/100||0).toFixed(2);
- let total=sub-(+dr.value||0);
- document.getElementById('total').innerText='Rs. '+total.toLocaleString()+'.00';
+/* ------------------ FINALIZE ------------------ */
+function finalize(){
+    invoices.push(currentInvoice);
+    loadInvoiceList();
 }
 
-/* ---------- SAVE ---------- */
-function saveInvoice(){
- let t=document.getElementById('invTable');
- let sub=0,count=0;
- for(let i=1;i<t.rows.length;i++){
-  let r=t.rows[i];
-  let bc=r.cells[1].children[0].value;
-  if(!bc)continue;
-  let qty=+r.cells[4].children[0].value;
-  let p=products.find(x=>x.barcode===bc);
-  if(qty>p.stock){alert('Stock not enough');return;}
-  p.stock-=qty;
-  sub+=+r.cells[8].children[0].value;
-  count++;
- }
- let dr=+document.getElementById('idr').value||0;
- let dp=+document.getElementById('idp').value||0;
- invoices.unshift({
-  ...currentInv,
-  sub,disc:dr,discp:dp,
-  total:sub-dr,count
- });
- renderInvoiceList();
+/* ------------------ PRINT ------------------ */
+function printInvoice(){
+    let html=`<h2>Toysplace</h2>`;
+    currentInvoice.items.forEach(i=>{
+        html+=`${i.desc} ${i.qty} x ${i.rate}<br>`;
+    });
+    html+=`Total: Rs. ${currentInvoice.total}`;
+    printArea.innerHTML=html;
+    window.print();
+}
+
+/* ------------------ PURCHASE / PRODUCT ------------------ */
+function loadPurchase(){
+    content.innerHTML="<h2>Purchase (Stock In)</h2>";
+}
+function loadProduct(){
+    content.innerHTML="<h2>Products</h2>";
 }
 </script>
+
 </body>
 </html>
