@@ -1,38 +1,33 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Toysplace Dani Test</title>
-
+<title>Toysplace Dani Test POS</title>
 <style>
 body{margin:0;font-family:Segoe UI;background:#f2f5f9}
-header{background:#0b2d4d;color:white;padding:15px;font-size:22px}
-nav{display:flex;gap:30px;padding:10px 20px;background:white}
+header{background:#0b2d4d;color:#fff;padding:14px 20px;font-size:22px}
+nav{display:flex;gap:25px;padding:10px 20px;background:#fff}
 nav span{cursor:pointer;padding-bottom:6px}
 nav .active{border-bottom:3px solid #0b2d4d;font-weight:600}
-
-section{padding:15px;display:none}
-table{width:100%;border-collapse:collapse;background:white}
+section{display:none;padding:15px}
+table{width:100%;border-collapse:collapse;background:#fff}
 th,td{border:1px solid #ccc;padding:6px;text-align:center}
 input,select{padding:5px}
-button{background:#0b2d4d;color:white;border:none;padding:8px 14px;cursor:pointer}
+button{background:#0b2d4d;color:#fff;border:none;padding:8px 14px;cursor:pointer}
 button:hover{opacity:.9}
-
 .card{background:#e8f1ff;padding:10px;margin-top:10px}
-.big-summary{display:flex;gap:20px;margin-top:15px}
-.big-summary div{flex:1;background:#0b2d4d;color:white;padding:10px;font-size:18px}
-
-.search-box div{cursor:pointer;padding:4px}
+.search-box div{padding:4px;cursor:pointer}
 .search-box div:hover{background:#dce8ff}
+.big-summary{display:flex;gap:20px;margin-top:15px}
+.big-summary div{flex:1;background:#0b2d4d;color:#fff;padding:10px;font-size:18px}
 </style>
 </head>
 
 <body>
-
 <header>Toysplace Dani Test</header>
 
 <nav>
-<span onclick="openTab('invoice')" class="active">Invoice</span>
+<span class="active" onclick="openTab('invoice')">Invoice</span>
 <span onclick="openTab('purchase')">Purchase</span>
 <span onclick="openTab('vendor')">Vendor</span>
 </nav>
@@ -42,25 +37,26 @@ button:hover{opacity:.9}
 <section id="vendor"></section>
 
 <script>
-/* ---------------- DATA ---------------- */
+/* DATA */
 let products=[]
 let stock={}
 let invoices=[]
 let vendors=[]
+let currentInvoice=null
 
-/* ---------------- NAV ---------------- */
+/* NAV */
 function openTab(id){
- document.querySelectorAll('nav span').forEach(x=>x.classList.remove('active'))
- event.target.classList.add('active')
- document.querySelectorAll('section').forEach(s=>s.style.display='none')
- document.getElementById(id).style.display='block'
+ document.querySelectorAll("nav span").forEach(x=>x.classList.remove("active"))
+ event.target.classList.add("active")
+ document.querySelectorAll("section").forEach(s=>s.style.display="none")
+ document.getElementById(id).style.display="block"
  render()
 }
 
-/* ---------------- UTIL ---------------- */
-const rs=n=>"Rs. "+n.toLocaleString(undefined,{minimumFractionDigits:2})
+/* UTILS */
+const rs=n=>"Rs. "+Number(n||0).toFixed(2)
 
-/* ---------------- SEARCH ---------------- */
+/* SEARCH */
 function searchProduct(q){
  if(!q)return[]
  return products.filter(p=>
@@ -70,15 +66,14 @@ function searchProduct(q){
  ).slice(0,6)
 }
 
-/* ---------------- INVOICE ---------------- */
-let currentInvoice=null
-
+/* INVOICE */
 function newInvoice(){
- currentInvoice={items:[],date:new Date(),disc:0}
+ currentInvoice={items:[],disc:0,date:new Date()}
+ render()
 }
 
 function addInvoiceItem(p){
- if(stock[p.item]<=0)return alert("Out of stock")
+ if((stock[p.item]||0)<=0)return alert("Out of Stock")
  currentInvoice.items.push({p,qty:1,disc:0})
  stock[p.item]--
  render()
@@ -90,20 +85,24 @@ function saveInvoice(){
  render()
 }
 
+function showInvoiceSearch(q){
+ let r=searchProduct(q),h=""
+ r.forEach(p=>h+=`<div onclick='addInvoiceItem(${JSON.stringify(p)})'>${p.desc}</div>`)
+ document.getElementById("invSearch").innerHTML=h
+}
+
 function renderInvoice(){
  let h=`<button onclick="newInvoice()">New Invoice</button><br><br>`
-
  h+=`<table><tr>
  <th>S No</th><th>Date</th><th>Bill No</th><th>Products</th>
  <th>Amount</th><th>Discount</th><th>Total</th><th>Time</th></tr>`
-
  invoices.slice(-100).forEach((i,idx)=>{
  let amt=i.items.reduce((s,x)=>s+x.qty*x.p.rate,0)
  let d=i.disc
  h+=`<tr>
  <td>${idx+1}</td>
  <td>${i.date.toLocaleDateString()}</td>
- <td onclick="currentInvoice=invoices[${idx}]" style="cursor:pointer">${1000+idx}</td>
+ <td>${1000+idx}</td>
  <td>${i.items.length}</td>
  <td>${rs(amt)}</td>
  <td>${rs(d)} (${amt?((d/amt)*100).toFixed(2):0}%)</td>
@@ -115,26 +114,20 @@ function renderInvoice(){
  if(currentInvoice){
  let amt=currentInvoice.items.reduce((s,x)=>s+x.qty*x.p.rate,0)
  let total=amt-currentInvoice.disc
-
  h+=`<div class="card">
  <h3>Invoice Editor</h3>
  Search <input onkeyup="showInvoiceSearch(this.value)">
  <div class="search-box" id="invSearch"></div>
-
  <table><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Disc</th><th>Amount</th></tr>`
-
  currentInvoice.items.forEach(x=>{
- let a=x.qty*x.p.rate-x.disc
  h+=`<tr>
  <td>${x.p.desc}</td>
  <td><input value="${x.qty}" onchange="x.qty=this.value"></td>
  <td>${rs(x.p.rate)}</td>
  <td><input value="${x.disc}" onchange="x.disc=this.value"></td>
- <td>${rs(a)}</td></tr>`
+ <td>${rs(x.qty*x.p.rate-x.disc)}</td></tr>`
  })
-
  h+=`</table>
-
  <div class="big-summary">
  <div>Amount<br>${rs(amt)}</div>
  <div>Discount<br>
@@ -143,22 +136,13 @@ function renderInvoice(){
  </div>
  <div>Total<br>${rs(total)}</div>
  </div>
-
  <br><button onclick="saveInvoice()">Save Invoice</button>
  </div>`
  }
-
  document.getElementById("invoice").innerHTML=h
 }
 
-function showInvoiceSearch(q){
- let r=searchProduct(q)
- let h=''
- r.forEach(p=>h+=`<div onclick='addInvoiceItem(${JSON.stringify(p)})'>${p.desc}</div>`)
- document.getElementById("invSearch").innerHTML=h
-}
-
-/* ---------------- PURCHASE ---------------- */
+/* PURCHASE */
 function renderPurchase(){
  let h=`<button onclick="newPurchase()">New Purchase</button>`
  document.getElementById("purchase").innerHTML=h
@@ -169,58 +153,41 @@ function newPurchase(){
  if(!vname)return
  let v=vendors.find(x=>x.name===vname)
  if(!v){v={name:vname,balance:0,lastP:0};vendors.push(v)}
-
  let code=prompt("Barcode")
  let p=products.find(x=>x.barcode===code)
  if(!p){
  if(confirm("Create New Product?")){
- p={
-  barcode:code,
-  item:prompt("Item No"),
-  desc:prompt("Description"),
-  rate:parseFloat(prompt("Rate"))
+ p={barcode:code,item:prompt("Item No"),desc:prompt("Description"),rate:parseFloat(prompt("Rate"))}
+ products.push(p);stock[p.item]=0
+ }else return
  }
- products.push(p)
- stock[p.item]=0
- }
- }
-
  let qty=parseInt(prompt("Qty"))
  let rate=parseFloat(prompt("Rate"))
- let retail=confirm("Set Retail Rate?")
- if(retail)p.rate=parseFloat(prompt("Retail Rate"))
-
+ if(confirm("Set Retail Rate?"))p.rate=parseFloat(prompt("Retail Rate"))
  stock[p.item]+=qty
  let amt=qty*rate
- v.balance+=amt
- v.lastP=amt
+ v.balance+=amt;v.lastP=amt
  render()
 }
 
-/* ---------------- VENDOR ---------------- */
+/* VENDOR */
 function renderVendor(){
- let h=`<table><tr>
- <th>S No</th><th>Name</th><th>Balance</th><th>Last Purchase</th></tr>`
+ let h=`<table><tr><th>S No</th><th>Name</th><th>Balance</th><th>Last Purchase</th></tr>`
  vendors.forEach((v,i)=>{
- h+=`<tr>
- <td>${i+1}</td>
- <td>${v.name}</td>
- <td>${rs(v.balance)}</td>
- <td>${rs(v.lastP||0)}</td></tr>`
+ h+=`<tr><td>${i+1}</td><td>${v.name}</td><td>${rs(v.balance)}</td><td>${rs(v.lastP||0)}</td></tr>`
  })
  h+=`</table>`
  document.getElementById("vendor").innerHTML=h
 }
 
-/* ---------------- RENDER ---------------- */
+/* RENDER */
 function render(){
  renderInvoice()
  renderPurchase()
  renderVendor()
 }
 
-openTab('invoice')
+openTab("invoice")
 </script>
-
 </body>
 </html>
