@@ -2,291 +2,229 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Toysplace Dani Test</title>
-
+<title>Toysplace POS</title>
 <style>
-body{
-    margin:0;
-    font-family:Segoe UI, sans-serif;
-    background:#f4f7fb;
-}
-header{
-    background:#0b2d52;
-    color:white;
-    padding:15px 25px;
-    font-size:22px;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-}
-.menu{
-    display:flex;
-    gap:25px;
-}
-.menu div{
-    cursor:pointer;
-    padding-bottom:5px;
-    font-size:18px;
-}
-.menu .active{
-    border-bottom:3px solid white;
-}
-.container{
-    display:flex;
-}
-.sidebar{
-    width:220px;
-    background:#0b2d52;
-    color:white;
-    display:none;
-    flex-direction:column;
-    padding-top:20px;
-}
-.sidebar div{
-    padding:15px 20px;
-    cursor:pointer;
-}
-.sidebar .active{
-    background:#ffffff;
-    color:#0b2d52;
-    box-shadow:0 5px 15px rgba(0,0,0,.2);
-}
-.content{
-    flex:1;
-    padding:20px;
-}
-table{
-    width:100%;
-    border-collapse:collapse;
-    background:white;
-}
-th,td{
-    padding:10px;
-    border-bottom:1px solid #ddd;
-}
-th{
-    background:#e8eef7;
-}
-input{
-    padding:6px;
-}
-button{
-    background:#0b2d52;
-    color:white;
-    border:none;
-    padding:8px 15px;
-    cursor:pointer;
-}
-.searchBox{
-    position:absolute;
-    background:white;
-    border:1px solid #ccc;
-    width:400px;
-    max-height:180px;
-    overflow:auto;
-}
-.searchBox div{
-    padding:8px;
-    cursor:pointer;
-}
-.searchBox div:hover{
-    background:#e6f0ff;
-}
-.print{
-    display:none;
-}
-@media print{
-    body *{visibility:hidden;}
-    .print, .print *{visibility:visible;}
-    .print{position:absolute;top:0;left:0;width:100%;}
-}
+body{margin:0;font-family:Segoe UI;background:#f4f7fb}
+header{background:#0b2d52;color:white;padding:15px 25px;font-size:22px}
+.menu{display:flex;gap:25px;margin-top:10px}
+.menu div{cursor:pointer}
+.menu .active{border-bottom:3px solid white}
+.container{display:flex}
+.sidebar{width:220px;background:#0b2d52;color:white;display:none}
+.sidebar div{padding:15px;cursor:pointer}
+.content{flex:1;padding:20px}
+table{width:100%;border-collapse:collapse;background:white}
+th,td{padding:8px;border-bottom:1px solid #ddd}
+th{background:#e8eef7}
+input{padding:6px}
+button{background:#0b2d52;color:white;border:none;padding:8px 14px;cursor:pointer}
+.searchBox{position:absolute;background:white;border:1px solid #ccc;width:380px}
+.searchBox div{padding:6px;cursor:pointer}
+.searchBox div:hover{background:#e6f0ff}
 </style>
 </head>
 
 <body>
 
 <header>
-    <div>Toysplace Dani Test</div>
-    <div class="menu">
-        <div onclick="openModule('invoice')">Invoice</div>
-        <div onclick="openModule('purchase')">Purchase</div>
-        <div onclick="openModule('product')">Product</div>
-        <div onclick="openModule('report')">Reports</div>
-        <div onclick="openModule('vendor')">Vendor</div>
-        <div onclick="openModule('setting')">⚙</div>
-    </div>
+Toysplace POS
+<div class="menu">
+<div onclick="openModule('invoice')">Invoice</div>
+<div onclick="openModule('purchase')">Purchase</div>
+<div onclick="openModule('product')">Product</div>
+<div onclick="openModule('vendor')">Vendor</div>
+</div>
 </header>
 
 <div class="container">
-    <div class="sidebar" id="sidebar"></div>
-    <div class="content" id="content"></div>
+<div class="sidebar" id="sidebar"></div>
+<div class="content" id="content"></div>
 </div>
 
-<div class="print" id="printArea"></div>
-
 <script>
-/* ------------------ DATA ------------------ */
-let products = [
-    {barcode:"111", item:"T001", desc:"Toy Car", rate:500, stock:50},
-    {barcode:"222", item:"T002", desc:"Doll", rate:800, stock:30}
+/* ================= DATA ================= */
+let products=[
+ {barcode:"111",item:"T001",desc:"Toy Car",rate:500,stock:20}
 ];
-let invoices = [];
-let invoiceNo = 1;
 
-/* ------------------ UI ------------------ */
-function openModule(name){
-    document.querySelectorAll('.menu div').forEach(m=>m.classList.remove('active'));
-    event.target.classList.add('active');
-    document.getElementById('sidebar').style.display="flex";
-    if(name==="invoice") loadInvoiceList();
-    if(name==="purchase") loadPurchase();
-    if(name==="product") loadProduct();
+let vendors=[];
+let purchases=[];
+let vendorNo=1;
+
+/* ================= NAV ================= */
+function openModule(m){
+ document.querySelectorAll('.menu div').forEach(d=>d.classList.remove('active'));
+ event.target.classList.add('active');
+ sidebar.style.display="none";
+ if(m==="purchase") vendorSelect();
+ if(m==="vendor") vendorList();
 }
 
-/* ------------------ INVOICE LIST ------------------ */
-function loadInvoiceList(){
-    content.innerHTML = `
-    <h2>Invoices <button onclick="newInvoice()">➕ New</button></h2>
-    <table>
-        <tr>
-            <th>Bill No</th><th>Date</th><th>Time</th><th>Items</th><th>Discount</th><th>Total</th>
-        </tr>
-        ${invoices.map(i=>`
-            <tr onclick="editInvoice(${i.no})">
-                <td>${i.no}</td>
-                <td>${i.date}</td>
-                <td>${i.time}</td>
-                <td>${i.items.length}</td>
-                <td>Rs. ${i.discount.toFixed(2)}</td>
-                <td>Rs. ${i.total.toFixed(2)}</td>
-            </tr>`).join("")}
-    </table>`;
+/* ================= VENDOR ================= */
+function vendorList(){
+ content.innerHTML=`
+ <h2>Vendors <button onclick="addVendor()">➕</button></h2>
+ <table>
+ <tr><th>S No</th><th>Vendor No</th><th>Name</th><th>Balance</th><th>Last Purchase</th><th>Last Payment</th></tr>
+ ${vendors.map((v,i)=>`
+ <tr onclick="vendorDetail(${v.no})">
+ <td>${i+1}</td><td>${v.no}</td><td>${v.name}</td>
+ <td>Rs. ${v.balance}</td>
+ <td>${v.lastPurchase||0}</td>
+ <td>${v.lastPayment||0}</td>
+ </tr>`).join("")}
+ </table>`;
 }
 
-/* ------------------ NEW / EDIT INVOICE ------------------ */
-let currentInvoice=null;
-
-function newInvoice(){
-    currentInvoice={
-        no:invoiceNo++,
-        date:new Date().toLocaleDateString(),
-        time:new Date().toLocaleTimeString(),
-        items:[],
-        discount:0,
-        total:0
-    };
-    renderInvoice();
+function addVendor(){
+ content.innerHTML=`
+ <h2>New Vendor</h2>
+ Name* <input id="vn"><br><br>
+ Location <input id="vl"><br><br>
+ Opening Balance <input id="vb" type="number" value="0"><br><br>
+ Limit Alert <input><br><br>
+ Credit Limit <input><br><br>
+ <button onclick="saveVendor()">Done</button>`;
 }
 
-function editInvoice(no){
-    currentInvoice = invoices.find(i=>i.no===no);
-    renderInvoice();
+function saveVendor(){
+ vendors.push({
+   no:vendorNo++,
+   name:vn.value,
+   balance:+vb.value,
+   lastPurchase:0,
+   lastPayment:0,
+   ledger:[]
+ });
+ vendorList();
 }
 
-function renderInvoice(){
-    content.innerHTML=`
-    <h2>Invoice #${currentInvoice.no}</h2>
-    <table id="invTable">
-        <tr>
-            <th>Barcode</th><th>Item No</th><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th>
-        </tr>
-    </table>
-    <button onclick="addRow()">Add Item</button>
-    <h3>Total: Rs. <span id="total">0</span></h3>
-    Discount: 
-    <input id="discRs" type="number" value="0"> Rs
-    <input id="discPct" type="number" value="0"> %
-    <br><br>
-    <button onclick="finalize()">Done</button>
-    <button onclick="printInvoice()">Print</button>
-    `;
-    currentInvoice.items.forEach(addRow);
-    calcTotal();
+function vendorDetail(no){
+ let v=vendors.find(x=>x.no===no);
+ content.innerHTML=`
+ <h2>${v.name}</h2>
+ <table>
+ <tr><th>Date</th><th>Type</th><th>Amount</th><th>Balance</th></tr>
+ ${v.ledger.map(l=>`
+ <tr><td>${l.date}</td><td>${l.type}</td><td>${l.amount}</td><td>${l.balance}</td></tr>
+ `).join("")}
+ </table>`;
 }
 
-/* ------------------ ADD ROW ------------------ */
-function addRow(item){
-    let row=document.getElementById("invTable").insertRow();
-    let b=row.insertCell(), i=row.insertCell(), d=row.insertCell(),
-        q=row.insertCell(), r=row.insertCell(), a=row.insertCell();
-    b.innerHTML=`<input oninput="search(this)">`;
-    i.innerHTML=`<input oninput="search(this)">`;
-    d.innerHTML=`<input oninput="search(this)">`;
-    q.innerHTML=`<input type="number" value="${item?item.qty:1}" oninput="update()">`;
-    r.innerHTML=`<input disabled>`;
-    a.innerHTML=`0`;
+/* ================= PURCHASE ================= */
+let currentVendor=null;
+let purchaseItems=[];
+
+function vendorSelect(){
+ content.innerHTML=`
+ <h2>Select Vendor</h2>
+ ${vendors.map(v=>`
+ <button onclick="startPurchase(${v.no})">${v.name}</button><br><br>`).join("")}`;
 }
 
-/* ------------------ SEARCH ------------------ */
-function search(inp){
-    let box=document.createElement("div");
-    box.className="searchBox";
-    let val=inp.value.toLowerCase();
-    products.filter(p=>
-        p.barcode.includes(val) ||
-        p.item.toLowerCase().includes(val) ||
-        p.desc.toLowerCase().includes(val)
-    ).slice(0,6).forEach(p=>{
-        let d=document.createElement("div");
-        d.innerText=`${p.barcode} | ${p.item} | ${p.desc}`;
-        d.onclick=()=>{
-            let row=inp.parentElement.parentElement;
-            row.cells[0].children[0].value=p.barcode;
-            row.cells[1].children[0].value=p.item;
-            row.cells[2].children[0].value=p.desc;
-            row.cells[4].children[0].value=p.rate;
-            row.cells[5].innerText=p.rate;
-            update();
-            box.remove();
-        };
-        box.appendChild(d);
-    });
-    inp.parentElement.appendChild(box);
+function startPurchase(no){
+ currentVendor=vendors.find(v=>v.no===no);
+ purchaseItems=[];
+ renderPurchase();
 }
 
-/* ------------------ CALC ------------------ */
-function update(){
-    let total=0;
-    document.querySelectorAll("#invTable tr").forEach((r,idx)=>{
-        if(idx===0) return;
-        let qty=r.cells[3].children[0].value;
-        let rate=r.cells[4].children[0].value;
-        let amt=qty*rate;
-        r.cells[5].innerText=amt;
-        total+=amt;
-    });
-    let dr=+discRs.value;
-    let dp=+discPct.value;
-    if(event.target===discRs) discPct.value=((dr/total)*100)||0;
-    if(event.target===discPct) discRs.value=(total*(dp/100));
-    document.getElementById("total").innerText=(total-discRs.value).toFixed(2);
+function renderPurchase(){
+ content.innerHTML=`
+ <h2>Purchase - ${currentVendor.name}</h2>
+ <table id="pTable">
+ <tr><th>S No</th><th>Barcode</th><th>Item No</th><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>
+ </table>
+ <button onclick="addPurchaseRow()">Add Item</button>
+ <h3>Total: Rs. <span id="ptotal">0</span></h3>
+ Discount: <input id="pdr" type="number" value="0"> Rs
+ <input id="pdp" type="number" value="0"> %
+ <br><br>
+ <button onclick="finalPurchase()">Done</button>`;
 }
 
-/* ------------------ FINALIZE ------------------ */
-function finalize(){
-    invoices.push(currentInvoice);
-    loadInvoiceList();
+function addPurchaseRow(){
+ let t=pTable.insertRow();
+ t.insertCell().innerText=pTable.rows.length-1;
+ t.insertCell().innerHTML=`<input oninput="searchProduct(this)">`;
+ t.insertCell().innerHTML=`<input oninput="searchProduct(this)">`;
+ t.insertCell().innerHTML=`<input oninput="searchProduct(this)">`;
+ t.insertCell().innerHTML=`<input type="number" value="1" oninput="calcPurchase()">`;
+ t.insertCell().innerHTML=`<input type="number" oninput="calcPurchase()">`;
+ t.insertCell().innerText=0;
 }
 
-/* ------------------ PRINT ------------------ */
-function printInvoice(){
-    let html=`<h2>Toysplace</h2>`;
-    currentInvoice.items.forEach(i=>{
-        html+=`${i.desc} ${i.qty} x ${i.rate}<br>`;
-    });
-    html+=`Total: Rs. ${currentInvoice.total}`;
-    printArea.innerHTML=html;
-    window.print();
+function searchProduct(inp){
+ let val=inp.value.toLowerCase();
+ let box=document.createElement("div");
+ box.className="searchBox";
+ let found=false;
+ products.filter(p=>
+   p.barcode.includes(val)||p.item.toLowerCase().includes(val)||p.desc.toLowerCase().includes(val)
+ ).slice(0,6).forEach(p=>{
+   found=true;
+   let d=document.createElement("div");
+   d.innerText=`${p.barcode} | ${p.item} | ${p.desc}`;
+   d.onclick=()=>{
+     let r=inp.parentElement.parentElement;
+     r.cells[1].children[0].value=p.barcode;
+     r.cells[2].children[0].value=p.item;
+     r.cells[3].children[0].value=p.desc;
+     r.cells[5].children[0].value=p.rate;
+     calcPurchase();
+     box.remove();
+   };
+   box.appendChild(d);
+ });
+ if(!found && val.length>2){
+   if(confirm("Product not found. Create new?")){
+     products.push({
+       barcode:inp.value,
+       item:"NEW"+products.length,
+       desc:inp.value,
+       rate:0,
+       stock:0
+     });
+     alert("Product Created");
+   }
+ }
+ inp.parentElement.appendChild(box);
 }
 
-/* ------------------ PURCHASE / PRODUCT ------------------ */
-function loadPurchase(){
-    content.innerHTML="<h2>Purchase (Stock In)</h2>";
+function calcPurchase(){
+ let total=0;
+ [...pTable.rows].slice(1).forEach(r=>{
+   let qty=r.cells[4].children[0].value;
+   let rate=r.cells[5].children[0].value;
+   let amt=qty*rate;
+   r.cells[6].innerText=amt;
+   total+=amt;
+ });
+ if(event.target===pdr) pdp.value=(pdr.value/total*100)||0;
+ if(event.target===pdp) pdr.value=(total*(pdp.value/100));
+ ptotal.innerText=(total-pdr.value).toFixed(2);
 }
-function loadProduct(){
-    content.innerHTML="<h2>Products</h2>";
+
+function finalPurchase(){
+ [...pTable.rows].slice(1).forEach(r=>{
+   let b=r.cells[1].children[0].value;
+   let q=+r.cells[4].children[0].value;
+   let rate=+r.cells[5].children[0].value;
+   let p=products.find(x=>x.barcode===b);
+   p.stock+=q;
+   p.rate=rate;
+ });
+ let amt=+ptotal.innerText;
+ currentVendor.balance+=amt;
+ currentVendor.lastPurchase=amt;
+ currentVendor.ledger.push({
+   date:new Date().toLocaleDateString(),
+   type:"Purchase",
+   amount:amt,
+   balance:currentVendor.balance
+ });
+ alert("Purchase Saved");
+ vendorList();
 }
 </script>
-
 </body>
 </html>
