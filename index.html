@@ -1,19 +1,18 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html>
 <head>
 <meta charset="UTF-8">
 <title>Toysplace Dani POS</title>
 <style>
-body{margin:0;font-family:Segoe UI,sans-serif;background:#f2f5f9}
+body{margin:0;font-family:Segoe UI;background:#f4f6fa}
 header{background:#0b2d4d;color:#fff;padding:15px;font-size:22px}
-nav{display:flex;gap:30px;padding:10px 20px;background:white}
+nav{display:flex;gap:25px;padding:10px 20px;background:#fff}
 nav span{cursor:pointer;padding-bottom:6px}
 nav .active{border-bottom:3px solid #0b2d4d;font-weight:600}
 section{padding:15px;display:none}
-table{width:100%;border-collapse:collapse;background:white}
+table{width:100%;border-collapse:collapse;background:#fff}
 th,td{border:1px solid #ccc;padding:6px;text-align:center}
 input,select{padding:5px}
-button{background:#0b2d4d;color:white;border:none;padding:8px 14px;cursor:pointer}
+button{background:#0b2d4d;color:white;border:none;padding:6px 12px;cursor:pointer}
 button:hover{opacity:.9}
 .card{background:#e8f1ff;padding:10px;margin-top:10px}
 .big-summary{display:flex;gap:20px;margin-top:15px}
@@ -23,24 +22,23 @@ button:hover{opacity:.9}
 </style>
 </head>
 <body>
-
-<header>Toysplace Dani Test</header>
+<header>Toysplace Dani POS</header>
 <nav>
 <span onclick="openTab('invoice')" class="active">Invoice</span>
 <span onclick="openTab('purchase')">Purchase</span>
+<span onclick="openTab('product')">Product</span>
 <span onclick="openTab('vendor')">Vendor</span>
-</nav>
-
-<section id="invoice"></section>
+<span onclick="openTab('reports')">Reports</span>
+<span onclick="openTab('settings')">Settings</span>
+</nav><section id="invoice"></section>
 <section id="purchase"></section>
+<section id="product"></section>
 <section id="vendor"></section>
-
-<script>
-/* ---------- DATA ---------- */
+<section id="reports"></section>
+<section id="settings"></section><script>
 let products=[], stock={}, invoices=[], vendors=[]
 let currentInvoice=null
 
-/* ---------- NAV ---------- */
 function openTab(id){
  document.querySelectorAll('nav span').forEach(x=>x.classList.remove('active'))
  event.target.classList.add('active')
@@ -49,112 +47,86 @@ function openTab(id){
  render()
 }
 
-/* ---------- UTIL ---------- */
 const rs=n=>"Rs. "+n.toLocaleString(undefined,{minimumFractionDigits:2})
 
-/* ---------- PRODUCT SEARCH ---------- */
 function searchProduct(q){
- if(!q) return []
+ if(!q)return[]
  return products.filter(p=>p.barcode.includes(q)||p.item.includes(q)||p.desc.toLowerCase().includes(q.toLowerCase())).slice(0,6)
 }
 
-/* ---------- INVOICE ---------- */
-function newInvoice(){ currentInvoice={items:[],date:new Date(),disc:0} }
+function newInvoice(){
+ currentInvoice={items:[],date:new Date(),disc:0}
+ render()
+}
 
 function addInvoiceItem(p){
- if(stock[p.item]<=0){ alert("Out of stock"); return }
+ if(stock[p.item]<=0)return alert('Out of stock')
  currentInvoice.items.push({p,qty:1,disc:0})
  stock[p.item]--
  render()
 }
 
-function saveInvoice(){ invoices.push(currentInvoice); currentInvoice=null; render() }
+function saveInvoice(){
+ if(!currentInvoice)return
+ invoices.push({...currentInvoice, time:new Date()})
+ currentInvoice=null
+ render()
+}
 
 function renderInvoice(){
  let h=`<button onclick="newInvoice()">New Invoice</button><br><br>`
- h+=`<table><tr>
-<th>S No</th><th>Date</th><th>Bill No</th><th>Products</th>
-<th>Amount</th><th>Discount</th><th>Total</th><th>Time</th></tr>`
-
+ h+=`<table><tr><th>S No</th><th>Date</th><th>Bill No</th><th>Products</th><th>Amount</th><th>Discount</th><th>Total</th><th>Time</th></tr>`
  invoices.slice(-100).forEach((i,idx)=>{
  let amt=i.items.reduce((s,x)=>s+x.qty*x.p.rate,0)
- let d=i.disc
- h+=`<tr>
-<td>${idx+1}</td>
-<td>${i.date.toLocaleDateString()}</td>
-<td onclick="currentInvoice=invoices[${idx}];render()" style="cursor:pointer">${1000+idx}</td>
-<td>${i.items.length}</td>
-<td>${rs(amt)}</td>
-<td>${rs(d)} (${amt?((d/amt)*100).toFixed(2):0}%)</td>
-<td>${rs(amt-d)}</td>
-<td>${i.date.toLocaleTimeString()}</td></tr>`
+ let d=i.items.reduce((s,x)=>s+x.disc,0)+i.disc
+ h+=`<tr><td>${idx+1}</td><td>${i.date.toLocaleDateString()}</td><td onclick="currentInvoice=invoices[${idx}]" style="cursor:pointer">${1000+idx}</td><td>${i.items.length}</td><td>${rs(amt)}</td><td>${rs(d)} (${amt?((d/amt)*100).toFixed(2):0}%)</td><td>${rs(amt-d)}</td><td>${i.time.toLocaleTimeString()}</td></tr>`
  })
  h+=`</table>`
 
  if(currentInvoice){
  let amt=currentInvoice.items.reduce((s,x)=>s+x.qty*x.p.rate,0)
- let total=amt-currentInvoice.disc
- h+=`<div class="card">
-<h3>Invoice Editor</h3>
-Search <input onkeyup="showInvoiceSearch(this.value)">
-<div class="search-box" id="invSearch"></div>
+ let total=amt-currentInvoice.items.reduce((s,x)=>s+x.disc,0)
+
+ h+=`<div class="card"><h3>Invoice Editor</h3>
+Barcode<input id="barSearch" onkeyup="showInvoiceSearch('barcode',this.value)"><br>
+Item No<input id="itemSearch" onkeyup="showInvoiceSearch('item',this.value)"><br>
+Description<input id="descSearch" onkeyup="showInvoiceSearch('desc',this.value)"><div class="search-box" id="invSearch"></div>
 <table><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Disc</th><th>Amount</th></tr>`
  currentInvoice.items.forEach((x,i)=>{
- let a=x.qty*x.p.rate-x.disc
- h+=`<tr>
-<td>${x.p.desc}</td>
-<td><input value="${x.qty}" onchange="currentInvoice.items[${i}].qty=this.value;render()"></td>
-<td>${rs(x.p.rate)}</td>
-<td><input value="${x.disc}" onchange="currentInvoice.items[${i}].disc=this.value;render()"></td>
-<td>${rs(a)}</td></tr>`
+ let amtItem=x.qty*x.p.rate-x.disc
+ h+=`<tr><td>${x.p.desc}</td><td><input value="${x.qty}" onchange="currentInvoice.items[${i}].qty=this.value;render()"></td><td>${rs(x.p.rate)}</td><td><input value="${x.disc}" onchange="currentInvoice.items[${i}].disc=this.value;render()"></td><td>${rs(amtItem)}</td></tr>`
  })
- h+=`</table>
-<div class="big-summary">
+ h+=`</table><div class="big-summary">
 <div>Amount<br>${rs(amt)}</div>
-<div>Discount<br>
-<input value="${currentInvoice.disc}" onchange="currentInvoice.disc=this.value;render()">
-<input value="${amt?((currentInvoice.disc/amt)*100).toFixed(2):0}" onchange="currentInvoice.disc=(this.value/100)*${amt};render()">
-</div>
-<div>Total<br>${rs(total)}</div>
-</div>
+<div>Discount<br><input value="0" onchange="currentInvoice.disc=parseFloat(this.value);render()"><input value="0">%</div>
+<div>Total<br>${rs(total)}</div></div>
 <br><button onclick="saveInvoice()">Save Invoice</button></div>`
  }
- document.getElementById("invoice").innerHTML=h
+ document.getElementById('invoice').innerHTML=h
 }
 
-function showInvoiceSearch(q){
+function showInvoiceSearch(type,q){
  let r=searchProduct(q)
  let h=''
  r.forEach(p=>h+=`<div onclick='addInvoiceItem(${JSON.stringify(p)})'>${p.desc}</div>`)
- document.getElementById("invSearch").innerHTML=h
+ document.getElementById('invSearch').innerHTML=h
 }
 
-/* ---------- PURCHASE ---------- */
 function renderPurchase(){
  let h=`<button onclick="newPurchase()">New Purchase</button>`
- document.getElementById("purchase").innerHTML=h
+ document.getElementById('purchase').innerHTML=h
 }
 
 function newPurchase(){
  let vname=prompt("Vendor Name")
  if(!vname)return
- let v=vendors.find(x=>x.name===vname)
- if(!v){v={name:vname,balance:0,lastP:0};vendors.push(v)}
-
+ let v=vendors.find(x=>x.name===vname)||{name:vname,balance:0,lastP:0};if(!vendors.includes(v))vendors.push(v)
  let code=prompt("Barcode")
  let p=products.find(x=>x.barcode===code)
- if(!p){
- if(confirm("Create New Product?")){
- p={barcode:code,item:prompt("Item No"),desc:prompt("Description"),rate:parseFloat(prompt("Rate"))}
- products.push(p)
- stock[p.item]=0
- }
- }
+ if(!p){if(confirm("Create new product?")){p={barcode:code,item:prompt("Item No"),desc:prompt("Description"),rate:parseFloat(prompt("Rate"))};products.push(p);stock[p.item]=0}}
  let qty=parseInt(prompt("Qty"))
  let rate=parseFloat(prompt("Rate"))
- let retail=confirm("Set Retail Rate?")
- if(retail)p.rate=parseFloat(prompt("Retail Rate"))
-
+ if(confirm("Set Retail Rate?"))p.rate=parseFloat(prompt("Retail Rate"))
  stock[p.item]+=qty
  let amt=qty*rate
  v.balance+=amt
@@ -162,21 +134,37 @@ function newPurchase(){
  render()
 }
 
-/* ---------- VENDOR ---------- */
 function renderVendor(){
- let h=`<table><tr>
-<th>S No</th><th>Name</th><th>Balance</th><th>Last Purchase</th></tr>`
- vendors.forEach((v,i)=>{
- h+=`<tr><td>${i+1}</td><td>${v.name}</td><td>${rs(v.balance)}</td><td>${rs(v.lastP||0)}</td></tr>`
- })
+ let h=`<table><tr><th>S No</th><th>Name</th><th>Balance</th><th>Last Purchase</th></tr>`
+ vendors.forEach((v,i)=>{h+=`<tr><td>${i+1}</td><td>${v.name}</td><td>${rs(v.balance)}</td><td>${rs(v.lastP||0)}</td></tr>`})
  h+=`</table>`
- document.getElementById("vendor").innerHTML=h
+ document.getElementById('vendor').innerHTML=h
 }
 
-/* ---------- RENDER ALL ---------- */
-function render(){ renderInvoice(); renderPurchase(); renderVendor() }
+function renderProduct(){
+ let h=`<table><tr><th>S No</th><th>Barcode</th><th>Item No</th><th>Description</th><th>Rate</th><th>Stock</th></tr>`
+ products.forEach((p,i)=>h+=`<tr><td>${i+1}</td><td>${p.barcode}</td><td>${p.item}</td><td>${p.desc}</td><td>${rs(p.rate)}</td><td>${stock[p.item]||0}</td></tr>`)
+ h+=`</table>`
+ document.getElementById('product').innerHTML=h
+}
+
+function renderReports(){
+ document.getElementById('reports').innerHTML="<h3>Reports Placeholder</h3>"
+}
+
+function renderSettings(){
+ document.getElementById('settings').innerHTML="<h3>Settings Placeholder</h3>"
+}
+
+function render(){
+ renderInvoice()
+ renderPurchase()
+ renderVendor()
+ renderProduct()
+ renderReports()
+ renderSettings()
+}
 
 openTab('invoice')
-</script>
-</body>
+</script></body>
 </html>
