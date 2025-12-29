@@ -26,8 +26,8 @@ button:hover{opacity:.9}
 <nav>
 <span onclick="openTab('invoice')" class="active">Invoice</span>
 <span onclick="openTab('purchase')">Purchase</span>
-<span onclick="openTab('product')">Product</span>
-<span onclick="openTab('vendor')">Vendor</span>
+<span onclick="openTab('product')">Product <button onclick="event.stopPropagation();showAddProduct()">＋</button>>Product</span>
+<span onclick="openTab('vendor')">Vendor <button onclick="event.stopPropagation();showAddVendor()">＋</button>>Vendor</span>
 <span onclick="openTab('reports')">Reports</span>
 <span onclick="openTab('settings')">Settings</span>
 </nav><section id="invoice"></section>
@@ -113,17 +113,49 @@ function showInvoiceSearch(type,q){
 }
 
 function renderPurchase(){
- let h=`<button onclick="newPurchase()">New Purchase</button>`
+ let h=`<button onclick=\"startPurchase()\">New Purchase</button><br><br>`
+ if(currentPurchase){
+ h+=`Vendor: <select id=\"vendorSel\">${vendors.map(v=>`<option>${v.name}</option>`).join('')}</select><br><br>
+Barcode <input id=\"pBar\" onkeyup=\"showPurchaseSearch(this.value)\"> 
+Item No <input id=\"pItem\" onkeyup=\"showPurchaseSearch(this.value)\"> 
+Description <input id=\"pDesc\" onkeyup=\"showPurchaseSearch(this.value)\"> 
+<div class=\"search-box\" id=\"purSearch\"></div>
+<table><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>`
+ let amt=0
+ currentPurchase.items.forEach((x,i)=>{
+ let a=x.qty*x.rate;amt+=a
+ h+=`<tr><td>${x.desc}</td><td><input value=\"${x.qty}\" onchange=\"currentPurchase.items[${i}].qty=this.value;render()\"></td><td><input value=\"${x.rate}\" onchange=\"currentPurchase.items[${i}].rate=this.value;render()\"></td><td>${rs(a)}</td></tr>`
+ })
+ h+=`</table><div class=\"big-summary\"><div>Amount<br>${rs(amt)}</div><div>Discount<br><input value=\"0\"></div><div>Total<br>${rs(amt)}</div></div><br><button onclick=\"savePurchase()\">Save Purchase</button>`
+ }
  document.getElementById('purchase').innerHTML=h
 }
 
-function newPurchase(){
- let vname=prompt("Vendor Name")
- if(!vname)return
- let v=vendors.find(x=>x.name===vname)||{name:vname,balance:0,lastP:0};if(!vendors.includes(v))vendors.push(v)
- let code=prompt("Barcode")
+function startPurchase(){currentPurchase={items:[]};render()}
+
+function showPurchaseSearch(q){
+ let r=searchProduct(q)
+ let h=''
+ r.forEach(p=>h+=`<div onclick=\"addPurchaseItem('${p.barcode}')\">${p.desc}</div>`)
+ document.getElementById('purSearch').innerHTML=h
+}
+
+function addPurchaseItem(code){
  let p=products.find(x=>x.barcode===code)
- if(!p){if(confirm("Create new product?")){p={barcode:code,item:prompt("Item No"),desc:prompt("Description"),rate:parseFloat(prompt("Rate"))};products.push(p);stock[p.item]=0}}
+ if(!p){if(!confirm('Create New Product?'))return; p={barcode:code,item:prompt('Item No'),desc:prompt('Description'),rate:0};products.push(p);stock[p.item]=0}
+ currentPurchase.items.push({item:p.item,desc:p.desc,qty:1,rate:0})
+ render()
+}
+
+function savePurchase(){
+ let vname=document.getElementById('vendorSel').value
+ let v=vendors.find(x=>x.name===vname)
+ let total=0
+ currentPurchase.items.forEach(x=>{let a=x.qty*x.rate;stock[x.item]+=Number(x.qty);total+=a})
+ v.balance+=total;v.lastP=total
+ currentPurchase=null
+ render()
+}
  let qty=parseInt(prompt("Qty"))
  let rate=parseFloat(prompt("Rate"))
  if(confirm("Set Retail Rate?"))p.rate=parseFloat(prompt("Retail Rate"))
@@ -135,17 +167,29 @@ function newPurchase(){
 }
 
 function renderVendor(){
- let h=`<table><tr><th>S No</th><th>Name</th><th>Balance</th><th>Last Purchase</th></tr>`
+ let h=`<button onclick=\"showAddVendor()\">Add Vendor</button><br><br><table><tr><th>S No</th><th>Name</th><th>Balance</th><th>Last Purchase</th></tr>`
  vendors.forEach((v,i)=>{h+=`<tr><td>${i+1}</td><td>${v.name}</td><td>${rs(v.balance)}</td><td>${rs(v.lastP||0)}</td></tr>`})
  h+=`</table>`
  document.getElementById('vendor').innerHTML=h
 }
 
+function showAddVendor(){
+ let n=prompt('Vendor Name');if(!n)return
+ let ob=parseFloat(prompt('Opening Balance'))||0
+ vendors.push({name:n,balance:ob,lastP:0});render()
+}
+
 function renderProduct(){
- let h=`<table><tr><th>S No</th><th>Barcode</th><th>Item No</th><th>Description</th><th>Rate</th><th>Stock</th></tr>`
+ let h=`<button onclick=\"showAddProduct()\">Add Product</button><br><br><table><tr><th>S No</th><th>Barcode</th><th>Item No</th><th>Description</th><th>Rate</th><th>Stock</th></tr>`
  products.forEach((p,i)=>h+=`<tr><td>${i+1}</td><td>${p.barcode}</td><td>${p.item}</td><td>${p.desc}</td><td>${rs(p.rate)}</td><td>${stock[p.item]||0}</td></tr>`)
  h+=`</table>`
  document.getElementById('product').innerHTML=h
+}
+
+function showAddProduct(){
+ let b=prompt('Barcode');if(!b)return
+ let i=prompt('Item No');let d=prompt('Description');let r=parseFloat(prompt('Retail Rate'));let s=parseInt(prompt('Opening Stock'))||0
+ products.push({barcode:b,item:i,desc:d,rate:r});stock[i]=s;render()
 }
 
 function renderReports(){
