@@ -26,8 +26,8 @@ button:hover{opacity:.9}
 <nav>
 <span onclick="openTab('invoice')" class="active">Invoice</span>
 <span onclick="openTab('purchase')">Purchase</span>
-<span onclick="openTab('product')">Product <button onclick="event.stopPropagation();showAddProduct()">＋</button>>Product</span>
-<span onclick="openTab('vendor')">Vendor <button onclick="event.stopPropagation();showAddVendor()">＋</button>>Vendor</span>
+<span onclick="openTab('product')">Product</span>
+<span onclick="openTab('vendor')">Vendor</span>
 <span onclick="openTab('reports')">Reports</span>
 <span onclick="openTab('settings')">Settings</span>
 </nav><section id="invoice"></section>
@@ -167,10 +167,25 @@ function savePurchase(){
 }
 
 function renderVendor(){
- let h=`<button onclick=\"showAddVendor()\">Add Vendor</button><br><br><table><tr><th>S No</th><th>Name</th><th>Balance</th><th>Last Purchase</th></tr>`
- vendors.forEach((v,i)=>{h+=`<tr><td>${i+1}</td><td>${v.name}</td><td>${rs(v.balance)}</td><td>${rs(v.lastP||0)}</td></tr>`})
+ let h=`<button onclick="showVendorForm()">New Vendor</button><br><br>`
+ h+=`<table><tr><th>S No</th><th>Name</th><th>Balance</th><th>Last Purchase</th></tr>`
+ vendors.forEach((v,i)=>h+=`<tr><td>${i+1}</td><td>${v.name}</td><td>${rs(v.balance)}</td><td>${rs(v.lastP||0)}</td></tr>`)
  h+=`</table>`
  document.getElementById('vendor').innerHTML=h
+}
+
+function showVendorForm(){
+ document.getElementById('vendor').innerHTML=`<h3>New Vendor</h3>
+ Name <input id=vName><br>
+ Opening Balance <input id=vBal type=number><br><br>
+ <button onclick=saveVendor()>Save</button>
+ <button onclick=render()>Cancel</button>`
+}
+
+function saveVendor(){
+ let n=vName.value,b=Number(vBal.value)
+ if(!n)return alert('Name required')
+ vendors.push({name:n,balance:b,lastP:0});render()
 }
 
 function showAddVendor(){
@@ -180,10 +195,28 @@ function showAddVendor(){
 }
 
 function renderProduct(){
- let h=`<button onclick=\"showAddProduct()\">Add Product</button><br><br><table><tr><th>S No</th><th>Barcode</th><th>Item No</th><th>Description</th><th>Rate</th><th>Stock</th></tr>`
+ let h=`<button onclick="showProductForm()">New Product</button><br><br>`
+ h+=`<table><tr><th>S No</th><th>Barcode</th><th>Item No</th><th>Description</th><th>Rate</th><th>Stock</th></tr>`
  products.forEach((p,i)=>h+=`<tr><td>${i+1}</td><td>${p.barcode}</td><td>${p.item}</td><td>${p.desc}</td><td>${rs(p.rate)}</td><td>${stock[p.item]||0}</td></tr>`)
  h+=`</table>`
  document.getElementById('product').innerHTML=h
+}
+
+function showProductForm(){
+ document.getElementById('product').innerHTML=`<h3>New Product</h3>
+ Barcode <input id=pBar><br>
+ Item No <input id=pItem><br>
+ Description <input id=pDesc><br>
+ Retail Rate <input id=pRate type=number><br>
+ Opening Stock <input id=pStock type=number><br><br>
+ <button onclick=saveProduct()>Save</button>
+ <button onclick=render()>Cancel</button>`
+}
+
+function saveProduct(){
+ let b=pBar.value,i=pItem.value,d=pDesc.value,r=Number(pRate.value),s=Number(pStock.value)
+ if(!b||!i||!d)return alert('Required fields missing')
+ products.push({barcode:b,item:i,desc:d,rate:r});stock[i]=s;render()
 }
 
 function showAddProduct(){
