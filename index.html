@@ -1,247 +1,243 @@
-<!DOCTYPE html><html>
+<!DOCTYPE html>
+<html>
 <head>
 <meta charset="UTF-8">
 <title>Toysplace Dani POS</title>
+
 <style>
 body{margin:0;font-family:Segoe UI;background:#f4f6fa}
-header{background:#0b2d4d;color:#fff;padding:15px;font-size:22px}
-nav{display:flex;gap:25px;padding:10px 20px;background:#fff}
+header{background:#0b2d4d;color:#fff;padding:14px;font-size:22px}
+nav{display:flex;gap:30px;padding:10px 20px;background:#fff;border-bottom:1px solid #ccc}
 nav span{cursor:pointer;padding-bottom:6px}
 nav .active{border-bottom:3px solid #0b2d4d;font-weight:600}
 section{padding:15px;display:none}
 table{width:100%;border-collapse:collapse;background:#fff}
 th,td{border:1px solid #ccc;padding:6px;text-align:center}
-input,select{padding:5px}
-button{background:#0b2d4d;color:white;border:none;padding:6px 12px;cursor:pointer}
+input,select{padding:6px;width:100%}
+button{background:#0b2d4d;color:white;border:none;padding:7px 14px;cursor:pointer}
 button:hover{opacity:.9}
-.card{background:#e8f1ff;padding:10px;margin-top:10px}
-.big-summary{display:flex;gap:20px;margin-top:15px}
-.big-summary div{flex:1;background:#0b2d4d;color:white;padding:10px;font-size:18px}
-.search-box div{cursor:pointer;padding:4px}
-.search-box div:hover{background:#dce8ff}
+.card{background:#e8f1ff;padding:12px;margin-top:10px}
+.summary{display:flex;gap:15px;margin-top:12px}
+.summary div{flex:1;background:#0b2d4d;color:white;padding:12px;font-size:17px}
+.search div{padding:4px;cursor:pointer}
+.search div:hover{background:#dce8ff}
 </style>
 </head>
+
 <body>
 <header>Toysplace Dani POS</header>
+
 <nav>
-<span onclick="openTab('invoice')" class="active">Invoice</span>
-<span onclick="openTab('purchase')">Purchase</span>
-<span onclick="openTab('product')">Product</span>
-<span onclick="openTab('vendor')">Vendor</span>
-<span onclick="openTab('reports')">Reports</span>
-<span onclick="openTab('settings')">Settings</span>
-</nav><section id="invoice"></section>
+<span class="active" onclick="openTab('invoice',this)">Invoice</span>
+<span onclick="openTab('purchase',this)">Purchase</span>
+<span onclick="openTab('product',this)">Product</span>
+<span onclick="openTab('vendor',this)">Vendor</span>
+<span onclick="openTab('reports',this)">Reports</span>
+<span onclick="openTab('settings',this)">Settings</span>
+</nav>
+
+<section id="invoice"></section>
 <section id="purchase"></section>
 <section id="product"></section>
 <section id="vendor"></section>
 <section id="reports"></section>
-<section id="settings"></section><script>
-let products=[], stock={}, invoices=[], vendors=[]
-let currentInvoice=null
+<section id="settings"></section>
 
-function openTab(id){
+<script>
+let products=[], vendors=[], stock={}, invoices=[], purchases=[]
+let editingInvoice=null, editingPurchase=null
+
+const rs=n=>"Rs. "+Number(n).toLocaleString(undefined,{minimumFractionDigits:2})
+
+function openTab(id,el){
  document.querySelectorAll('nav span').forEach(x=>x.classList.remove('active'))
- event.target.classList.add('active')
+ el.classList.add('active')
  document.querySelectorAll('section').forEach(s=>s.style.display='none')
  document.getElementById(id).style.display='block'
  render()
 }
 
-const rs=n=>"Rs. "+n.toLocaleString(undefined,{minimumFractionDigits:2})
-
-function searchProduct(q){
- if(!q)return[]
- return products.filter(p=>p.barcode.includes(q)||p.item.includes(q)||p.desc.toLowerCase().includes(q.toLowerCase())).slice(0,6)
-}
-
-function newInvoice(){
- currentInvoice={items:[],date:new Date(),disc:0}
- render()
-}
-
-function addInvoiceItem(p){
- if(stock[p.item]<=0)return alert('Out of stock')
- currentInvoice.items.push({p,qty:1,disc:0})
- stock[p.item]--
- render()
-}
-
-function saveInvoice(){
- if(!currentInvoice)return
- invoices.push({...currentInvoice, time:new Date()})
- currentInvoice=null
- render()
-}
-
-function renderInvoice(){
- let h=`<button onclick="newInvoice()">New Invoice</button><br><br>`
- h+=`<table><tr><th>S No</th><th>Date</th><th>Bill No</th><th>Products</th><th>Amount</th><th>Discount</th><th>Total</th><th>Time</th></tr>`
- invoices.slice(-100).forEach((i,idx)=>{
- let amt=i.items.reduce((s,x)=>s+x.qty*x.p.rate,0)
- let d=i.items.reduce((s,x)=>s+x.disc,0)+i.disc
- h+=`<tr><td>${idx+1}</td><td>${i.date.toLocaleDateString()}</td><td onclick="currentInvoice=invoices[${idx}]" style="cursor:pointer">${1000+idx}</td><td>${i.items.length}</td><td>${rs(amt)}</td><td>${rs(d)} (${amt?((d/amt)*100).toFixed(2):0}%)</td><td>${rs(amt-d)}</td><td>${i.time.toLocaleTimeString()}</td></tr>`
- })
- h+=`</table>`
-
- if(currentInvoice){
- let amt=currentInvoice.items.reduce((s,x)=>s+x.qty*x.p.rate,0)
- let total=amt-currentInvoice.items.reduce((s,x)=>s+x.disc,0)
-
- h+=`<div class="card"><h3>Invoice Editor</h3>
-Barcode<input id="barSearch" onkeyup="showInvoiceSearch('barcode',this.value)"><br>
-Item No<input id="itemSearch" onkeyup="showInvoiceSearch('item',this.value)"><br>
-Description<input id="descSearch" onkeyup="showInvoiceSearch('desc',this.value)"><div class="search-box" id="invSearch"></div>
-<table><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Disc</th><th>Amount</th></tr>`
- currentInvoice.items.forEach((x,i)=>{
- let amtItem=x.qty*x.p.rate-x.disc
- h+=`<tr><td>${x.p.desc}</td><td><input value="${x.qty}" onchange="currentInvoice.items[${i}].qty=this.value;render()"></td><td>${rs(x.p.rate)}</td><td><input value="${x.disc}" onchange="currentInvoice.items[${i}].disc=this.value;render()"></td><td>${rs(amtItem)}</td></tr>`
- })
- h+=`</table><div class="big-summary">
-<div>Amount<br>${rs(amt)}</div>
-<div>Discount<br><input value="0" onchange="currentInvoice.disc=parseFloat(this.value);render()"><input value="0">%</div>
-<div>Total<br>${rs(total)}</div></div>
-<br><button onclick="saveInvoice()">Save Invoice</button></div>`
- }
- document.getElementById('invoice').innerHTML=h
-}
-
-function showInvoiceSearch(type,q){
- let r=searchProduct(q)
- let h=''
- r.forEach(p=>h+=`<div onclick='addInvoiceItem(${JSON.stringify(p)})'>${p.desc}</div>`)
- document.getElementById('invSearch').innerHTML=h
-}
-
-function renderPurchase(){
- let h=`<button onclick=\"startPurchase()\">New Purchase</button><br><br>`
- if(currentPurchase){
- h+=`Vendor: <select id=\"vendorSel\">${vendors.map(v=>`<option>${v.name}</option>`).join('')}</select><br><br>
-Barcode <input id=\"pBar\" onkeyup=\"showPurchaseSearch(this.value)\"> 
-Item No <input id=\"pItem\" onkeyup=\"showPurchaseSearch(this.value)\"> 
-Description <input id=\"pDesc\" onkeyup=\"showPurchaseSearch(this.value)\"> 
-<div class=\"search-box\" id=\"purSearch\"></div>
-<table><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>`
- let amt=0
- currentPurchase.items.forEach((x,i)=>{
- let a=x.qty*x.rate;amt+=a
- h+=`<tr><td>${x.desc}</td><td><input value=\"${x.qty}\" onchange=\"currentPurchase.items[${i}].qty=this.value;render()\"></td><td><input value=\"${x.rate}\" onchange=\"currentPurchase.items[${i}].rate=this.value;render()\"></td><td>${rs(a)}</td></tr>`
- })
- h+=`</table><div class=\"big-summary\"><div>Amount<br>${rs(amt)}</div><div>Discount<br><input value=\"0\"></div><div>Total<br>${rs(amt)}</div></div><br><button onclick=\"savePurchase()\">Save Purchase</button>`
- }
- document.getElementById('purchase').innerHTML=h
-}
-
-function startPurchase(){currentPurchase={items:[]};render()}
-
-function showPurchaseSearch(q){
- let r=searchProduct(q)
- let h=''
- r.forEach(p=>h+=`<div onclick=\"addPurchaseItem('${p.barcode}')\">${p.desc}</div>`)
- document.getElementById('purSearch').innerHTML=h
-}
-
-function addPurchaseItem(code){
- let p=products.find(x=>x.barcode===code)
- if(!p){if(!confirm('Create New Product?'))return; p={barcode:code,item:prompt('Item No'),desc:prompt('Description'),rate:0};products.push(p);stock[p.item]=0}
- currentPurchase.items.push({item:p.item,desc:p.desc,qty:1,rate:0})
- render()
-}
-
-function savePurchase(){
- let vname=document.getElementById('vendorSel').value
- let v=vendors.find(x=>x.name===vname)
- let total=0
- currentPurchase.items.forEach(x=>{let a=x.qty*x.rate;stock[x.item]+=Number(x.qty);total+=a})
- v.balance+=total;v.lastP=total
- currentPurchase=null
- render()
-}
- let qty=parseInt(prompt("Qty"))
- let rate=parseFloat(prompt("Rate"))
- if(confirm("Set Retail Rate?"))p.rate=parseFloat(prompt("Retail Rate"))
- stock[p.item]+=qty
- let amt=qty*rate
- v.balance+=amt
- v.lastP=amt
- render()
-}
-
-function renderVendor(){
- let h=`<button onclick="showVendorForm()">New Vendor</button><br><br>`
- h+=`<table><tr><th>S No</th><th>Name</th><th>Balance</th><th>Last Purchase</th></tr>`
- vendors.forEach((v,i)=>h+=`<tr><td>${i+1}</td><td>${v.name}</td><td>${rs(v.balance)}</td><td>${rs(v.lastP||0)}</td></tr>`)
- h+=`</table>`
- document.getElementById('vendor').innerHTML=h
-}
-
-function showVendorForm(){
- document.getElementById('vendor').innerHTML=`<h3>New Vendor</h3>
- Name <input id=vName><br>
- Opening Balance <input id=vBal type=number><br><br>
- <button onclick=saveVendor()>Save</button>
- <button onclick=render()>Cancel</button>`
-}
-
-function saveVendor(){
- let n=vName.value,b=Number(vBal.value)
- if(!n)return alert('Name required')
- vendors.push({name:n,balance:b,lastP:0});render()
-}
-
-function showAddVendor(){
- let n=prompt('Vendor Name');if(!n)return
- let ob=parseFloat(prompt('Opening Balance'))||0
- vendors.push({name:n,balance:ob,lastP:0});render()
-}
-
+/* ---------------- PRODUCT ---------------- */
 function renderProduct(){
- let h=`<button onclick="showProductForm()">New Product</button><br><br>`
+ let h=`<button onclick="newProduct()">New Product</button><br><br>`
  h+=`<table><tr><th>S No</th><th>Barcode</th><th>Item No</th><th>Description</th><th>Rate</th><th>Stock</th></tr>`
  products.forEach((p,i)=>h+=`<tr><td>${i+1}</td><td>${p.barcode}</td><td>${p.item}</td><td>${p.desc}</td><td>${rs(p.rate)}</td><td>${stock[p.item]||0}</td></tr>`)
  h+=`</table>`
  document.getElementById('product').innerHTML=h
 }
 
-function showProductForm(){
- document.getElementById('product').innerHTML=`<h3>New Product</h3>
- Barcode <input id=pBar><br>
- Item No <input id=pItem><br>
- Description <input id=pDesc><br>
- Retail Rate <input id=pRate type=number><br>
- Opening Stock <input id=pStock type=number><br><br>
- <button onclick=saveProduct()>Save</button>
- <button onclick=render()>Cancel</button>`
+function newProduct(){
+ document.getElementById('product').innerHTML=`
+ <h3>New Product</h3>
+ Barcode<input id=pb><br>
+ Item No<input id=pi><br>
+ Description<input id=pd><br>
+ Retail Rate<input id=pr type=number><br>
+ Opening Stock<input id=ps type=number><br><br>
+ <button onclick="saveProduct()">Save</button>
+ <button onclick="render()">Cancel</button>`
 }
 
 function saveProduct(){
- let b=pBar.value,i=pItem.value,d=pDesc.value,r=Number(pRate.value),s=Number(pStock.value)
- if(!b||!i||!d)return alert('Required fields missing')
- products.push({barcode:b,item:i,desc:d,rate:r});stock[i]=s;render()
+ if(!pb.value||!pi.value||!pd.value)return alert("Required fields")
+ products.push({barcode:pb.value,item:pi.value,desc:pd.value,rate:Number(pr.value)})
+ stock[pi.value]=Number(ps.value||0)
+ render()
 }
 
-function showAddProduct(){
- let b=prompt('Barcode');if(!b)return
- let i=prompt('Item No');let d=prompt('Description');let r=parseFloat(prompt('Retail Rate'));let s=parseInt(prompt('Opening Stock'))||0
- products.push({barcode:b,item:i,desc:d,rate:r});stock[i]=s;render()
+/* ---------------- VENDOR ---------------- */
+function renderVendor(){
+ let h=`<button onclick="newVendor()">New Vendor</button><br><br>`
+ h+=`<table><tr><th>S No</th><th>Name</th><th>Balance</th></tr>`
+ vendors.forEach((v,i)=>h+=`<tr><td>${i+1}</td><td>${v.name}</td><td>${rs(v.balance)}</td></tr>`)
+ h+=`</table>`
+ document.getElementById('vendor').innerHTML=h
 }
 
-function renderReports(){
- document.getElementById('reports').innerHTML="<h3>Reports Placeholder</h3>"
+function newVendor(){
+ document.getElementById('vendor').innerHTML=`
+ <h3>New Vendor</h3>
+ Name<input id=vn><br>
+ Opening Balance<input id=vb type=number><br><br>
+ <button onclick="saveVendor()">Save</button>
+ <button onclick="render()">Cancel</button>`
 }
 
-function renderSettings(){
- document.getElementById('settings').innerHTML="<h3>Settings Placeholder</h3>"
+function saveVendor(){
+ if(!vn.value)return alert("Name required")
+ vendors.push({name:vn.value,balance:Number(vb.value||0)})
+ render()
 }
+
+/* ---------------- SEARCH ---------------- */
+function searchProduct(q){
+ return products.filter(p=>p.barcode.includes(q)||p.item.includes(q)||p.desc.toLowerCase().includes(q.toLowerCase())).slice(0,6)
+}
+
+/* ---------------- INVOICE ---------------- */
+function renderInvoice(){
+ let h=`<button onclick="newInvoice()">New Invoice</button><br><br>`
+ h+=`<table><tr><th>S No</th><th>Date</th><th>Bill</th><th>Products</th><th>Amount</th><th>Discount</th><th>Total</th><th>Time</th></tr>`
+ invoices.slice(-100).forEach((i,idx)=>{
+ let amt=i.items.reduce((s,x)=>s+x.qty*x.rate,0)
+ let disc=i.items.reduce((s,x)=>s+x.disc,0)
+ h+=`<tr><td>${idx+1}</td><td>${i.date}</td><td>${i.bill}</td><td>${i.items.length}</td><td>${rs(amt)}</td><td>${rs(disc)}</td><td>${rs(amt-disc)}</td><td>${i.time}</td></tr>`
+ })
+ h+=`</table>`
+ if(editingInvoice)h+=invoiceEditor()
+ document.getElementById('invoice').innerHTML=h
+}
+
+function newInvoice(){
+ editingInvoice={items:[],disc:0}
+ render()
+}
+
+function invoiceEditor(){
+ let h=`<div class=card><h3>Invoice</h3>
+ Barcode<input onkeyup="invSearch(this.value)">
+ Item No<input onkeyup="invSearch(this.value)">
+ Description<input onkeyup="invSearch(this.value)">
+ <div class=search id=invRes></div>
+ <table><tr><th>Description</th><th>Qty</th><th>Rate</th><th>Disc</th><th>Amount</th></tr>`
+ let amt=0,disc=0
+ editingInvoice.items.forEach((x,i)=>{
+ let a=x.qty*x.rate-x.disc;amt+=x.qty*x.rate;disc+=x.disc
+ h+=`<tr><td>${x.desc}</td><td><input value=${x.qty} onchange="x=editingInvoice.items[${i}];x.qty=this.value;render()"></td><td>${rs(x.rate)}</td><td><input value=${x.disc} onchange="x=editingInvoice.items[${i}];x.disc=this.value;render()"></td><td>${rs(a)}</td></tr>`
+ })
+ h+=`</table>
+ <div class=summary>
+ <div>Amount<br>${rs(amt)}</div>
+ <div>Discount<br>${rs(disc)}</div>
+ <div>Total<br>${rs(amt-disc)}</div>
+ </div><br>
+ <button onclick="saveInvoice()">Save</button></div>`
+ return h
+}
+
+function invSearch(q){
+ let r=searchProduct(q)
+ let h=''
+ r.forEach(p=>h+=`<div onclick="addInv('${p.item}')">${p.desc}</div>`)
+ invRes.innerHTML=h
+}
+
+function addInv(item){
+ let p=products.find(x=>x.item===item)
+ if(stock[p.item]<=0)return alert("Out of stock")
+ stock[p.item]--
+ editingInvoice.items.push({desc:p.desc,qty:1,rate:p.rate,disc:0})
+ render()
+}
+
+function saveInvoice(){
+ let d=new Date()
+ invoices.push({items:editingInvoice.items,date:d.toLocaleDateString(),time:d.toLocaleTimeString(),bill:1000+invoices.length})
+ editingInvoice=null
+ render()
+}
+
+/* ---------------- PURCHASE ---------------- */
+function renderPurchase(){
+ let h=`<button onclick="newPurchase()">New Purchase</button><br><br>`
+ if(editingPurchase){
+ h+=`Vendor<select id=pv>${vendors.map(v=>`<option>${v.name}</option>`).join('')}</select><br><br>
+ Barcode<input onkeyup="purSearch(this.value)">
+ Item No<input onkeyup="purSearch(this.value)">
+ Description<input onkeyup="purSearch(this.value)">
+ <div class=search id=purRes></div>
+ <table><tr><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>`
+ let amt=0
+ editingPurchase.items.forEach((x,i)=>{
+ let a=x.qty*x.rate;amt+=a
+ h+=`<tr><td>${x.desc}</td><td><input value=${x.qty} onchange="x=editingPurchase.items[${i}];x.qty=this.value;render()"></td><td><input value=${x.rate} onchange="x=editingPurchase.items[${i}];x.rate=this.value;render()"></td><td>${rs(a)}</td></tr>`
+ })
+ h+=`</table>
+ <div class=summary><div>Total<br>${rs(amt)}</div></div><br>
+ <button onclick="savePurchase()">Save</button>`
+ }
+ document.getElementById('purchase').innerHTML=h
+}
+
+function newPurchase(){editingPurchase={items:[]};render()}
+
+function purSearch(q){
+ let r=searchProduct(q)
+ let h=''
+ r.forEach(p=>h+=`<div onclick="addPur('${p.item}')">${p.desc}</div>`)
+ purRes.innerHTML=h
+}
+
+function addPur(item){
+ let p=products.find(x=>x.item===item)
+ editingPurchase.items.push({item:p.item,desc:p.desc,qty:1,rate:p.rate})
+ render()
+}
+
+function savePurchase(){
+ let v=vendors.find(x=>x.name===pv.value)
+ let total=0
+ editingPurchase.items.forEach(x=>{stock[x.item]+=Number(x.qty);total+=x.qty*x.rate})
+ v.balance+=total
+ purchases.push(editingPurchase)
+ editingPurchase=null
+ render()
+}
+
+/* ---------------- OTHER ---------------- */
+function renderReports(){reports.innerHTML="<h3>Reports Coming Soon</h3>"}
+function renderSettings(){settings.innerHTML="<h3>Settings</h3>"}
 
 function render(){
  renderInvoice()
  renderPurchase()
- renderVendor()
  renderProduct()
+ renderVendor()
  renderReports()
  renderSettings()
 }
 
-openTab('invoice')
-</script></body>
+openTab('invoice',document.querySelector('nav span'))
+</script>
+</body>
 </html>
