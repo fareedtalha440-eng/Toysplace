@@ -4,79 +4,79 @@
 <meta charset="UTF-8">
 <title>Toysplace POS</title>
 
-<!-- ===== BARCODE LIB ===== -->
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-
 <style>
 :root{
-  --dark:#0b1d33;
-  --dark2:#102a52;
-  --light:#ffffff;
-  --border:#d5dbea;
-  --accent:#1e40af;
+--dark:#0b1d33;
+--dark2:#102a52;
+--white:#ffffff;
+--border:#cfd7e6;
 }
 
-/* ===== BASE ===== */
 body{margin:0;font-family:Segoe UI,Arial;background:#f4f6fb}
-header{background:var(--dark);color:white;padding:14px;font-size:20px;text-align:center;font-weight:600}
-nav{width:220px;background:var(--dark2);height:100vh;position:fixed;top:0;left:0;padding-top:60px}
-nav div{padding:14px 20px;color:white;cursor:pointer}
-nav div:hover{background:#183a70}
-.active{background:#183a70;border-left:4px solid white}
+header{background:var(--dark);color:white;padding:14px;font-size:20px;text-align:center}
+nav{position:fixed;top:0;left:0;width:220px;height:100vh;background:var(--dark2);padding-top:60px}
+nav div{color:white;padding:14px 20px;cursor:pointer}
+nav div:hover,.active{background:#163c78}
 main{margin-left:220px;padding:20px}
+
 section{background:white;padding:20px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.08)}
 .hidden{display:none}
 
-/* ===== UI ===== */
 h2{margin-top:0}
-button{background:var(--accent);border:none;color:white;padding:8px 14px;border-radius:4px;cursor:pointer}
-button.secondary{background:#64748b}
+button{background:var(--dark2);border:none;color:white;padding:6px 12px;border-radius:4px;cursor:pointer}
+button.red{background:#9b1c1c}
+button.gray{background:#64748b}
+
 input,select{padding:6px;width:100%;box-sizing:border-box}
+
 table{width:100%;border-collapse:collapse;margin-top:12px}
 th,td{border:1px solid var(--border);padding:8px;font-size:14px}
-th{background:#eef2ff;text-align:left}
-.form-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+th{background:#eef2fb}
+
 .card{border:1px solid var(--border);padding:12px;border-radius:6px;margin-top:12px}
 
-/* ===== PRINT ===== */
-.print-area{background:white}
+.form-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+
+.search-box{position:relative}
+.search-results{position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border);z-index:10}
+.search-results div{padding:6px;cursor:pointer}
+.search-results div:hover{background:#eef2fb}
+
 @media print{
-  body *{visibility:hidden}
-  .print-area,.print-area *{visibility:visible}
-  .print-area{position:absolute;left:0;top:0}
-  body.print-a4 .print-area{width:210mm}
-  body.print-80 .print-area{width:80mm;font-size:11px}
-  body.print-58 .print-area{width:58mm;font-size:10px}
+body *{visibility:hidden}
+.print-area,.print-area *{visibility:visible}
+.print-area{position:absolute;left:0;top:0;width:210mm}
 }
 </style>
 </head>
 
 <body>
+
 <header>Toysplace Retail POS</header>
 
 <nav>
-<div onclick="openModule('products')" class="active" id="tab-products">Products</div>
-<div onclick="openModule('vendors')" id="tab-vendors">Vendors</div>
-<div onclick="openModule('purchase')" id="tab-purchase">Purchase</div>
-<div onclick="openModule('invoice')" id="tab-invoice">Invoice</div>
-<div onclick="openModule('barcodePrint')" id="tab-barcodePrint">Barcodes</div>
-<div onclick="openModule('reports')" id="tab-reports">Reports</div>
+<div id="tab-products" class="active" onclick="openModule('products')">Products</div>
+<div id="tab-vendors" onclick="openModule('vendors')">Vendors</div>
+<div id="tab-purchase" onclick="openModule('purchase')">Purchase</div>
+<div id="tab-invoice" onclick="openModule('invoice')">Invoice</div>
+<div id="tab-reports" onclick="openModule('reports')">Reports</div>
 </nav>
 
 <main>
 
 <!-- PRODUCTS -->
 <section id="products">
-<h2>Products</h2>
-<button onclick="newProduct()">Add Product</button>
-<button onclick="openModule('barcodePrint')">Print Barcodes</button>
+<h2 id="prodTitle">Products</h2>
+<button onclick="newProductUI()">Add Product</button>
 
 <table>
-<thead><tr><th>#</th><th>Barcode</th><th>Item</th><th>Description</th><th>Rate</th><th>Stock</th></tr></thead>
+<thead>
+<tr><th>#</th><th>Barcode</th><th>Item</th><th>Description</th><th>Rate</th><th>Stock</th><th></th></tr>
+</thead>
 <tbody id="productTable"></tbody>
 </table>
 
-<div id="productForm" class="hidden card">
+<div id="productForm" class="card hidden">
 <div class="form-row">
 <input id="p_barcode" placeholder="Barcode">
 <input id="p_item" placeholder="Item No">
@@ -84,101 +84,70 @@ th{background:#eef2ff;text-align:left}
 <input id="p_rate" type="number" placeholder="Rate">
 <input id="p_stock" type="number" placeholder="Stock">
 </div><br>
-<button onclick="saveProduct()">Save</button>
-<button class="secondary" onclick="closeProduct()">Cancel</button>
+<button onclick="saveProductUI()">Save</button>
+<button class="gray" onclick="productForm.classList.add('hidden')">Cancel</button>
 </div>
 </section>
 
 <!-- VENDORS -->
 <section id="vendors" class="hidden">
 <h2>Vendors</h2>
-<button onclick="newVendor()">Add Vendor</button>
+<button onclick="newVendorUI()">Add Vendor</button>
+
 <table>
-<thead><tr><th>#</th><th>No</th><th>Name</th><th>Balance</th></tr></thead>
+<thead><tr><th>#</th><th>Name</th><th>Balance</th><th></th></tr></thead>
 <tbody id="vendorTable"></tbody>
 </table>
 
-<div id="vendorForm" class="hidden card">
-<div class="form-row">
-<input id="v_name" placeholder="Vendor Name">
-<input id="v_location" placeholder="Location">
-<input id="v_opening" type="number" placeholder="Opening Balance">
-</div><br>
-<button onclick="saveVendor()">Save</button>
-<button class="secondary" onclick="closeVendor()">Cancel</button>
+<div id="vendorForm" class="card hidden">
+<input id="v_name" placeholder="Vendor Name"><br><br>
+<input id="v_opening" type="number" placeholder="Opening Balance"><br><br>
+<button onclick="saveVendorUI()">Save</button>
+<button class="gray" onclick="vendorForm.classList.add('hidden')">Cancel</button>
 </div>
 </section>
 
 <!-- PURCHASE -->
 <section id="purchase" class="hidden">
 <h2>Purchase</h2>
-<button onclick="newPurchase()">New Purchase</button>
+<button onclick="newPurchaseUI()">New Purchase</button>
 
 <table>
-<thead><tr><th>#</th><th>Barcode</th><th>Item</th><th>Desc</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
+<thead>
+<tr><th>#</th><th>Search</th><th>Item</th><th>Description</th><th>Qty</th><th>Rate</th><th>Disc %</th><th>Amount</th></tr>
+</thead>
 <tbody id="purLines"></tbody>
 </table>
 
 <div class="card">
-Vendor <select id="pur_vendor"></select><br><br>
-Amount <span id="purAmount">0</span><br>
-Discount Rs <input id="purDiscRs" type="number">
-Discount % <input id="purDiscPc" type="number">
-Total <b><span id="purTotal">0</span></b>
+Vendor:
+<select id="pur_vendor"></select><br><br>
+Total: <b id="purTotal">0</b>
 </div><br>
 
-<button onclick="savePurchase()">Save</button>
-
-<table>
-<thead><tr><th>#</th><th>Date</th><th>Total</th></tr></thead>
-<tbody id="purchaseList"></tbody>
-</table>
+<button onclick="savePurchaseUI()">Save Purchase</button>
 </section>
 
 <!-- INVOICE -->
 <section id="invoice" class="hidden">
 <h2>Invoice</h2>
-<button onclick="newInvoice()">New Invoice</button>
-
-<select id="printSize">
-<option value="print-a4">A4</option>
-<option value="print-80">80mm</option>
-<option value="print-58">58mm</option>
-</select>
+<button onclick="newInvoiceUI()">New Invoice</button>
 
 <div class="print-area">
 <table>
-<thead><tr><th>#</th><th>Barcode</th><th>Item</th><th>Qty</th><th>Rate</th><th>Disc</th><th>Amount</th></tr></thead>
+<thead>
+<tr><th>#</th><th>Search</th><th>Item</th><th>Description</th><th>Qty</th><th>Rate</th><th>Disc %</th><th>Amount</th></tr>
+</thead>
 <tbody id="invLines"></tbody>
 </table>
 
 <div class="card">
-Amount <span id="invAmount">0</span><br>
-Discount Rs <input id="invDiscRs" type="number">
-Discount % <input id="invDiscPc" type="number">
-Total <b><span id="invTotal">0</span></b>
+Total: <b id="invTotal">0</b>
 </div>
 </div><br>
 
-<button onclick="saveInvoice()">Save</button>
-<button onclick="printInvoice()">Print</button>
-
-<table>
-<thead><tr><th>#</th><th>No</th><th>Date</th><th>Total</th></tr></thead>
-<tbody id="invoiceList"></tbody>
-</table>
-</section>
-
-<!-- BARCODE PRINT -->
-<section id="barcodePrint" class="hidden">
-<h2>Barcode Printing</h2>
-<select id="barcodeProduct"></select>
-<input id="barcodeQty" type="number" placeholder="Quantity (default stock)">
-<br><br>
-<button onclick="generateBarcodes()">Generate</button>
+<button onclick="saveInvoiceUI()">Save Invoice</button>
 <button onclick="window.print()">Print</button>
-
-<div id="barcodeArea" class="print-area"></div>
 </section>
 
 <!-- REPORTS -->
@@ -193,194 +162,330 @@ Total <b><span id="invTotal">0</span></b>
 </main>
 
 <script>
-/* ===== STORAGE ===== */
-let products=JSON.parse(localStorage.getItem("products")||"[]");
-let vendors=JSON.parse(localStorage.getItem("vendors")||"[]");
-let purchases=JSON.parse(localStorage.getItem("purchases")||"[]");
-let invoices=JSON.parse(localStorage.getItem("invoices")||"[]");
-let editingProduct=null;
+/* ================= STORAGE ================= */
+const DB={
+products:JSON.parse(localStorage.getItem("products")||"[]"),
+vendors:JSON.parse(localStorage.getItem("vendors")||"[]"),
+purchases:JSON.parse(localStorage.getItem("purchases")||"[]"),
+invoices:JSON.parse(localStorage.getItem("invoices")||"[]")
+};
 
-/* ===== NAV ===== */
-function openModule(m){
+function saveDB(){
+Object.keys(DB).forEach(k=>localStorage.setItem(k,JSON.stringify(DB[k])));
+}
+function uid(p){return p+"_"+Date.now()+"_"+Math.floor(Math.random()*1000)}
+
+/* ================= NAV ================= */
+function openModule(id){
 document.querySelectorAll("section").forEach(s=>s.classList.add("hidden"));
-document.querySelectorAll("nav div").forEach(d=>d.classList.remove("active"));
-document.getElementById(m).classList.remove("hidden");
-document.getElementById("tab-"+m)?.classList.add("active");
-renderReports();
+document.querySelectorAll("nav div").forEach(n=>n.classList.remove("active"));
+document.getElementById(id).classList.remove("hidden");
+document.getElementById("tab-"+id).classList.add("active");
+if(id==="products")renderProductsUI();
+if(id==="vendors")renderVendorsUI();
+if(id==="reports")renderReports();
 }
 
-/* ===== SAVE ===== */
-function saveAll(){
-localStorage.setItem("products",JSON.stringify(products));
-localStorage.setItem("vendors",JSON.stringify(vendors));
-localStorage.setItem("purchases",JSON.stringify(purchases));
-localStorage.setItem("invoices",JSON.stringify(invoices));
-}
-
-/* ===== PRODUCTS ===== */
-function renderProducts(){
+/* ================= PRODUCTS ================= */
+let editingProductId=null;
+function renderProductsUI(){
 productTable.innerHTML="";
-products.forEach((p,i)=>{
-productTable.innerHTML+=`<tr onclick="editProduct(${i})">
-<td>${i+1}</td><td>${p.barcode}</td><td>${p.item}</td><td>${p.desc}</td><td>${p.rate}</td><td>${p.stock}</td></tr>`;
+DB.products.forEach((p,i)=>{
+productTable.innerHTML+=`
+<tr>
+<td>${i+1}</td><td>${p.barcode}</td><td>${p.itemNo}</td>
+<td>${p.description}</td><td>${p.rate}</td><td>${p.stock}</td>
+<td>
+<button onclick="editProductUI('${p.id}')">Edit</button>
+<button class="red" onclick="deleteProductUI('${p.id}')">X</button>
+</td>
+</tr>`;
 });
-barcodeProduct.innerHTML=products.map((p,i)=>`<option value="${i}">${p.item} - ${p.desc}</option>`).join("");
 }
-function newProduct(){editingProduct=null;productForm.classList.remove("hidden")}
-function editProduct(i){
-editingProduct=i;
-let p=products[i];
-p_barcode.value=p.barcode;p_item.value=p.item;p_desc.value=p.desc;
-p_rate.value=p.rate;p_stock.value=p.stock;
+
+function newProductUI(){
+editingProductId=null;
+prodTitle.innerText="Add Product";
+p_stock.disabled=false;
+productForm.classList.remove("hidden");
+p_barcode.value=p_item.value=p_desc.value=p_rate.value=p_stock.value="";
+}
+
+function editProductUI(id){
+const p=DB.products.find(x=>x.id===id);
+editingProductId=id;
+prodTitle.innerText="Edit Product";
+p_barcode.value=p.barcode;
+p_item.value=p.itemNo;
+p_desc.value=p.description;
+p_rate.value=p.rate;
+p_stock.value=p.stock;
+p_stock.disabled=true;
 productForm.classList.remove("hidden");
 }
-function saveProduct(){
-let p={barcode:p_barcode.value,item:p_item.value,desc:p_desc.value,rate:+p_rate.value,stock:+p_stock.value};
-editingProduct==null?products.push(p):products[editingProduct]=p;
-saveAll();closeProduct();renderProducts();
-}
-function closeProduct(){productForm.classList.add("hidden")}
 
-/* ===== VENDORS ===== */
-function renderVendors(){
-vendorTable.innerHTML="";
-vendors.forEach((v,i)=>{
-vendorTable.innerHTML+=`<tr><td>${i+1}</td><td>V${i+1}</td><td>${v.name}</td><td>${v.balance}</td></tr>`;
+function saveProductUI(){
+if(editingProductId){
+const p=DB.products.find(x=>x.id===editingProductId);
+p.barcode=p_barcode.value;
+p.itemNo=p_item.value;
+p.description=p_desc.value;
+p.rate=+p_rate.value;
+}else{
+DB.products.push({
+id:uid("P"),
+barcode:p_barcode.value,
+itemNo:p_item.value,
+description:p_desc.value,
+rate:+p_rate.value,
+stock:+p_stock.value
 });
 }
-function newVendor(){vendorForm.classList.remove("hidden")}
-function saveVendor(){
-vendors.push({name:v_name.value,balance:+v_opening.value});
-saveAll();closeVendor();renderVendors();
+saveDB();
+productForm.classList.add("hidden");
+renderProductsUI();
 }
-function closeVendor(){vendorForm.classList.add("hidden")}
 
-/* ===== PURCHASE ===== */
-function newPurchase(){
-purLines.innerHTML="";
-pur_vendor.innerHTML=vendors.map(v=>`<option>${v.name}</option>`).join("");
-addPurLine();
+function deleteProductUI(id){
+if(confirm("Delete product?")){
+DB.products=DB.products.filter(p=>p.id!==id);
+saveDB();
+renderProductsUI();
 }
-function addPurLine(){
+}
+
+/* ================= VENDORS ================= */
+let editingVendorId=null;
+function renderVendorsUI(){
+vendorTable.innerHTML="";
+DB.vendors.forEach((v,i)=>{
+const bal=getVendorBalance(v.id);
+vendorTable.innerHTML+=`
+<tr>
+<td>${i+1}</td>
+<td><a href="#" onclick="editVendorUI('${v.id}')">${v.name}</a></td>
+<td><a href="#" onclick="alertVendorLedger('${v.id}')">${bal}</a></td>
+<td><button class="red" onclick="deleteVendorUI('${v.id}')">X</button></td>
+</tr>`;
+});
+}
+
+function getVendorBalance(id){
+let bal=DB.vendors.find(v=>v.id===id).openingBalance||0;
+DB.purchases.filter(p=>p.vendorId===id).forEach(p=>bal+=p.total);
+return bal;
+}
+
+function newVendorUI(){
+editingVendorId=null;
+v_name.value=v_opening.value="";
+vendorForm.classList.remove("hidden");
+}
+
+function editVendorUI(id){
+const v=DB.vendors.find(v=>v.id===id);
+editingVendorId=id;
+v_name.value=v.name;
+v_opening.value=v.openingBalance;
+vendorForm.classList.remove("hidden");
+}
+
+function saveVendorUI(){
+if(editingVendorId){
+DB.vendors.find(v=>v.id===editingVendorId).name=v_name.value;
+}else{
+DB.vendors.push({id:uid("V"),name:v_name.value,openingBalance:+v_opening.value});
+}
+saveDB();
+vendorForm.classList.add("hidden");
+renderVendorsUI();
+}
+
+function deleteVendorUI(id){
+if(DB.purchases.some(p=>p.vendorId===id)){
+alert("Vendor has purchases");
+return;
+}
+DB.vendors=DB.vendors.filter(v=>v.id!==id);
+saveDB();
+renderVendorsUI();
+}
+
+function alertVendorLedger(id){
+let html="Ledger:\n";
+let bal=DB.vendors.find(v=>v.id===id).openingBalance||0;
+html+="Opening: "+bal+"\n";
+DB.purchases.filter(p=>p.vendorId===id).forEach(p=>{
+bal+=p.total;
+html+=p.date+" +"+p.total+" = "+bal+"\n";
+});
+alert(html);
+}
+
+/* ================= SEARCH ================= */
+function searchProducts(q){
+q=q.toLowerCase();
+return DB.products.filter(p=>
+p.barcode.toLowerCase().includes(q)||
+p.itemNo.toLowerCase().includes(q)||
+p.description.toLowerCase().includes(q)
+).slice(0,5);
+}
+
+/* ================= PURCHASE ================= */
+let purchaseItems=[];
+function newPurchaseUI(){
+purchaseItems=[];
+purLines.innerHTML="";
+pur_vendor.innerHTML=DB.vendors.map(v=>`<option value="${v.id}">${v.name}</option>`).join("");
+addPurchaseRow();
+}
+
+function addPurchaseRow(){
+const i=purchaseItems.length;
+purchaseItems.push({});
 purLines.innerHTML+=`
 <tr>
-<td>${purLines.children.length+1}</td>
-<td><input onblur="purSearch(this)"></td>
-<td></td><td></td>
-<td><input type="number" value="1" oninput="calcPurchase()"></td>
-<td><input type="number" oninput="calcPurchase()"></td>
+<td>${i+1}</td>
+<td class="search-box"><input oninput="purchaseSearch(this,${i})"><div class="search-results"></div></td>
+<td><input></td>
+<td><input></td>
+<td><input type="number" value="1" oninput="calcPurchase(${i})"></td>
+<td><input type="number" oninput="calcPurchase(${i})"></td>
+<td><input type="number" value="0" oninput="calcPurchase(${i})"></td>
 <td>0</td>
 </tr>`;
 }
-function purSearch(el){
-let p=products.find(x=>x.barcode==el.value||x.item==el.value);
-if(p){
-let r=el.parentNode.parentNode;
-r.children[2].innerText=p.item;
-r.children[3].innerText=p.desc;
+
+function purchaseSearch(el,i){
+const box=el.nextElementSibling;
+box.innerHTML="";
+searchProducts(el.value).forEach(p=>{
+box.innerHTML+=`<div onclick="selectPurchase(${i},'${p.id}')">${p.itemNo} - ${p.description}</div>`;
+});
+}
+
+function selectPurchase(i,id){
+const p=DB.products.find(p=>p.id===id);
+const r=purLines.children[i];
+purchaseItems[i]={productId:p.id,qty:1,rate:p.rate,discountPc:0};
+r.children[2].children[0].value=p.itemNo;
+r.children[3].children[0].value=p.description;
 r.children[5].children[0].value=p.rate;
 }
-}
-function calcPurchase(){
-let amt=0;
-[...purLines.children].forEach(r=>{
-let a=r.children[4].children[0].value*r.children[5].children[0].value;
-r.children[6].innerText=a;amt+=a;
-});
-purAmount.innerText=amt;
-purTotal.innerText=amt-(+purDiscRs.value||0);
-}
-purDiscRs.oninput=purDiscPc.oninput=calcPurchase;
-function savePurchase(){
-purchases.push({date:new Date().toLocaleDateString(),total:purTotal.innerText});
-saveAll();
-renderReports();
+
+function calcPurchase(i){
+const r=purLines.children[i];
+const qty=+r.children[4].children[0].value;
+const rate=+r.children[5].children[0].value;
+const d=+r.children[6].children[0].value;
+const amt=qty*rate*(1-d/100);
+purchaseItems[i].qty=qty;
+purchaseItems[i].rate=rate;
+purchaseItems[i].discountPc=d;
+purchaseItems[i].amount=amt;
+r.children[7].innerText=amt.toFixed(2);
+purTotal.innerText=purchaseItems.reduce((s,x)=>s+(x.amount||0),0).toFixed(2);
 }
 
-/* ===== INVOICE ===== */
-function newInvoice(){invLines.innerHTML="";addInvLine()}
-function addInvLine(){
+function savePurchaseUI(){
+DB.purchases.push({
+id:uid("PU"),
+date:new Date().toLocaleDateString(),
+vendorId:pur_vendor.value,
+items:purchaseItems,
+total:+purTotal.innerText
+});
+purchaseItems.forEach(i=>{
+const p=DB.products.find(p=>p.id===i.productId);
+if(p)p.stock+=i.qty;
+});
+saveDB();
+newPurchaseUI();
+}
+
+/* ================= INVOICE ================= */
+let invoiceItems=[];
+function newInvoiceUI(){
+invoiceItems=[];
+invLines.innerHTML="";
+addInvoiceRow();
+}
+
+function addInvoiceRow(){
+const i=invoiceItems.length;
+invoiceItems.push({});
 invLines.innerHTML+=`
 <tr>
-<td>${invLines.children.length+1}</td>
-<td><input onblur="invSearch(this)"></td>
-<td></td>
-<td><input type="number" value="1" oninput="calcInvoice()"></td>
-<td></td>
-<td><input type="number" oninput="calcInvoice()"></td>
+<td>${i+1}</td>
+<td class="search-box"><input oninput="invoiceSearch(this,${i})"><div class="search-results"></div></td>
+<td><input></td>
+<td><input></td>
+<td><input type="number" value="1" oninput="calcInvoice(${i})"></td>
+<td><input type="number" oninput="calcInvoice(${i})"></td>
+<td><input type="number" value="0" oninput="calcInvoice(${i})"></td>
 <td>0</td>
 </tr>`;
 }
-function invSearch(el){
-let p=products.find(x=>x.barcode==el.value||x.item==el.value);
-if(p){
-let r=el.parentNode.parentNode;
-r.children[2].innerText=p.item;
-r.children[4].innerText=p.rate;
-}
-}
-function calcInvoice(){
-let amt=0;
-[...invLines.children].forEach(r=>{
-let a=r.children[3].children[0].value*r.children[4].innerText-(+r.children[5].children[0].value||0);
-r.children[6].innerText=a;amt+=a;
+
+function invoiceSearch(el,i){
+const box=el.nextElementSibling;
+box.innerHTML="";
+searchProducts(el.value).forEach(p=>{
+box.innerHTML+=`<div onclick="selectInvoice(${i},'${p.id}')">${p.itemNo} - ${p.description}</div>`;
 });
-invAmount.innerText=amt;
-invTotal.innerText=amt-(+invDiscRs.value||0);
-}
-invDiscRs.oninput=invDiscPc.oninput=calcInvoice;
-function saveInvoice(){
-invoices.push({no:"I"+(invoices.length+1),date:new Date().toLocaleDateString(),total:invTotal.innerText});
-saveAll();
-renderReports();
 }
 
-/* ===== BARCODE PRINT ===== */
-function generateBarcodes(){
-let p=products[barcodeProduct.value];
-let qty=+barcodeQty.value||p.stock;
-barcodeArea.innerHTML="";
-for(let i=0;i<qty;i++){
-barcodeArea.innerHTML+=`
-<div style="display:inline-block;border:1px solid #000;padding:6px;margin:6px;text-align:center">
-<svg class="barcode" jsbarcode-value="${p.barcode||p.item}"></svg>
-<div>${p.item}</div>
-<div style="font-size:11px">${p.desc}</div>
-</div>`;
-}
-JsBarcode(".barcode").init();
+function selectInvoice(i,id){
+const p=DB.products.find(p=>p.id===id);
+const r=invLines.children[i];
+invoiceItems[i]={productId:p.id,qty:1,rate:p.rate,discountPc:0};
+r.children[2].children[0].value=p.itemNo;
+r.children[3].children[0].value=p.description;
+r.children[5].children[0].value=p.rate;
 }
 
-/* ===== PRINT ===== */
-function printInvoice(){
-document.body.className="";
-document.body.classList.add(printSize.value);
-window.print();
+function calcInvoice(i){
+const r=invLines.children[i];
+const qty=+r.children[4].children[0].value;
+const rate=+r.children[5].children[0].value;
+const d=+r.children[6].children[0].value;
+const amt=qty*rate*(1-d/100);
+invoiceItems[i].qty=qty;
+invoiceItems[i].rate=rate;
+invoiceItems[i].discountPc=d;
+invoiceItems[i].amount=amt;
+r.children[7].innerText=amt.toFixed(2);
+invTotal.innerText=invoiceItems.reduce((s,x)=>s+(x.amount||0),0).toFixed(2);
 }
 
-/* ===== REPORTS ===== */
+function saveInvoiceUI(){
+DB.invoices.push({
+id:uid("IN"),
+date:new Date().toLocaleDateString(),
+items:invoiceItems,
+total:+invTotal.innerText
+});
+invoiceItems.forEach(i=>{
+const p=DB.products.find(p=>p.id===i.productId);
+if(p)p.stock-=i.qty;
+});
+saveDB();
+newInvoiceUI();
+}
+
+/* ================= REPORTS ================= */
 function renderReports(){
-r_products.innerText=products.length;
-r_vendors.innerText=vendors.length;
-r_purchases.innerText=purchases.length;
-r_invoices.innerText=invoices.length;
+r_products.innerText=DB.products.length;
+r_vendors.innerText=DB.vendors.length;
+r_purchases.innerText=DB.purchases.length;
+r_invoices.innerText=DB.invoices.length;
 }
 
-/* ===== BARCODE SCANNER ===== */
-let scanBuffer="";
-document.addEventListener("keydown",e=>{
-if(e.key==="Enter"){
-let el=document.activeElement;
-if(el&&el.tagName==="INPUT"){
-el.value=scanBuffer;
-el.dispatchEvent(new Event("blur"));
-}
-scanBuffer="";
-}else{scanBuffer+=e.key;}
-});
-
-/* ===== INIT ===== */
-renderProducts();renderVendors();renderReports();
+/* INIT */
+renderProductsUI();
+renderReports();
 </script>
+
 </body>
-  </html>
+</html>
