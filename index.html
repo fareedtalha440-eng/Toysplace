@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Toysplace POS</title>
+<title>Toysplace POS Final</title>
 <style>
 body{
     margin:0;
@@ -62,7 +62,7 @@ button{
     cursor:pointer;
     border-radius:4px;
 }
-input{
+input, select{
     padding:6px;
     width:100%;
     box-sizing:border-box;
@@ -76,7 +76,6 @@ input{
 .hidden{display:none;}
 </style>
 </head>
-
 <body>
 
 <header>Toysplace Retail POS</header>
@@ -95,7 +94,7 @@ input{
 <!-- PRODUCTS -->
 <section id="products">
 <h2>Products</h2>
-<button onclick="newProduct()">Add Product</button>
+<button onclick="newProduct()">New Product</button>
 <table>
 <thead>
 <tr>
@@ -128,7 +127,7 @@ input{
 <!-- VENDORS -->
 <section id="vendors" class="hidden">
 <h2>Vendors</h2>
-<button onclick="newVendor()">Add Vendor</button>
+<button onclick="newVendor()">New Vendor</button>
 <table>
 <thead>
 <tr>
@@ -168,146 +167,7 @@ input{
 </div>
 </section>
 
-</main>
-
-<script>
-/* ---------- CORE STORAGE ---------- */
-let products = JSON.parse(localStorage.getItem("products")||"[]");
-let vendors = JSON.parse(localStorage.getItem("vendors")||"[]");
-let ledgers = JSON.parse(localStorage.getItem("ledgers")||"{}");
-let editingProduct = null;
-let editingVendor = null;
-
-function saveAll(){
-    localStorage.setItem("products",JSON.stringify(products));
-    localStorage.setItem("vendors",JSON.stringify(vendors));
-    localStorage.setItem("ledgers",JSON.stringify(ledgers));
-}
-
-/* ---------- NAV ---------- */
-function openModule(m){
-    document.querySelectorAll("section").forEach(s=>s.classList.add("hidden"));
-    document.querySelectorAll("nav div").forEach(d=>d.classList.remove("active"));
-    document.getElementById(m).classList.remove("hidden");
-    document.getElementById("tab-"+m).classList.add("active");
-}
-
-/* ---------- PRODUCTS ---------- */
-function renderProducts(){
-    let tb=document.getElementById("productTable");tb.innerHTML="";
-    products.forEach((p,i)=>{
-        tb.innerHTML+=`
-        <tr onclick="editProduct(${i})">
-        <td>${i+1}</td>
-        <td>${p.barcode}</td>
-        <td>${p.item}</td>
-        <td>${p.desc}</td>
-        <td>${p.rate}</td>
-        <td>${p.stock}</td>
-        </tr>`;
-    });
-}
-function newProduct(){
-    editingProduct=null;
-    document.getElementById("productForm").classList.remove("hidden");
-}
-function editProduct(i){
-    editingProduct=i;
-    let p=products[i];
-    p_barcode.value=p.barcode;
-    p_item.value=p.item;
-    p_desc.value=p.desc;
-    p_rate.value=p.rate;
-    p_stock.value=p.stock;
-    productForm.classList.remove("hidden");
-}
-function saveProduct(){
-    let p={
-        barcode:p_barcode.value,
-        item:p_item.value,
-        desc:p_desc.value,
-        rate:+p_rate.value,
-        stock:+p_stock.value
-    };
-    if(editingProduct==null) products.push(p);
-    else products[editingProduct]=p;
-    saveAll();closeProduct();renderProducts();
-}
-function closeProduct(){productForm.classList.add("hidden");}
-
-/* ---------- VENDORS ---------- */
-function renderVendors(){
-    let tb=document.getElementById("vendorTable");tb.innerHTML="";
-    vendors.forEach((v,i)=>{
-        let l=ledgers[v.id]||[];
-        let lastP=l.filter(x=>x.type=="Purchase").slice(-1)[0];
-        let lastPay=l.filter(x=>x.type=="Payment").slice(-1)[0];
-        tb.innerHTML+=`
-        <tr onclick="openLedger('${v.id}')">
-        <td>${i+1}</td>
-        <td>${v.no}</td>
-        <td>${v.name}</td>
-        <td>${v.balance}</td>
-        <td>${lastP?lastP.amount+" ("+lastP.date+")":"-"}</td>
-        <td>${lastPay?lastPay.amount+" ("+lastPay.date+")":"-"}</td>
-        </tr>`;
-    });
-}
-function newVendor(){
-    editingVendor=null;
-    vendorForm.classList.remove("hidden");
-}
-function saveVendor(){
-    let v={
-        id:Date.now().toString(),
-        no:"V"+(vendors.length+1),
-        name:v_name.value,
-        location:v_location.value,
-        balance:+v_opening.value||0
-    };
-    vendors.push(v);
-    ledgers[v.id]=[];
-    saveAll();closeVendor();renderVendors();
-}
-function closeVendor(){vendorForm.classList.add("hidden");}
-function openLedger(id){
-    let body=document.getElementById("ledgerBody");body.innerHTML="";
-    let bal=0;
-    (ledgers[id]||[]).forEach(l=>{
-        bal+=l.type=="Purchase"?l.amount:-l.amount;
-        body.innerHTML+=`<tr><td>${l.date}</td><td>${l.type}</td><td>${l.amount}</td><td>${bal}</td></tr>`;
-    });
-    vendorLedger.classList.remove("hidden");
-}
-function closeLedger(){vendorLedger.classList.add("hidden");}
-
-/* ---------- INIT ---------- */
-renderProducts();
-renderVendors();
-</script>
-
-</body>
-</html>
-
-<!-- ================= PART 2 ================= -->
-
-<script>
-/* ========= EXTRA STORAGE ========= */
-let purchases = JSON.parse(localStorage.getItem("purchases")||"[]");
-let invoices  = JSON.parse(localStorage.getItem("invoices")||"[]");
-
-/* ========= SAVE EXTENSION ========= */
-function saveAll(){
-    localStorage.setItem("products",JSON.stringify(products));
-    localStorage.setItem("vendors",JSON.stringify(vendors));
-    localStorage.setItem("ledgers",JSON.stringify(ledgers));
-    localStorage.setItem("purchases",JSON.stringify(purchases));
-    localStorage.setItem("invoices",JSON.stringify(invoices));
-}
-
-/* ========= MODULE CONTAINERS ========= */
-document.querySelector("main").innerHTML += `
-
+<!-- PURCHASE -->
 <section id="purchase" class="hidden">
 <h2>Purchases</h2>
 <button onclick="newPurchase()">New Purchase</button>
@@ -335,13 +195,13 @@ document.querySelector("main").innerHTML += `
 <tbody id="purLines"></tbody>
 </table>
 
-<label><input type="checkbox" id="setRetail"> Set Retail Rate</label>
+<label><input type="checkbox" id="setRetail" onchange="toggleRetailRate()"> Set Retail Rate</label>
 <input id="retailRate" type="number" placeholder="Retail Rate" class="hidden">
 
 <br><br>
 Amount: <span id="purAmount">0</span><br>
-Discount: <input id="purDiscRs" type="number" value="0"> 
-<input id="purDiscPc" type="number" value="0"> %<br>
+Discount: <input id="purDiscRs" type="number" value="0" oninput="calcPurchase()"> 
+<input id="purDiscPc" type="number" value="0" oninput="calcPurchase()"> %<br>
 Total: <span id="purTotal">0</span><br><br>
 
 <button onclick="savePurchase()">Save</button>
@@ -349,10 +209,11 @@ Total: <span id="purTotal">0</span><br><br>
 </div>
 </section>
 
+<!-- INVOICE -->
 <section id="invoice" class="hidden">
 <h2>Invoices</h2>
 
-<select id="invFilter">
+<select id="invFilter" onchange="renderInvoices()">
 <option value="all">All</option>
 <option value="day">Today</option>
 <option value="month">This Month</option>
@@ -385,8 +246,8 @@ Total: <span id="purTotal">0</span><br><br>
 </table>
 
 Amount: <span id="invAmount">0</span><br>
-Discount: <input id="invDiscRs" type="number"> 
-<input id="invDiscPc" type="number"> %<br>
+Discount: <input id="invDiscRs" type="number" value="0" oninput="calcInvoice()"> 
+<input id="invDiscPc" type="number" value="0" oninput="calcInvoice()"> %<br>
 Total: <span id="invTotal">0</span><br><br>
 
 <button onclick="saveInvoice()">Save</button>
@@ -394,174 +255,208 @@ Total: <span id="invTotal">0</span><br><br>
 </div>
 </section>
 
+<!-- REPORTS -->
 <section id="reports" class="hidden">
 <h2>Reports</h2>
-<p>Profit, Sales, Stock Reports (Next Phase)</p>
+<p>Profit, Sales, Stock Reports</p>
 </section>
 
+<!-- SETTINGS -->
 <section id="settings" class="hidden">
 <h2>Settings</h2>
 <p>Configuration & Preferences</p>
 </section>
-`;
 
-/* ========= PURCHASE ========= */
+</main>
+
+<script>
+/* ================= STORAGE ================= */
+let products = JSON.parse(localStorage.getItem("products")||"[]");
+let vendors = JSON.parse(localStorage.getItem("vendors")||"[]");
+let ledgers = JSON.parse(localStorage.getItem("ledgers")||"{}");
+let purchases = JSON.parse(localStorage.getItem("purchases")||"[]");
+let invoices  = JSON.parse(localStorage.getItem("invoices")||"[]");
+let editingProduct = null;
+let editingVendor = null;
+
+function saveAll(){
+    localStorage.setItem("products",JSON.stringify(products));
+    localStorage.setItem("vendors",JSON.stringify(vendors));
+    localStorage.setItem("ledgers",JSON.stringify(ledgers));
+    localStorage.setItem("purchases",JSON.stringify(purchases));
+    localStorage.setItem("invoices",JSON.stringify(invoices));
+}
+
+/* ================= NAV ================= */
+function openModule(m){
+    document.querySelectorAll("section").forEach(s=>s.classList.add("hidden"));
+    document.querySelectorAll("nav div").forEach(d=>d.classList.remove("active"));
+    document.getElementById(m).classList.remove("hidden");
+    document.getElementById("tab-"+m).classList.add("active");
+}
+
+/* ================= PRODUCTS ================= */
+function renderProducts(){
+    let tb=document.getElementById("productTable");tb.innerHTML="";
+    products.forEach((p,i)=>{
+        tb.innerHTML+=`<tr onclick="editProduct(${i})">
+        <td>${i+1}</td>
+        <td>${p.barcode}</td>
+        <td>${p.item}</td>
+        <td>${p.desc}</td>
+        <td>${p.rate}</td>
+        <td>${p.stock}</td>
+        </tr>`;
+    });
+}
+function newProduct(){editingProduct=null; productForm.classList.remove("hidden");}
+function editProduct(i){
+    editingProduct=i;
+    let p=products[i];
+    p_barcode.value=p.barcode;
+    p_item.value=p.item;
+    p_desc.value=p.desc;
+    p_rate.value=p.rate;
+    p_stock.value=p.stock;
+    productForm.classList.remove("hidden");
+}
+function saveProduct(){
+    let p={barcode:p_barcode.value,item:p_item.value,desc:p_desc.value,rate:+p_rate.value,stock:+p_stock.value};
+    if(editingProduct==null) products.push(p); else products[editingProduct]=p;
+    saveAll(); closeProduct(); renderProducts();
+}
+function closeProduct(){productForm.classList.add("hidden");}
+
+/* ================= VENDORS ================= */
+function renderVendors(){
+    let tb=document.getElementById("vendorTable");tb.innerHTML="";
+    vendors.forEach((v,i)=>{
+        let l=ledgers[v.id]||[];
+        let lastP=l.filter(x=>x.type=="Purchase").slice(-1)[0];
+        let lastPay=l.filter(x=>x.type=="Payment").slice(-1)[0];
+        tb.innerHTML+=`<tr onclick="openLedger('${v.id}')">
+        <td>${i+1}</td>
+        <td>${v.no}</td>
+        <td>${v.name}</td>
+        <td>${v.balance}</td>
+        <td>${lastP?lastP.amount+" ("+lastP.date+")":"-"}</td>
+        <td>${lastPay?lastPay.amount+" ("+lastPay.date+")":"-"}</td>
+        </tr>`;
+    });
+}
+function newVendor(){editingVendor=null; vendorForm.classList.remove("hidden");}
+function saveVendor(){
+    let v={id:Date.now().toString(),no:"V"+(vendors.length+1),name:v_name.value,location:v_location.value,balance:+v_opening.value||0};
+    vendors.push(v); ledgers[v.id]=[]; saveAll(); closeVendor(); renderVendors();
+}
+function closeVendor(){vendorForm.classList.add("hidden");}
+function openLedger(id){
+    let body=document.getElementById("ledgerBody");body.innerHTML="";
+    let bal=0;
+    (ledgers[id]||[]).forEach(l=>{
+        bal+=l.type=="Purchase"?l.amount:-l.amount;
+        body.innerHTML+=`<tr><td>${l.date}</td><td>${l.type}</td><td>${l.amount}</td><td>${bal}</td></tr>`;
+    });
+    vendorLedger.classList.remove("hidden");
+}
+function closeLedger(){vendorLedger.classList.add("hidden");}
+
+/* ================= PURCHASE ================= */
 function renderPurchases(){
     let tb=document.getElementById("purchaseList");tb.innerHTML="";
     purchases.forEach((p,i)=>{
-        tb.innerHTML+=`
-        <tr>
-        <td>${i+1}</td>
-        <td>${p.date}</td>
-        <td>${p.no}</td>
-        <td>${p.vendor}</td>
-        <td>${p.items}</td>
-        <td>${p.amount}</td>
-        <td>${p.discount}</td>
-        <td>${p.total}</td>
-        </tr>`;
+        tb.innerHTML+=`<tr><td>${i+1}</td><td>${p.date}</td><td>${p.no}</td><td>${p.vendor}</td>
+        <td>${p.items}</td><td>${p.amount}</td><td>${p.discount}</td><td>${p.total}</td></tr>`;
     });
 }
 function newPurchase(){
-    purchaseForm.classList.remove("hidden");
-    purLines.innerHTML="";
-    pur_vendor.innerHTML=vendors.map(v=>`<option>${v.name}</option>`).join("");
-    addPurLine();
+    purchaseForm.classList.remove("hidden");purLines.innerHTML="";
+    pur_vendor.innerHTML=vendors.map(v=>`<option>${v.name}</option>`).join("");addPurLine();
+}
+function toggleRetailRate(){
+    retailRate.classList.toggle("hidden",!setRetail.checked);
 }
 function addPurLine(){
     let i=purLines.children.length+1;
-    purLines.innerHTML+=`
-    <tr>
+    purLines.innerHTML+=`<tr>
     <td>${i}</td>
     <td><input onblur="purSearch(this)"></td>
-    <td></td>
-    <td></td>
+    <td></td><td></td>
     <td><input type="number" value="1" oninput="calcPurchase()"></td>
     <td><input type="number" oninput="calcPurchase()"></td>
-    <td>0</td>
-    </tr>`;
+    <td>0</td></tr>`;
 }
 function purSearch(el){
-    let val=el.value;
-    let p=products.find(x=>x.barcode==val||x.item==val||x.desc.includes(val));
-    if(p){
-        let r=el.parentNode.parentNode;
-        r.children[2].innerText=p.item;
-        r.children[3].innerText=p.desc;
-        r.children[5].children[0].value=p.rate;
-    }
+    let val=el.value; let p=products.find(x=>x.barcode==val||x.item==val||x.desc.includes(val));
+    if(p){let r=el.parentNode.parentNode;r.children[2].innerText=p.item;r.children[3].innerText=p.desc;r.children[5].children[0].value=p.rate;}
 }
 function calcPurchase(){
-    let amt=0;
-    [...purLines.children].forEach(r=>{
-        let q=r.children[4].children[0].value;
-        let rate=r.children[5].children[0].value;
-        let a=q*rate;
-        r.children[6].innerText=a;
-        amt+=a;
+    let amt=0;[...purLines.children].forEach(r=>{
+        let q=+r.children[4].children[0].value||0;
+        let rate=+r.children[5].children[0].value||0;
+        r.children[6].innerText=q*rate; amt+=q*rate;
     });
     purAmount.innerText=amt;
-    let dr=+purDiscRs.value||0;
-    purTotal.innerText=amt-dr;
+    let dr=+purDiscRs.value||0; purTotal.innerText=amt-dr;
 }
 function savePurchase(){
     let no="P"+(purchases.length+1);
-    purchases.push({
-        no,date:new Date().toLocaleDateString(),
-        vendor:pur_vendor.value,
-        items:purLines.children.length,
-        amount:purAmount.innerText,
-        discount:purDiscRs.value,
-        total:purTotal.innerText
-    });
-    saveAll();
-    renderPurchases();
-    closePurchase();
+    purchases.push({no,date:new Date().toLocaleDateString(),vendor:pur_vendor.value,
+        items:purLines.children.length,amount:purAmount.innerText,discount:purDiscRs.value,total:purTotal.innerText});
+    saveAll(); renderPurchases(); closePurchase();
 }
 function closePurchase(){purchaseForm.classList.add("hidden");}
 
-/* ========= INVOICE ========= */
+/* ================= INVOICE ================= */
 function renderInvoices(){
     let tb=document.getElementById("invoiceList");tb.innerHTML="";
     invoices.forEach((i,n)=>{
-        tb.innerHTML+=`
-        <tr>
-        <td>${n+1}</td>
-        <td>${i.no}</td>
-        <td>${i.date}</td>
-        <td>${i.qty}</td>
-        <td>${i.discount}</td>
-        <td>${i.total}</td>
-        <td>${i.time}</td>
-        </tr>`;
+        tb.innerHTML+=`<tr><td>${n+1}</td><td>${i.no}</td><td>${i.date}</td><td>${i.qty}</td>
+        <td>${i.discount}</td><td>${i.total}</td><td>${i.time}</td></tr>`;
     });
 }
-function newInvoice(){
-    invoiceForm.classList.remove("hidden");
-    invLines.innerHTML="";
-    addInvLine();
-}
+function newInvoice(){invoiceForm.classList.remove("hidden");invLines.innerHTML=""; addInvLine();}
 function addInvLine(){
     let i=invLines.children.length+1;
-    invLines.innerHTML+=`
-    <tr>
+    invLines.innerHTML+=`<tr>
     <td>${i}</td>
     <td><input onblur="invSearch(this)"></td>
-    <td></td>
-    <td></td>
+    <td></td><td></td>
     <td><input type="number" value="1" oninput="calcInvoice()"></td>
     <td></td>
     <td><input type="number" oninput="calcInvoice()"></td>
-    <td>0</td>
-    </tr>`;
+    <td>0</td></tr>`;
 }
 function invSearch(el){
-    let val=el.value;
-    let p=products.find(x=>x.barcode==val||x.item==val||x.desc.includes(val));
-    if(p && p.stock>0){
-        let r=el.parentNode.parentNode;
-        r.children[2].innerText=p.item;
-        r.children[3].innerText=p.desc;
-        r.children[5].innerText=p.rate;
-    }
+    let val=el.value; let p=products.find(x=>x.barcode==val||x.item==val||x.desc.includes(val));
+    if(p && p.stock>0){let r=el.parentNode.parentNode;r.children[2].innerText=p.item;r.children[3].innerText=p.desc;r.children[5].innerText=p.rate;}
 }
 function calcInvoice(){
-    let amt=0,qty=0;
-    [...invLines.children].forEach(r=>{
-        let q=r.children[4].children[0].value;
-        let rate=r.children[5].innerText||0;
-        let disc=r.children[6].children[0].value||0;
-        let a=q*rate-disc;
-        r.children[7].innerText=a;
-        amt+=a;
-        qty+=+q;
+    let amt=0,qty=0;[...invLines.children].forEach(r=>{
+        let q=+r.children[4].children[0].value||0;
+        let rate=+r.children[5].innerText||0;
+        let disc=+r.children[6].children[0].value||0;
+        r.children[7].innerText=q*rate-disc;
+        amt+=q*rate; qty+=q;
     });
     invAmount.innerText=amt;
-    let dr=+invDiscRs.value||0;
-    invTotal.innerText=amt-dr;
+    let dr=+invDiscRs.value||0; invTotal.innerText=amt-dr;
 }
 function saveInvoice(){
     let no="I"+(invoices.length+1);
-    invoices.push({
-        no,
-        date:new Date().toLocaleDateString(),
-        qty:[...invLines.children].length,
-        discount:invDiscRs.value,
-        total:invTotal.innerText,
-        time:new Date().toLocaleTimeString()
-    });
-    saveAll();
-    renderInvoices();
-    closeInvoice();
+    invoices.push({no,date:new Date().toLocaleDateString(),qty:[...invLines.children].length,
+        discount:invDiscRs.value,total:invTotal.innerText,time:new Date().toLocaleTimeString()});
+    saveAll(); renderInvoices(); closeInvoice();
 }
 function closeInvoice(){invoiceForm.classList.add("hidden");}
 
-/* ========= INIT ========= */
-renderPurchases();
-renderInvoices();
+/* ================= INIT ================= */
+renderProducts();renderVendors();renderPurchases();renderInvoices();
 
-/* ========= BACK BUTTON FIX ========= */
+/* ================= BACK BUTTON FIX ================= */
 history.pushState(null,null,location.href);
 window.onpopstate=function(){history.pushState(null,null,location.href);};
 
 </script>
+</body>
+</html>
