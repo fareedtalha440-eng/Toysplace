@@ -5,7 +5,6 @@
 <title>Toysplace POS</title>
 
 <style>
-/* ================= THEME ================= */
 :root{
   --dark:#0b1d33;
   --dark2:#102a52;
@@ -91,27 +90,22 @@ th{background:#eef2fb}
 <header>Toysplace Retail POS</header>
 
 <nav>
-  <div id="tab-products" class="active" onclick="openModule('products')">Products</div>
-  <div id="tab-vendors" onclick="openModule('vendors')">Vendors</div>
-  <div id="tab-customers" onclick="openModule('customers')">Customers</div>
-  <div id="tab-purchase" onclick="openModule('purchase')">Purchase</div>
-  <div id="tab-invoice" onclick="openModule('invoice')">Invoice</div>
-  <div id="tab-reports" onclick="openModule('reports')">Reports</div>
+  <div class="active" onclick="openModule('products')">Products</div>
+  <div onclick="openModule('vendors')">Vendors</div>
+  <div onclick="openModule('purchase')">Purchase</div>
+  <div onclick="openModule('invoice')">Invoice</div>
+  <div onclick="openModule('cash')">Cash In Hand</div>
+  <div onclick="openModule('reports')">Reports</div>
 </nav>
 
 <main>
 
-<!-- ================= PRODUCTS ================= -->
 <section id="products">
 <h2>Products</h2>
 <button onclick="uiProductNew()">Add Product</button>
-
 <table>
 <thead>
-<tr>
-  <th>#</th><th>Barcode</th><th>Item No</th><th>Description</th>
-  <th>Rate</th><th>Stock</th><th></th>
-</tr>
+<tr><th>#</th><th>Barcode</th><th>Item</th><th>Description</th><th>Rate</th><th>Stock</th><th></th></tr>
 </thead>
 <tbody id="productTable"></tbody>
 </table>
@@ -124,15 +118,13 @@ th{background:#eef2fb}
 <input id="p_stock" type="number" placeholder="Opening Stock">
 <br><br>
 <button onclick="productSave()">Save</button>
-<button class="gray" onclick="uiCloseForms()">Cancel</button>
+<button class="gray" onclick="uiClose()">Cancel</button>
 </div>
 </section>
 
-<!-- ================= VENDORS ================= -->
 <section id="vendors" class="hidden">
 <h2>Vendors</h2>
 <button onclick="uiVendorNew()">Add Vendor</button>
-
 <table>
 <thead>
 <tr><th>#</th><th>Name</th><th>Balance</th><th></th></tr>
@@ -145,7 +137,7 @@ th{background:#eef2fb}
 <input id="v_opening" type="number" placeholder="Opening Balance">
 <br><br>
 <button onclick="vendorSave()">Save</button>
-<button class="gray" onclick="uiCloseForms()">Cancel</button>
+<button class="gray" onclick="uiClose()">Cancel</button>
 </div>
 
 <div id="vendorLedger" class="card hidden">
@@ -159,67 +151,26 @@ th{background:#eef2fb}
 <br>
 <input id="vendorPayAmount" type="number" placeholder="Payment Amount">
 <button onclick="vendorAddPayment()">Add Payment</button>
-<button class="gray" onclick="uiCloseForms()">Close</button>
+<button class="gray" onclick="uiClose()">Close</button>
 </div>
 </section>
 
-<!-- ================= CUSTOMERS ================= -->
-<section id="customers" class="hidden">
-<h2>Customers</h2>
-<button onclick="uiCustomerNew()">Add Customer</button>
-
-<table>
-<thead>
-<tr><th>#</th><th>Name</th><th>Balance</th><th></th></tr>
-</thead>
-<tbody id="customerTable"></tbody>
-</table>
-
-<div id="customerForm" class="card hidden">
-<input id="c_name" placeholder="Customer Name">
-<br><br>
-<button onclick="customerSave()">Save</button>
-<button class="gray" onclick="uiCloseForms()">Cancel</button>
-</div>
-
-<div id="customerLedger" class="card hidden">
-<h3 id="customerLedgerTitle"></h3>
-<table>
-<thead>
-<tr><th>Date</th><th>Invoice</th><th>Amount</th><th>Balance</th></tr>
-</thead>
-<tbody id="customerLedgerTable"></tbody>
-</table>
-<button class="gray" onclick="uiCloseForms()">Close</button>
-</div>
-</section>
-
-<!-- PURCHASE / INVOICE / REPORTS PLACEHOLDERS -->
-<section id="purchase" class="hidden"><h2>Purchase</h2></section>
-<section id="invoice" class="hidden"><h2>Invoice</h2></section>
-<section id="reports" class="hidden"><h2>Reports</h2></section>
+<section id="purchase" class="hidden"></section>
+<section id="invoice" class="hidden"></section>
+<section id="cash" class="hidden"></section>
+<section id="reports" class="hidden"></section>
 
 </main>
 
 <script>
-/* =========================================================
-   CORE RULES (ENFORCED, NOT COMMENTS)
-   =========================================================
-   1. DB is single source of truth
-   2. No delete if referenced
-   3. Ledger is derived, never stored
-   4. All mutations re-render UI
-   5. No silent failures
-   ========================================================= */
-
 /* ================= DATABASE ================= */
 const DB = {
   products: JSON.parse(localStorage.getItem("products")||"[]"),
   vendors: JSON.parse(localStorage.getItem("vendors")||"[]"),
-  customers: JSON.parse(localStorage.getItem("customers")||"[]"),
   purchases: JSON.parse(localStorage.getItem("purchases")||"[]"),
   invoices: JSON.parse(localStorage.getItem("invoices")||"[]"),
-  vendorPayments: JSON.parse(localStorage.getItem("vendorPayments")||"[]")
+  vendorPayments: JSON.parse(localStorage.getItem("vendorPayments")||"[]"),
+  cashTransactions: JSON.parse(localStorage.getItem("cashTransactions")||"[]")
 };
 
 function saveDB(){
@@ -228,53 +179,37 @@ function saveDB(){
   });
 }
 
-function uid(prefix){
-  return prefix+"_"+Date.now()+"_"+Math.floor(Math.random()*1000);
-}
+function uid(p){return p+"_"+Date.now()+"_"+Math.floor(Math.random()*1000);}
 
-/* ================= NAVIGATION ================= */
+/* ================= NAV ================= */
 function openModule(id){
   document.querySelectorAll("section").forEach(s=>s.classList.add("hidden"));
-  document.querySelectorAll("nav div").forEach(d=>d.classList.remove("active"));
   document.getElementById(id).classList.remove("hidden");
-  document.getElementById("tab-"+id).classList.add("active");
-  renderAll();
-}
-
-/* ================= RENDER ALL ================= */
-function renderAll(){
-  renderProducts();
-  renderVendors();
-  renderCustomers();
+  if(id==="purchase") renderPurchaseUI();
+  if(id==="invoice") renderInvoiceUI();
+  if(id==="cash") renderCash();
+  if(id==="reports") renderReports();
 }
 
 /* ================= PRODUCTS ================= */
 function renderProducts(){
   productTable.innerHTML="";
-  DB.products.forEach((p,i)=>{
+  DB.products.filter(p=>p.itemNo).forEach((p,i)=>{
     productTable.innerHTML+=`
-    <tr>
-      <td>${i+1}</td>
-      <td>${p.barcode}</td>
-      <td>${p.itemNo}</td>
-      <td>${p.desc}</td>
-      <td>${p.rate}</td>
-      <td>${p.stock}</td>
-      <td>
-        <button class="red" onclick="productDelete('${p.id}')">X</button>
-      </td>
-    </tr>`;
+      <tr>
+        <td>${i+1}</td>
+        <td>${p.barcode||""}</td>
+        <td>${p.itemNo}</td>
+        <td>${p.desc}</td>
+        <td>${p.rate}</td>
+        <td>${p.stock}</td>
+        <td><button class="red" onclick="productDelete('${p.id}')">X</button></td>
+      </tr>`;
   });
 }
-
-function uiProductNew(){
-  uiCloseForms();
-  productForm.classList.remove("hidden");
-  p_barcode.value=p_item.value=p_desc.value=p_rate.value=p_stock.value="";
-}
-
+function uiProductNew(){uiClose();productForm.classList.remove("hidden");}
 function productSave(){
-  if(!p_item.value){alert("Item No required");return;}
+  if(!p_item.value) return alert("Item required");
   DB.products.push({
     id:uid("P"),
     barcode:p_barcode.value,
@@ -283,496 +218,213 @@ function productSave(){
     rate:+p_rate.value||0,
     stock:+p_stock.value||0
   });
-  saveDB(); uiCloseForms(); renderProducts();
+  saveDB();uiClose();renderProducts();
 }
-
 function productDelete(id){
-  if(DB.purchases.some(p=>p.items?.some(i=>i.productId===id)) ||
-     DB.invoices.some(i=>i.items?.some(x=>x.productId===id))){
-    alert("Product used in transactions");
-    return;
-  }
-  DB.products = DB.products.filter(p=>p.id!==id);
-  saveDB(); renderProducts();
+  if(DB.purchases.some(p=>p.items.some(i=>i.productId===id))||
+     DB.invoices.some(i=>i.items.some(x=>x.productId===id)))
+    return alert("Product used");
+  DB.products=DB.products.filter(p=>p.id!==id);
+  saveDB();renderProducts();
 }
 
 /* ================= VENDORS ================= */
+function ensureTestVendor(){
+  if(!DB.vendors.some(v=>v.id==="V_TEST")){
+    DB.vendors.unshift({id:"V_TEST",name:"test",opening:0});
+    saveDB();
+  }
+}
+ensureTestVendor();
+
+function vendorBalance(id){
+  let bal=DB.vendors.find(v=>v.id===id)?.opening||0;
+  DB.purchases.filter(p=>p.vendorId===id).forEach(p=>bal+=p.total);
+  DB.vendorPayments.filter(p=>p.vendorId===id).forEach(p=>bal-=p.amount);
+  return bal;
+}
 function renderVendors(){
   vendorTable.innerHTML="";
   DB.vendors.forEach((v,i)=>{
     vendorTable.innerHTML+=`
     <tr>
       <td>${i+1}</td>
-      <td><a href="#" onclick="vendorOpenLedger('${v.id}')">${v.name}</a></td>
-      <td>${vendorBalance(v.id)}</td>
-      <td><button class="red" onclick="vendorDelete('${v.id}')">X</button></td>
+      <td><a href="#" onclick="openVendorLedger('${v.id}')">${v.name}</a></td>
+      <td>${vendorBalance(v.id).toFixed(2)}</td>
+      <td>${v.id==="V_TEST"?"":`<button class="red" onclick="vendorDelete('${v.id}')">X</button>`}</td>
     </tr>`;
   });
 }
-
-function vendorBalance(id){
-  let bal = DB.vendors.find(v=>v.id===id)?.opening||0;
-  DB.purchases.filter(p=>p.vendorId===id).forEach(p=>bal+=p.total);
-  DB.vendorPayments.filter(p=>p.vendorId===id).forEach(p=>bal-=p.amount);
-  return bal.toFixed(2);
-}
-
-function uiVendorNew(){
-  uiCloseForms();
-  vendorForm.classList.remove("hidden");
-  v_name.value=v_opening.value="";
-}
-
+function uiVendorNew(){uiClose();vendorForm.classList.remove("hidden");}
 function vendorSave(){
-  if(!v_name.value){alert("Vendor name required");return;}
-  DB.vendors.push({
-    id:uid("V"),
-    name:v_name.value,
-    opening:+v_opening.value||0
-  });
-  saveDB(); uiCloseForms(); renderVendors();
+  if(!v_name.value) return alert("Name required");
+  DB.vendors.push({id:uid("V"),name:v_name.value,opening:+v_opening.value||0});
+  saveDB();uiClose();renderVendors();
 }
-
 function vendorDelete(id){
-  if(DB.purchases.some(p=>p.vendorId===id)){
-    alert("Vendor has purchases");
-    return;
-  }
+  if(id==="V_TEST") return;
+  if(DB.purchases.some(p=>p.vendorId===id)) return alert("Vendor has purchases");
   DB.vendors=DB.vendors.filter(v=>v.id!==id);
-  saveDB(); renderVendors();
+  saveDB();renderVendors();
 }
 
-function vendorOpenLedger(id){
-  uiCloseForms();
-  vendorLedger.classList.remove("hidden");
-  const v = DB.vendors.find(v=>v.id===id);
-  vendorLedgerTitle.innerText="Ledger - "+v.name;
-  vendorLedgerTable.innerHTML="";
-  let bal=v.opening||0;
-
-  vendorLedgerTable.innerHTML+=`
-  <tr><td>-</td><td>Opening</td><td></td><td>${bal}</td></tr>`;
-
-  DB.purchases.filter(p=>p.vendorId===id).forEach(p=>{
-    bal+=p.total;
-    vendorLedgerTable.innerHTML+=`
-    <tr><td>${p.date}</td><td>Purchase</td><td>+${p.total}</td><td>${bal}</td></tr>`;
+/* ================= CASH ENGINE ================= */
+function cashBalance(){
+  return DB.cashTransactions.reduce((s,t)=>t.type==="IN"?s+t.amount:s-t.amount,0);
+}
+function cashAdd(type,amount,ref,note){
+  if(type==="OUT" && cashBalance()<amount) return alert("Insufficient Cash");
+  DB.cashTransactions.push({
+    id:uid("CASH"),
+    date:new Date().toLocaleDateString(),
+    type,amount,ref,note
   });
-
-  DB.vendorPayments.filter(p=>p.vendorId===id).forEach(p=>{
-    bal-=p.amount;
-    vendorLedgerTable.innerHTML+=`
-    <tr><td>${p.date}</td><td>Payment</td><td>-${p.amount}</td><td>${bal}</td></tr>`;
-  });
+  saveDB();
 }
 
-function vendorAddPayment(){
-  if(!vendorPayAmount.value){alert("Enter amount");return;}
-  DB.vendorPayments.push({
-    id:uid("PAY"),
-    vendorId:DB.vendors.find(v=>vendorLedgerTitle.innerText.includes(v.name)).id,
-    amount:+vendorPayAmount.value,
-    date:new Date().toLocaleDateString()
-  });
-  saveDB(); vendorPayAmount.value=""; renderVendors(); vendorOpenLedger(DB.vendorPayments.slice(-1)[0].vendorId);
-}
-
-/* ================= CUSTOMERS ================= */
-function renderCustomers(){
-  customerTable.innerHTML="";
-  DB.customers.forEach((c,i)=>{
-    customerTable.innerHTML+=`
-    <tr>
-      <td>${i+1}</td>
-      <td><a href="#" onclick="customerOpenLedger('${c.id}')">${c.name}</a></td>
-      <td>${customerBalance(c.id)}</td>
-      <td><button class="red" onclick="customerDelete('${c.id}')">X</button></td>
-    </tr>`;
-  });
-}
-
-function customerBalance(id){
-  let bal=0;
-  DB.invoices.filter(i=>i.customerId===id).forEach(i=>bal+=i.total);
-  return bal.toFixed(2);
-}
-
-function uiCustomerNew(){
-  uiCloseForms();
-  customerForm.classList.remove("hidden");
-  c_name.value="";
-}
-
-function customerSave(){
-  if(!c_name.value){alert("Customer name required");return;}
-  DB.customers.push({id:uid("C"),name:c_name.value});
-  saveDB(); uiCloseForms(); renderCustomers();
-}
-
-function customerDelete(id){
-  if(DB.invoices.some(i=>i.customerId===id)){
-    alert("Customer has invoices");
-    return;
-  }
-  DB.customers=DB.customers.filter(c=>c.id!==id);
-  saveDB(); renderCustomers();
-}
-
-function customerOpenLedger(id){
-  uiCloseForms();
-  customerLedger.classList.remove("hidden");
-  const c=DB.customers.find(c=>c.id===id);
-  customerLedgerTitle.innerText="Ledger - "+c.name;
-  customerLedgerTable.innerHTML="";
-  let bal=0;
-  DB.invoices.filter(i=>i.customerId===id).forEach(i=>{
-    bal+=i.total;
-    customerLedgerTable.innerHTML+=`
-    <tr><td>${i.date}</td><td>${i.number||"-"}</td><td>${i.total}</td><td>${bal}</td></tr>`;
-  });
-}
-
-/* ================= UI ================= */
-function uiCloseForms(){
+/* ================= UI HELPERS ================= */
+function uiClose(){
   document.querySelectorAll(".card").forEach(c=>c.classList.add("hidden"));
 }
+renderProducts();renderVendors();
+</script>
+<script>
+/* ================= PURCHASE ================= */
+function renderPurchaseUI(){
+document.getElementById("purchase").innerHTML=`
+<h2>Purchase</h2>
+<div class="card">
+<select id="pur_vendor"></select>
+<table>
+<thead><tr><th>#</th><th>Product</th><th>Qty</th><th>Rate</th><th>Amt</th><th></th></tr></thead>
+<tbody id="pur_items"></tbody>
+</table>
+<button onclick="addPurRow()">Add</button>
+<h3>Total: <span id="pur_total">0</span></h3>
+<button onclick="savePurchase()">Save</button>
+</div>`;
+fillVendorSelect();purRows=[];
+}
+let purRows=[];
+function fillVendorSelect(){
+  pur_vendor.innerHTML="";
+  DB.vendors.forEach(v=>pur_vendor.innerHTML+=`<option value="${v.id}">${v.name}</option>`);
+}
+function addPurRow(){purRows.push({productId:"",qty:0,rate:0});renderPur();}
+function renderPur(){
+  pur_items.innerHTML="";
+  purRows.forEach((r,i)=>{
+    pur_items.innerHTML+=`
+    <tr>
+      <td>${i+1}</td>
+      <td><select onchange="purRows[${i}].productId=this.value">${DB.products.map(p=>`<option value="${p.id}">${p.itemNo}</option>`).join("")}</select></td>
+      <td><input type="number" onchange="purRows[${i}].qty=+this.value;renderPur()"></td>
+      <td><input type="number" onchange="purRows[${i}].rate=+this.value;renderPur()"></td>
+      <td>${(r.qty*r.rate).toFixed(2)}</td>
+      <td><button class="red" onclick="purRows.splice(${i},1);renderPur()">X</button></td>
+    </tr>`;
+  });
+  pur_total.innerText=purRows.reduce((s,r)=>s+r.qty*r.rate,0).toFixed(2);
+}
+function savePurchase(){
+  const total=purRows.reduce((s,r)=>s+r.qty*r.rate,0);
+  DB.purchases.push({id:uid("PUR"),vendorId:pur_vendor.value,date:new Date().toLocaleDateString(),items:purRows,total});
+  purRows.forEach(r=>DB.products.find(p=>p.id===r.productId).stock+=r.qty);
+  saveDB();renderProducts();renderVendors();alert("Saved");
+}
 
-/* INIT */
-renderAll();
+/* ================= INVOICE ================= */
+function renderInvoiceUI(){
+document.getElementById("invoice").innerHTML=`
+<h2>Invoice</h2>
+<div class="card">
+<table>
+<thead><tr><th>#</th><th>Product</th><th>Qty</th><th>Rate</th><th>Amt</th><th></th></tr></thead>
+<tbody id="inv_items"></tbody>
+</table>
+<button onclick="addInvRow()">Add</button>
+<h3>Total: <span id="inv_total">0</span></h3>
+<button onclick="saveInvoice()">Save</button>
+</div>`;
+invRows=[];
+}
+let invRows=[];
+function addInvRow(){invRows.push({productId:"",qty:0,rate:0});renderInv();}
+function renderInv(){
+  inv_items.innerHTML="";
+  invRows.forEach((r,i)=>{
+    inv_items.innerHTML+=`
+    <tr>
+      <td>${i+1}</td>
+      <td><select onchange="invRows[${i}].productId=this.value">${DB.products.map(p=>`<option value="${p.id}">${p.itemNo}</option>`).join("")}</select></td>
+      <td><input type="number" onchange="invRows[${i}].qty=+this.value;renderInv()"></td>
+      <td><input type="number" onchange="invRows[${i}].rate=+this.value;renderInv()"></td>
+      <td>${(r.qty*r.rate).toFixed(2)}</td>
+      <td><button class="red" onclick="invRows.splice(${i},1);renderInv()">X</button></td>
+    </tr>`;
+  });
+  inv_total.innerText=invRows.reduce((s,r)=>s+r.qty*r.rate,0).toFixed(2);
+}
+function saveInvoice(){
+  const total=invRows.reduce((s,r)=>s+r.qty*r.rate,0);
+  invRows.forEach(r=>{
+    if(DB.products.find(p=>p.id===r.productId).stock<r.qty)
+      throw alert("Stock low");
+  });
+  DB.invoices.push({id:uid("INV"),date:new Date().toLocaleDateString(),items:invRows,total});
+  invRows.forEach(r=>DB.products.find(p=>p.id===r.productId).stock-=r.qty);
+  cashAdd("IN",total,"INVOICE","Sale");
+  saveDB();renderProducts();alert("Invoice Saved");
+}
+
+/* ================= CASH UI ================= */
+document.getElementById("cash").innerHTML=`
+<h2>Cash In Hand</h2>
+<div class="card"><h3>Balance: <span id="cashBal"></span></h3></div>
+<div class="card">
+<select id="c_type"><option value="IN">IN</option><option value="OUT">OUT</option></select>
+<input id="c_amt" type="number">
+<input id="c_note" placeholder="Note">
+<button onclick="manualCash()">Save</button>
+</div>
+<div class="card">
+<table>
+<thead><tr><th>#</th><th>Date</th><th>Type</th><th>Amt</th><th>Note</th><th>Bal</th></tr></thead>
+<tbody id="cashTable"></tbody>
+</table>
+</div>`;
+
+function manualCash(){
+  cashAdd(c_type.value,+c_amt.value,"MANUAL",c_note.value);
+  renderCash();
+}
+function renderCash(){
+  cashBal.innerText=cashBalance().toFixed(2);
+  cashTable.innerHTML="";
+  let bal=0;
+  DB.cashTransactions.forEach((t,i)=>{
+    bal=t.type==="IN"?bal+t.amount:bal-t.amount;
+    cashTable.innerHTML+=`
+    <tr><td>${i+1}</td><td>${t.date}</td><td>${t.type}</td><td>${t.amount}</td><td>${t.note}</td><td>${bal}</td></tr>`;
+  });
+}
+
+/* ================= REPORTS ================= */
+document.getElementById("reports").innerHTML=`
+<h2>Reports</h2>
+<p>Products: <b id="r_prod"></b></p>
+<p>Vendors: <b id="r_vend"></b></p>
+<p>Purchases: <b id="r_pur"></b></p>
+<p>Invoices: <b id="r_inv"></b></p>
+<p>Cash In Hand: <b id="r_cash"></b></p>`;
+function renderReports(){
+  r_prod.innerText=DB.products.length;
+  r_vend.innerText=DB.vendors.length;
+  r_pur.innerText=DB.purchases.length;
+  r_inv.innerText=DB.invoices.length;
+  r_cash.innerText=cashBalance().toFixed(2);
+}
 </script>
 
 </body>
 </html>
-
-<script>
-/* =========================================================
-   PURCHASE MODULE — FULL ENGINE
-   ========================================================= */
-
-/* ---------- UI ---------- */
-document.getElementById("purchase").innerHTML = `
-<h2>Purchase</h2>
-
-<div class="card">
-  <label>Vendor</label>
-  <select id="pur_vendor"></select>
-
-  <label>Date</label>
-  <input id="pur_date" type="date">
-
-  <table>
-    <thead>
-      <tr>
-        <th>#</th><th>Product</th><th>Qty</th><th>Rate</th><th>Amount</th><th></th>
-      </tr>
-    </thead>
-    <tbody id="pur_items"></tbody>
-  </table>
-
-  <button onclick="purchaseAddRow()">Add Item</button>
-
-  <h3>Total: <span id="pur_total">0</span></h3>
-
-  <button onclick="purchaseSave()">Save Purchase</button>
-  <button class="gray" onclick="purchaseReset()">Reset</button>
-</div>
-
-<div class="card">
-  <h3>Purchase List</h3>
-  <table>
-    <thead>
-      <tr><th>#</th><th>Date</th><th>Vendor</th><th>Total</th><th></th></tr>
-    </thead>
-    <tbody id="purchaseList"></tbody>
-  </table>
-</div>
-`;
-
-/* ---------- DATA ---------- */
-let purchaseDraft = [];
-
-/* ---------- HELPERS ---------- */
-function fillVendorSelect(){
-  pur_vendor.innerHTML = `<option value="">Select Vendor</option>`;
-  DB.vendors.forEach(v=>{
-    pur_vendor.innerHTML += `<option value="${v.id}">${v.name}</option>`;
-  });
-}
-
-function productSelectHTML(){
-  let h = `<option value="">Select</option>`;
-  DB.products.forEach(p=>{
-    h += `<option value="${p.id}">${p.itemNo} - ${p.desc}</option>`;
-  });
-  return h;
-}
-
-/* ---------- ROW MANAGEMENT ---------- */
-function purchaseAddRow(){
-  purchaseDraft.push({productId:"",qty:0,rate:0});
-  renderPurchaseRows();
-}
-
-function renderPurchaseRows(){
-  pur_items.innerHTML="";
-  purchaseDraft.forEach((r,i)=>{
-    pur_items.innerHTML+=`
-    <tr>
-      <td>${i+1}</td>
-      <td>
-        <select onchange="purchaseSetProduct(${i},this.value)">
-          ${productSelectHTML()}
-        </select>
-      </td>
-      <td><input type="number" onchange="purchaseSetQty(${i},this.value)"></td>
-      <td><input type="number" onchange="purchaseSetRate(${i},this.value)"></td>
-      <td>${(r.qty*r.rate).toFixed(2)}</td>
-      <td><button class="red" onclick="purchaseRemoveRow(${i})">X</button></td>
-    </tr>`;
-  });
-  calcPurchaseTotal();
-}
-
-function purchaseSetProduct(i,val){
-  purchaseDraft[i].productId = val;
-}
-
-function purchaseSetQty(i,val){
-  purchaseDraft[i].qty = +val;
-  renderPurchaseRows();
-}
-
-function purchaseSetRate(i,val){
-  purchaseDraft[i].rate = +val;
-  renderPurchaseRows();
-}
-
-function purchaseRemoveRow(i){
-  purchaseDraft.splice(i,1);
-  renderPurchaseRows();
-}
-
-/* ---------- SAVE ---------- */
-function calcPurchaseTotal(){
-  let t = purchaseDraft.reduce((s,r)=>s+(r.qty*r.rate),0);
-  pur_total.innerText = t.toFixed(2);
-}
-
-function purchaseSave(){
-  if(!pur_vendor.value){ alert("Vendor required"); return; }
-  if(purchaseDraft.length===0){ alert("Add items"); return; }
-
-  for(let r of purchaseDraft){
-    if(!r.productId || r.qty<=0){ alert("Invalid row"); return; }
-  }
-
-  let total = purchaseDraft.reduce((s,r)=>s+(r.qty*r.rate),0);
-
-  const pid = uid("PUR");
-  DB.purchases.push({
-    id:pid,
-    vendorId:pur_vendor.value,
-    date:pur_date.value || new Date().toLocaleDateString(),
-    items:JSON.parse(JSON.stringify(purchaseDraft)),
-    total:total
-  });
-
-  /* STOCK IN */
-  purchaseDraft.forEach(r=>{
-    DB.products.find(p=>p.id===r.productId).stock += r.qty;
-  });
-
-  saveDB();
-  purchaseReset();
-  renderPurchases();
-  renderProducts();
-  renderVendors();
-}
-
-function purchaseReset(){
-  purchaseDraft=[];
-  pur_vendor.value="";
-  pur_date.value="";
-  renderPurchaseRows();
-}
-
-/* ---------- LIST ---------- */
-function renderPurchases(){
-  purchaseList.innerHTML="";
-  DB.purchases.forEach((p,i)=>{
-    const v = DB.vendors.find(x=>x.id===p.vendorId)?.name||"";
-    purchaseList.innerHTML+=`
-    <tr>
-      <td>${i+1}</td>
-      <td>${p.date}</td>
-      <td>${v}</td>
-      <td>${p.total}</td>
-      <td>
-        <button class="red" onclick="purchaseDelete('${p.id}')">Delete</button>
-      </td>
-    </tr>`;
-  });
-}
-
-/* ---------- DELETE WITH REVERSAL ---------- */
-function purchaseDelete(id){
-  const p = DB.purchases.find(x=>x.id===id);
-  if(!p) return;
-
-  if(!confirm("Delete purchase and reverse stock?")) return;
-
-  p.items.forEach(r=>{
-    DB.products.find(pr=>pr.id===r.productId).stock -= r.qty;
-  });
-
-  DB.purchases = DB.purchases.filter(x=>x.id!==id);
-  saveDB();
-  renderPurchases();
-  renderProducts();
-  renderVendors();
-}
-
-/* INIT */
-fillVendorSelect();
-renderPurchases();
-
-
-/* =========================================================
-   INVOICE MODULE — FULL ENGINE
-   ========================================================= */
-
-document.getElementById("invoice").innerHTML = `
-<h2>Invoice</h2>
-
-<div class="card">
-  <label>Customer</label>
-  <select id="inv_customer"></select>
-
-  <label>Date</label>
-  <input id="inv_date" type="date">
-
-  <table>
-    <thead>
-      <tr>
-        <th>#</th><th>Product</th><th>Qty</th><th>Rate</th><th>Amount</th><th></th>
-      </tr>
-    </thead>
-    <tbody id="inv_items"></tbody>
-  </table>
-
-  <button onclick="invoiceAddRow()">Add Item</button>
-
-  <h3>Total: <span id="inv_total">0</span></h3>
-
-  <button onclick="invoiceSave()">Save Invoice</button>
-  <button class="gray" onclick="invoiceReset()">Reset</button>
-</div>
-
-<div class="card">
-  <h3>Invoice List</h3>
-  <table>
-    <thead>
-      <tr><th>#</th><th>Date</th><th>Customer</th><th>Total</th><th></th></tr>
-    </thead>
-    <tbody id="invoiceList"></tbody>
-  </table>
-</div>
-`;
-
-/* ---------- DATA ---------- */
-let invoiceDraft = [];
-
-/* ---------- HELPERS ---------- */
-function fillCustomerSelect(){
-  inv_customer.innerHTML = `<option value="">Select Customer</option>`;
-  DB.customers.forEach(c=>{
-    inv_customer.innerHTML+=`<option value="${c.id}">${c.name}</option>`;
-  });
-}
-
-/* ---------- ROWS ---------- */
-function invoiceAddRow(){
-  invoiceDraft.push({productId:"",qty:0,rate:0});
-  renderInvoiceRows();
-}
-
-function renderInvoiceRows(){
-  inv_items.innerHTML="";
-  invoiceDraft.forEach((r,i)=>{
-    inv_items.innerHTML+=`
-    <tr>
-      <td>${i+1}</td>
-      <td>
-        <select onchange="invoiceSetProduct(${i},this.value)">
-          ${productSelectHTML()}
-        </select>
-      </td>
-      <td><input type="number" onchange="invoiceSetQty(${i},this.value)"></td>
-      <td><input type="number" onchange="invoiceSetRate(${i},this.value)"></td>
-      <td>${(r.qty*r.rate).toFixed(2)}</td>
-      <td><button class="red" onclick="invoiceRemoveRow(${i})">X</button></td>
-    </tr>`;
-  });
-  calcInvoiceTotal();
-}
-
-function invoiceSetProduct(i,val){ invoiceDraft[i].productId=val; }
-function invoiceSetQty(i,val){ invoiceDraft[i].qty=+val; renderInvoiceRows(); }
-function invoiceSetRate(i,val){ invoiceDraft[i].rate=+val; renderInvoiceRows(); }
-function invoiceRemoveRow(i){ invoiceDraft.splice(i,1); renderInvoiceRows(); }
-
-/* ---------- SAVE ---------- */
-function calcInvoiceTotal(){
-  inv_total.innerText = invoiceDraft.reduce((s,r)=>s+(r.qty*r.rate),0).toFixed(2);
-}
-
-function invoiceSave(){
-  if(!inv_customer.value){ alert("Customer required"); return; }
-  if(invoiceDraft.length===0){ alert("Add items"); return; }
-
-  for(let r of invoiceDraft){
-    const p = DB.products.find(x=>x.id===r.productId);
-    if(!p || r.qty<=0){ alert("Invalid row"); return; }
-    if(p.stock < r.qty){ alert("Insufficient stock"); return; }
-  }
-
-  const total = invoiceDraft.reduce((s,r)=>s+(r.qty*r.rate),0);
-
-  DB.invoices.push({
-    id:uid("INV"),
-    customerId:inv_customer.value,
-    date:inv_date.value || new Date().toLocaleDateString(),
-    items:JSON.parse(JSON.stringify(invoiceDraft)),
-    total:total
-  });
-
-  /* STOCK OUT */
-  invoiceDraft.forEach(r=>{
-    DB.products.find(p=>p.id===r.productId).stock -= r.qty;
-  });
-
-  saveDB();
-  invoiceReset();
-  renderInvoices();
-  renderProducts();
-  renderCustomers();
-}
-
-function invoiceReset(){
-  invoiceDraft=[];
-  inv_customer.value="";
-  inv_date.value="";
-  renderInvoiceRows();
-}
-
-/* ---------- LIST ---------- */
-function renderInvoices(){
-  invoiceList.innerHTML="";
-  DB.invoices.forEach((i,x)=>{
-    const c = DB.customers.find(c=>c.id===i.customerId)?.name||"";
-    invoiceList.innerHTML+=`
-    <tr>
-      <td>${x+1}</td>
-      <td>${i.date}</td>
-      <td>${c}</td>
-      <td>${i.total
