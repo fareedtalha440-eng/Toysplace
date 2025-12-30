@@ -1,252 +1,567 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Toysplace POS</title>
 <style>
-body{margin:0;font-family:Arial;background:#f4f6fb}
-header{background:#0b2a4a;color:#fff;padding:12px 20px;font-size:20px}
-nav{background:#102f52;display:flex}
-nav span{color:#cfd8e3;padding:12px 16px;cursor:pointer}
-nav span.active{color:#fff;border-bottom:3px solid #fff}
-section{display:none;padding:15px}
-h3{margin:0 0 10px;color:#0b2a4a}
-button{background:#0b2a4a;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer}
-table{width:100%;border-collapse:collapse;background:#fff}
-th,td{border:1px solid #ccc;padding:6px;font-size:13px}
-th{background:#e9eef5}
-input,select{width:100%;padding:4px}
-.total{margin-top:10px;font-weight:bold}
+body{
+    margin:0;
+    font-family:Segoe UI,Arial;
+    background:#0b1d33;
+    color:#eaf0f6;
+}
+header{
+    background:#08162a;
+    padding:14px;
+    font-size:20px;
+    text-align:center;
+    font-weight:600;
+}
+nav{
+    width:220px;
+    background:#08162a;
+    height:100vh;
+    position:fixed;
+    top:0;
+    left:0;
+    padding-top:60px;
+}
+nav div{
+    padding:14px 20px;
+    cursor:pointer;
+}
+nav div:hover{
+    background:#10284d;
+}
+.active{
+    border-left:4px solid #fff;
+    background:#10284d;
+}
+main{
+    margin-left:220px;
+    padding:20px;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:15px;
+}
+th,td{
+    border:1px solid #1e3a5f;
+    padding:8px;
+    text-align:left;
+}
+th{
+    background:#10284d;
+}
+button{
+    background:#1e90ff;
+    border:none;
+    padding:8px 14px;
+    color:#fff;
+    cursor:pointer;
+    border-radius:4px;
+}
+input{
+    padding:6px;
+    width:100%;
+    box-sizing:border-box;
+}
+.form-row{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:12px;
+    margin-top:10px;
+}
+.hidden{display:none;}
 </style>
 </head>
 
 <body>
-<header>Toysplace POS</header>
+
+<header>Toysplace Retail POS</header>
 
 <nav>
-<span class="active" onclick="openTab('invoice',this)">Invoice</span>
-<span onclick="openTab('purchase',this)">Purchase</span>
-<span onclick="openTab('product',this)">Product</span>
-<span onclick="openTab('vendor',this)">Vendor</span>
-<span onclick="openTab('settings',this)">Settings</span>
+<div onclick="openModule('products')" class="active" id="tab-products">Product</div>
+<div onclick="openModule('vendors')" id="tab-vendors">Vendor</div>
+<div onclick="openModule('purchase')" id="tab-purchase">Purchase</div>
+<div onclick="openModule('invoice')" id="tab-invoice">Invoice</div>
+<div onclick="openModule('reports')" id="tab-reports">Reports</div>
+<div onclick="openModule('settings')" id="tab-settings" style="position:absolute;bottom:0;width:100%;">Settings</div>
 </nav>
 
-<section id="invoice"></section>
-<section id="purchase"></section>
-<section id="product"></section>
-<section id="vendor"></section>
-<section id="settings"></section>
+<main>
+
+<!-- PRODUCTS -->
+<section id="products">
+<h2>Products</h2>
+<button onclick="newProduct()">Add Product</button>
+<table>
+<thead>
+<tr>
+<th>S No</th>
+<th>Barcode</th>
+<th>Item No</th>
+<th>Description</th>
+<th>Retail Rate</th>
+<th>Stock</th>
+</tr>
+</thead>
+<tbody id="productTable"></tbody>
+</table>
+
+<div id="productForm" class="hidden">
+<h3>Product Entry</h3>
+<div class="form-row">
+<input id="p_barcode" placeholder="Barcode">
+<input id="p_item" placeholder="Item No">
+<input id="p_desc" placeholder="Description">
+<input id="p_rate" type="number" placeholder="Retail Rate">
+<input id="p_stock" type="number" placeholder="Stock">
+</div>
+<br>
+<button onclick="saveProduct()">Save</button>
+<button onclick="closeProduct()">Cancel</button>
+</div>
+</section>
+
+<!-- VENDORS -->
+<section id="vendors" class="hidden">
+<h2>Vendors</h2>
+<button onclick="newVendor()">Add Vendor</button>
+<table>
+<thead>
+<tr>
+<th>S No</th>
+<th>Vendor No</th>
+<th>Name</th>
+<th>Balance</th>
+<th>Last Purchase</th>
+<th>Last Payment</th>
+</tr>
+</thead>
+<tbody id="vendorTable"></tbody>
+</table>
+
+<div id="vendorForm" class="hidden">
+<h3>Vendor Entry</h3>
+<div class="form-row">
+<input id="v_name" placeholder="Name">
+<input id="v_location" placeholder="Location">
+<input id="v_opening" type="number" placeholder="Opening Balance">
+<input id="v_limit" type="number" placeholder="Credit Limit">
+</div>
+<br>
+<button onclick="saveVendor()">Save</button>
+<button onclick="closeVendor()">Cancel</button>
+</div>
+
+<div id="vendorLedger" class="hidden">
+<h3>Vendor Ledger</h3>
+<table>
+<thead>
+<tr><th>Date</th><th>Type</th><th>Amount</th><th>Balance</th></tr>
+</thead>
+<tbody id="ledgerBody"></tbody>
+</table>
+<button onclick="closeLedger()">Close</button>
+</div>
+</section>
+
+</main>
 
 <script>
-/* ---------------- DATABASE ---------------- */
-let db = JSON.parse(localStorage.getItem("tpdb")) || {
-  products:[],
-  vendors:[],
-  invoices:[],
-  purchases:[]
-};
-function saveDB(){localStorage.setItem("tpdb",JSON.stringify(db));}
+/* ---------- CORE STORAGE ---------- */
+let products = JSON.parse(localStorage.getItem("products")||"[]");
+let vendors = JSON.parse(localStorage.getItem("vendors")||"[]");
+let ledgers = JSON.parse(localStorage.getItem("ledgers")||"{}");
+let editingProduct = null;
+let editingVendor = null;
 
-/* ---------------- NAV ---------------- */
-function openTab(id,el){
-  document.querySelectorAll("nav span").forEach(x=>x.classList.remove("active"));
-  el.classList.add("active");
-  document.querySelectorAll("section").forEach(s=>s.style.display="none");
-  document.getElementById(id).style.display="block";
-  window["render_"+id]();
-}
-openTab("invoice",document.querySelector("nav span"));
-
-/* ---------------- PRODUCT ---------------- */
-function render_product(){
-  let h=`<h3>Products</h3>
-  <button onclick="productForm()">New Product</button>
-  <table><tr>
-  <th>#</th><th>Name</th><th>Rate</th><th>Stock</th>
-  </tr>`;
-  db.products.forEach((p,i)=>{
-    h+=`<tr onclick="productForm(${i})">
-      <td>${i+1}</td><td>${p.name}</td><td>${p.rate}</td><td>${p.stock}</td>
-    </tr>`;
-  });
-  h+=`</table>`;
-  product.innerHTML=h;
+function saveAll(){
+    localStorage.setItem("products",JSON.stringify(products));
+    localStorage.setItem("vendors",JSON.stringify(vendors));
+    localStorage.setItem("ledgers",JSON.stringify(ledgers));
 }
 
-function productForm(i){
-  let p=i!=null?db.products[i]:{name:"",rate:0,stock:0};
-  product.innerHTML=`
-  <h3>${i!=null?"Edit":"New"} Product</h3>
-  <input id="pn" placeholder="Name" value="${p.name}"><br><br>
-  <input id="pr" type="number" placeholder="Rate" value="${p.rate}"><br><br>
-  <input id="ps" type="number" placeholder="Stock" value="${p.stock}"><br><br>
-  <button onclick="saveProduct(${i})">Save</button>
-  <button onclick="render_product()">Back</button>`;
+/* ---------- NAV ---------- */
+function openModule(m){
+    document.querySelectorAll("section").forEach(s=>s.classList.add("hidden"));
+    document.querySelectorAll("nav div").forEach(d=>d.classList.remove("active"));
+    document.getElementById(m).classList.remove("hidden");
+    document.getElementById("tab-"+m).classList.add("active");
 }
 
-function saveProduct(i){
-  let p={name:pn.value,rate:+pr.value,stock:+ps.value};
-  if(i!=null) db.products[i]=p; else db.products.push(p);
-  saveDB(); render_product();
+/* ---------- PRODUCTS ---------- */
+function renderProducts(){
+    let tb=document.getElementById("productTable");tb.innerHTML="";
+    products.forEach((p,i)=>{
+        tb.innerHTML+=`
+        <tr onclick="editProduct(${i})">
+        <td>${i+1}</td>
+        <td>${p.barcode}</td>
+        <td>${p.item}</td>
+        <td>${p.desc}</td>
+        <td>${p.rate}</td>
+        <td>${p.stock}</td>
+        </tr>`;
+    });
 }
-
-/* ---------------- VENDOR ---------------- */
-function render_vendor(){
-  let h=`<h3>Vendors</h3>
-  <button onclick="vendorForm()">New Vendor</button>
-  <table><tr>
-  <th>#</th><th>Name</th><th>Balance</th><th>Last Purchase</th><th>Last Payment</th>
-  </tr>`;
-  db.vendors.forEach((v,i)=>{
-    h+=`<tr>
-      <td>${i+1}</td><td>${v.name}</td>
-      <td>${v.balance}</td><td>${v.lastPurchase}</td><td>${v.lastPayment}</td>
-    </tr>`;
-  });
-  h+=`</table>`;
-  vendor.innerHTML=h;
+function newProduct(){
+    editingProduct=null;
+    document.getElementById("productForm").classList.remove("hidden");
 }
-
-function vendorForm(){
-  vendor.innerHTML=`
-  <h3>New Vendor</h3>
-  <input id="vn" placeholder="Vendor Name"><br><br>
-  <input id="vb" type="number" placeholder="Opening Balance"><br><br>
-  <button onclick="saveVendor()">Save</button>
-  <button onclick="render_vendor()">Back</button>`;
+function editProduct(i){
+    editingProduct=i;
+    let p=products[i];
+    p_barcode.value=p.barcode;
+    p_item.value=p.item;
+    p_desc.value=p.desc;
+    p_rate.value=p.rate;
+    p_stock.value=p.stock;
+    productForm.classList.remove("hidden");
 }
+function saveProduct(){
+    let p={
+        barcode:p_barcode.value,
+        item:p_item.value,
+        desc:p_desc.value,
+        rate:+p_rate.value,
+        stock:+p_stock.value
+    };
+    if(editingProduct==null) products.push(p);
+    else products[editingProduct]=p;
+    saveAll();closeProduct();renderProducts();
+}
+function closeProduct(){productForm.classList.add("hidden");}
 
+/* ---------- VENDORS ---------- */
+function renderVendors(){
+    let tb=document.getElementById("vendorTable");tb.innerHTML="";
+    vendors.forEach((v,i)=>{
+        let l=ledgers[v.id]||[];
+        let lastP=l.filter(x=>x.type=="Purchase").slice(-1)[0];
+        let lastPay=l.filter(x=>x.type=="Payment").slice(-1)[0];
+        tb.innerHTML+=`
+        <tr onclick="openLedger('${v.id}')">
+        <td>${i+1}</td>
+        <td>${v.no}</td>
+        <td>${v.name}</td>
+        <td>${v.balance}</td>
+        <td>${lastP?lastP.amount+" ("+lastP.date+")":"-"}</td>
+        <td>${lastPay?lastPay.amount+" ("+lastPay.date+")":"-"}</td>
+        </tr>`;
+    });
+}
+function newVendor(){
+    editingVendor=null;
+    vendorForm.classList.remove("hidden");
+}
 function saveVendor(){
-  db.vendors.push({
-    name:vn.value,
-    balance:+vb.value,
-    lastPurchase:0,
-    lastPayment:0
-  });
-  saveDB(); render_vendor();
+    let v={
+        id:Date.now().toString(),
+        no:"V"+(vendors.length+1),
+        name:v_name.value,
+        location:v_location.value,
+        balance:+v_opening.value||0
+    };
+    vendors.push(v);
+    ledgers[v.id]=[];
+    saveAll();closeVendor();renderVendors();
 }
+function closeVendor(){vendorForm.classList.add("hidden");}
+function openLedger(id){
+    let body=document.getElementById("ledgerBody");body.innerHTML="";
+    let bal=0;
+    (ledgers[id]||[]).forEach(l=>{
+        bal+=l.type=="Purchase"?l.amount:-l.amount;
+        body.innerHTML+=`<tr><td>${l.date}</td><td>${l.type}</td><td>${l.amount}</td><td>${bal}</td></tr>`;
+    });
+    vendorLedger.classList.remove("hidden");
+}
+function closeLedger(){vendorLedger.classList.add("hidden");}
 
-/* ---------------- PURCHASE ---------------- */
-function render_purchase(){
-  purchase.innerHTML=`<h3>Purchase</h3>
-  <button onclick="newPurchase()">New Purchase</button>`;
-}
-
-function newPurchase(){
-  purchase.innerHTML=`
-  <h3>New Purchase</h3>
-  Vendor:
-  <select id="pv">${db.vendors.map(v=>`<option>${v.name}</option>`)}</select>
-  <table id="pt"><tr>
-  <th>Product</th><th>Qty</th><th>Rate</th><th>Amount</th>
-  </tr></table>
-  <button onclick="addPurchaseRow()">Add Row</button>
-  <div class="total">Total: <span id="ptotal">0</span></div>
-  <button onclick="savePurchase()">Save</button>
-  <button onclick="render_purchase()">Back</button>`;
-}
-
-function addPurchaseRow(){
-  pt.innerHTML+=`
-  <tr>
-    <td><select>${db.products.map(p=>`<option>${p.name}</option>`)}</select></td>
-    <td><input type="number" value="1" oninput="calcPurchase()"></td>
-    <td><input type="number" oninput="calcPurchase()"></td>
-    <td><input readonly></td>
-  </tr>`;
-}
-
-function calcPurchase(){
-  let t=0;
-  document.querySelectorAll("#pt tr").forEach((r,i)=>{
-    if(i===0) return;
-    let q=+r.cells[1].children[0].value;
-    let r1=+r.cells[2].children[0].value;
-    r.cells[3].children[0].value=q*r1;
-    t+=q*r1;
-  });
-  ptotal.innerText=t;
-}
-
-function savePurchase(){
-  let vendor=db.vendors.find(v=>v.name===pv.value);
-  document.querySelectorAll("#pt tr").forEach((r,i)=>{
-    if(i===0) return;
-    let p=db.products.find(x=>x.name===r.cells[0].children[0].value);
-    p.stock+=+r.cells[1].children[0].value;
-  });
-  vendor.lastPurchase=+ptotal.innerText;
-  vendor.balance+=+ptotal.innerText;
-  saveDB(); render_purchase();
-}
-
-/* ---------------- INVOICE ---------------- */
-function render_invoice(){
-  invoice.innerHTML=`<h3>Invoice</h3>
-  <button onclick="newInvoice()">New Invoice</button>
-  <table><tr>
-  <th>#</th><th>Bill</th><th>Total</th>
-  </tr>`;
-  db.invoices.forEach((i,x)=>{
-    invoice.innerHTML+=`<tr>
-      <td>${x+1}</td><td>${i.bill}</td><td>${i.total}</td>
-    </tr>`;
-  });
-  invoice.innerHTML+=`</table>`;
-}
-
-function newInvoice(){
-  invoice.innerHTML=`
-  <h3>New Invoice</h3>
-  <table id="it"><tr>
-  <th>Product</th><th>Qty</th><th>Rate</th><th>Amount</th>
-  </tr></table>
-  <button onclick="addInvoiceRow()">Add Row</button>
-  <div class="total">Total: <span id="itotal">0</span></div>
-  <button onclick="saveInvoice()">Save</button>
-  <button onclick="render_invoice()">Back</button>`;
-}
-
-function addInvoiceRow(){
-  it.innerHTML+=`
-  <tr>
-    <td><select>${db.products.filter(p=>p.stock>0).map(p=>`<option>${p.name}</option>`)}</select></td>
-    <td><input type="number" value="1" oninput="calcInvoice()"></td>
-    <td><input type="number" readonly></td>
-    <td><input readonly></td>
-  </tr>`;
-}
-
-function calcInvoice(){
-  let t=0;
-  document.querySelectorAll("#it tr").forEach((r,i)=>{
-    if(i===0) return;
-    let p=db.products.find(x=>x.name===r.cells[0].children[0].value);
-    r.cells[2].children[0].value=p.rate;
-    let a=p.rate*(+r.cells[1].children[0].value);
-    r.cells[3].children[0].value=a;
-    t+=a;
-  });
-  itotal.innerText=t;
-}
-
-function saveInvoice(){
-  document.querySelectorAll("#it tr").forEach((r,i)=>{
-    if(i===0) return;
-    let p=db.products.find(x=>x.name===r.cells[0].children[0].value);
-    p.stock-=+r.cells[1].children[0].value;
-  });
-  db.invoices.push({
-    bill:"INV"+(db.invoices.length+1),
-    total:+itotal.innerText
-  });
-  saveDB(); render_invoice();
-}
-
-/* ---------------- SETTINGS ---------------- */
-function render_settings(){
-  settings.innerHTML="<h3>Settings</h3><p>Configuration coming here.</p>";
-}
+/* ---------- INIT ---------- */
+renderProducts();
+renderVendors();
 </script>
+
 </body>
 </html>
+
+<!-- ================= PART 2 ================= -->
+
+<script>
+/* ========= EXTRA STORAGE ========= */
+let purchases = JSON.parse(localStorage.getItem("purchases")||"[]");
+let invoices  = JSON.parse(localStorage.getItem("invoices")||"[]");
+
+/* ========= SAVE EXTENSION ========= */
+function saveAll(){
+    localStorage.setItem("products",JSON.stringify(products));
+    localStorage.setItem("vendors",JSON.stringify(vendors));
+    localStorage.setItem("ledgers",JSON.stringify(ledgers));
+    localStorage.setItem("purchases",JSON.stringify(purchases));
+    localStorage.setItem("invoices",JSON.stringify(invoices));
+}
+
+/* ========= MODULE CONTAINERS ========= */
+document.querySelector("main").innerHTML += `
+
+<section id="purchase" class="hidden">
+<h2>Purchases</h2>
+<button onclick="newPurchase()">New Purchase</button>
+<table>
+<thead>
+<tr>
+<th>S No</th><th>Date</th><th>Pur No</th><th>Vendor</th>
+<th>Items</th><th>Amount</th><th>Discount</th><th>Total</th>
+</tr>
+</thead>
+<tbody id="purchaseList"></tbody>
+</table>
+
+<div id="purchaseForm" class="hidden">
+<h3>Purchase Entry</h3>
+<select id="pur_vendor"></select>
+
+<table>
+<thead>
+<tr>
+<th>S</th><th>Barcode</th><th>Item</th><th>Description</th>
+<th>Qty</th><th>Rate</th><th>Amount</th>
+</tr>
+</thead>
+<tbody id="purLines"></tbody>
+</table>
+
+<label><input type="checkbox" id="setRetail"> Set Retail Rate</label>
+<input id="retailRate" type="number" placeholder="Retail Rate" class="hidden">
+
+<br><br>
+Amount: <span id="purAmount">0</span><br>
+Discount: <input id="purDiscRs" type="number" value="0"> 
+<input id="purDiscPc" type="number" value="0"> %<br>
+Total: <span id="purTotal">0</span><br><br>
+
+<button onclick="savePurchase()">Save</button>
+<button onclick="closePurchase()">Cancel</button>
+</div>
+</section>
+
+<section id="invoice" class="hidden">
+<h2>Invoices</h2>
+
+<select id="invFilter">
+<option value="all">All</option>
+<option value="day">Today</option>
+<option value="month">This Month</option>
+<option value="year">This Year</option>
+</select>
+
+<button onclick="newInvoice()">New Invoice</button>
+
+<table>
+<thead>
+<tr>
+<th>S</th><th>Invoice</th><th>Date</th><th>Qty</th>
+<th>Discount</th><th>Total</th><th>Time</th>
+</tr>
+</thead>
+<tbody id="invoiceList"></tbody>
+</table>
+
+<div id="invoiceForm" class="hidden">
+<h3>Invoice Entry</h3>
+
+<table>
+<thead>
+<tr>
+<th>S</th><th>Barcode</th><th>Item</th><th>Description</th>
+<th>Qty</th><th>Rate</th><th>Disc</th><th>Amount</th>
+</tr>
+</thead>
+<tbody id="invLines"></tbody>
+</table>
+
+Amount: <span id="invAmount">0</span><br>
+Discount: <input id="invDiscRs" type="number"> 
+<input id="invDiscPc" type="number"> %<br>
+Total: <span id="invTotal">0</span><br><br>
+
+<button onclick="saveInvoice()">Save</button>
+<button onclick="closeInvoice()">Cancel</button>
+</div>
+</section>
+
+<section id="reports" class="hidden">
+<h2>Reports</h2>
+<p>Profit, Sales, Stock Reports (Next Phase)</p>
+</section>
+
+<section id="settings" class="hidden">
+<h2>Settings</h2>
+<p>Configuration & Preferences</p>
+</section>
+`;
+
+/* ========= PURCHASE ========= */
+function renderPurchases(){
+    let tb=document.getElementById("purchaseList");tb.innerHTML="";
+    purchases.forEach((p,i)=>{
+        tb.innerHTML+=`
+        <tr>
+        <td>${i+1}</td>
+        <td>${p.date}</td>
+        <td>${p.no}</td>
+        <td>${p.vendor}</td>
+        <td>${p.items}</td>
+        <td>${p.amount}</td>
+        <td>${p.discount}</td>
+        <td>${p.total}</td>
+        </tr>`;
+    });
+}
+function newPurchase(){
+    purchaseForm.classList.remove("hidden");
+    purLines.innerHTML="";
+    pur_vendor.innerHTML=vendors.map(v=>`<option>${v.name}</option>`).join("");
+    addPurLine();
+}
+function addPurLine(){
+    let i=purLines.children.length+1;
+    purLines.innerHTML+=`
+    <tr>
+    <td>${i}</td>
+    <td><input onblur="purSearch(this)"></td>
+    <td></td>
+    <td></td>
+    <td><input type="number" value="1" oninput="calcPurchase()"></td>
+    <td><input type="number" oninput="calcPurchase()"></td>
+    <td>0</td>
+    </tr>`;
+}
+function purSearch(el){
+    let val=el.value;
+    let p=products.find(x=>x.barcode==val||x.item==val||x.desc.includes(val));
+    if(p){
+        let r=el.parentNode.parentNode;
+        r.children[2].innerText=p.item;
+        r.children[3].innerText=p.desc;
+        r.children[5].children[0].value=p.rate;
+    }
+}
+function calcPurchase(){
+    let amt=0;
+    [...purLines.children].forEach(r=>{
+        let q=r.children[4].children[0].value;
+        let rate=r.children[5].children[0].value;
+        let a=q*rate;
+        r.children[6].innerText=a;
+        amt+=a;
+    });
+    purAmount.innerText=amt;
+    let dr=+purDiscRs.value||0;
+    purTotal.innerText=amt-dr;
+}
+function savePurchase(){
+    let no="P"+(purchases.length+1);
+    purchases.push({
+        no,date:new Date().toLocaleDateString(),
+        vendor:pur_vendor.value,
+        items:purLines.children.length,
+        amount:purAmount.innerText,
+        discount:purDiscRs.value,
+        total:purTotal.innerText
+    });
+    saveAll();
+    renderPurchases();
+    closePurchase();
+}
+function closePurchase(){purchaseForm.classList.add("hidden");}
+
+/* ========= INVOICE ========= */
+function renderInvoices(){
+    let tb=document.getElementById("invoiceList");tb.innerHTML="";
+    invoices.forEach((i,n)=>{
+        tb.innerHTML+=`
+        <tr>
+        <td>${n+1}</td>
+        <td>${i.no}</td>
+        <td>${i.date}</td>
+        <td>${i.qty}</td>
+        <td>${i.discount}</td>
+        <td>${i.total}</td>
+        <td>${i.time}</td>
+        </tr>`;
+    });
+}
+function newInvoice(){
+    invoiceForm.classList.remove("hidden");
+    invLines.innerHTML="";
+    addInvLine();
+}
+function addInvLine(){
+    let i=invLines.children.length+1;
+    invLines.innerHTML+=`
+    <tr>
+    <td>${i}</td>
+    <td><input onblur="invSearch(this)"></td>
+    <td></td>
+    <td></td>
+    <td><input type="number" value="1" oninput="calcInvoice()"></td>
+    <td></td>
+    <td><input type="number" oninput="calcInvoice()"></td>
+    <td>0</td>
+    </tr>`;
+}
+function invSearch(el){
+    let val=el.value;
+    let p=products.find(x=>x.barcode==val||x.item==val||x.desc.includes(val));
+    if(p && p.stock>0){
+        let r=el.parentNode.parentNode;
+        r.children[2].innerText=p.item;
+        r.children[3].innerText=p.desc;
+        r.children[5].innerText=p.rate;
+    }
+}
+function calcInvoice(){
+    let amt=0,qty=0;
+    [...invLines.children].forEach(r=>{
+        let q=r.children[4].children[0].value;
+        let rate=r.children[5].innerText||0;
+        let disc=r.children[6].children[0].value||0;
+        let a=q*rate-disc;
+        r.children[7].innerText=a;
+        amt+=a;
+        qty+=+q;
+    });
+    invAmount.innerText=amt;
+    let dr=+invDiscRs.value||0;
+    invTotal.innerText=amt-dr;
+}
+function saveInvoice(){
+    let no="I"+(invoices.length+1);
+    invoices.push({
+        no,
+        date:new Date().toLocaleDateString(),
+        qty:[...invLines.children].length,
+        discount:invDiscRs.value,
+        total:invTotal.innerText,
+        time:new Date().toLocaleTimeString()
+    });
+    saveAll();
+    renderInvoices();
+    closeInvoice();
+}
+function closeInvoice(){invoiceForm.classList.add("hidden");}
+
+/* ========= INIT ========= */
+renderPurchases();
+renderInvoices();
+
+/* ========= BACK BUTTON FIX ========= */
+history.pushState(null,null,location.href);
+window.onpopstate=function(){history.pushState(null,null,location.href);};
+
+</script>
