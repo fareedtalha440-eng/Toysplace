@@ -95,7 +95,9 @@ body *{visibility:hidden}
 <button onclick="newVendorUI()">Add Vendor</button>
 
 <table>
-<thead><tr><th>#</th><th>Name</th><th>Balance</th><th></th></tr></thead>
+<thead>
+<tr><th>#</th><th>Name</th><th>Balance</th><th></th></tr>
+</thead>
 <tbody id="vendorTable"></tbody>
 </table>
 
@@ -104,6 +106,22 @@ body *{visibility:hidden}
 <input id="v_opening" type="number" placeholder="Opening Balance"><br><br>
 <button onclick="saveVendorUI()">Save</button>
 <button class="gray" onclick="vendorForm.classList.add('hidden')">Cancel</button>
+</div>
+
+<!-- LEDGER -->
+<div id="ledgerBox" class="card hidden">
+<h3 id="ledgerTitle"></h3>
+<table>
+<thead>
+<tr><th>Date</th><th>Details</th><th>Amount</th><th>Balance</th></tr>
+</thead>
+<tbody id="ledgerTable"></tbody>
+</table>
+
+<br>
+<input id="pay_amount" type="number" placeholder="Payment Amount">
+<button onclick="saveVendorPayment()">Add Payment</button>
+<button class="gray" onclick="ledgerBox.classList.add('hidden')">Close</button>
 </div>
 </section>
 
@@ -134,6 +152,8 @@ Total: <b id="purTotal">0</b>
 <button onclick="newInvoiceUI()">New Invoice</button>
 
 <div class="print-area">
+<h3>Invoice No: <span id="invNo"></span></h3>
+
 <table>
 <thead>
 <tr><th>#</th><th>Search</th><th>Item</th><th>Description</th><th>Qty</th><th>Rate</th><th>Disc %</th><th>Amount</th></tr>
@@ -167,13 +187,17 @@ const DB={
 products:JSON.parse(localStorage.getItem("products")||"[]"),
 vendors:JSON.parse(localStorage.getItem("vendors")||"[]"),
 purchases:JSON.parse(localStorage.getItem("purchases")||"[]"),
-invoices:JSON.parse(localStorage.getItem("invoices")||"[]")
+invoices:JSON.parse(localStorage.getItem("invoices")||"[]"),
+payments:JSON.parse(localStorage.getItem("payments")||"[]")
 };
 
 function saveDB(){
 Object.keys(DB).forEach(k=>localStorage.setItem(k,JSON.stringify(DB[k])));
 }
-function uid(p){return p+"_"+Date.now()+"_"+Math.floor(Math.random()*1000)}
+
+function uid(p){
+return p+"_"+Date.now();
+}
 
 /* ================= NAV ================= */
 function openModule(id){
@@ -181,20 +205,28 @@ document.querySelectorAll("section").forEach(s=>s.classList.add("hidden"));
 document.querySelectorAll("nav div").forEach(n=>n.classList.remove("active"));
 document.getElementById(id).classList.remove("hidden");
 document.getElementById("tab-"+id).classList.add("active");
+
 if(id==="products")renderProductsUI();
 if(id==="vendors")renderVendorsUI();
+if(id==="purchase")newPurchaseUI();
+if(id==="invoice")newInvoiceUI();
 if(id==="reports")renderReports();
 }
 
 /* ================= PRODUCTS ================= */
 let editingProductId=null;
+
 function renderProductsUI(){
 productTable.innerHTML="";
 DB.products.forEach((p,i)=>{
 productTable.innerHTML+=`
 <tr>
-<td>${i+1}</td><td>${p.barcode}</td><td>${p.itemNo}</td>
-<td>${p.description}</td><td>${p.rate}</td><td>${p.stock}</td>
+<td>${i+1}</td>
+<td>${p.barcode}</td>
+<td>${p.itemNo}</td>
+<td>${p.description}</td>
+<td>${p.rate}</td>
+<td>${p.stock}</td>
 <td>
 <button onclick="editProductUI('${p.id}')">Edit</button>
 <button class="red" onclick="deleteProductUI('${p.id}')">X</button>
@@ -254,89 +286,76 @@ renderProductsUI();
 }
 }
 
-/* ================= VENDORS ================= */
-let editingVendorId=null;
+/* ================= VENDORS + LEDGER + PAYMENT ================= */
+let currentLedgerVendor=null;
+
+function getVendorBalance(id){
+let v=DB.vendors.find(v=>v.id===id);
+let bal=Number(v.openingBalance)||0;
+
+DB.purchases.filter(p=>p.vendorId===id).forEach(p=>bal+=Number(p.total));
+DB.payments.filter(p=>p.vendorId===id).forEach(p=>bal-=Number(p.amount));
+
+return bal.toFixed(2);
+}
+
 function renderVendorsUI(){
 vendorTable.innerHTML="";
 DB.vendors.forEach((v,i)=>{
-const bal=getVendorBalance(v.id);
 vendorTable.innerHTML+=`
 <tr>
 <td>${i+1}</td>
-<td><a href="#" onclick="editVendorUI('${v.id}')">${v.name}</a></td>
-<td><a href="#" onclick="alertVendorLedger('${v.id}')">${bal}</a></td>
+<td><a href="#" onclick="openLedger('${v.id}')">${v.name}</a></td>
+<td>${getVendorBalance(v.id)}</td>
 <td><button class="red" onclick="deleteVendorUI('${v.id}')">X</button></td>
 </tr>`;
 });
 }
 
-function getVendorBalance(id){
-let bal=DB.vendors.find(v=>v.id===id).openingBalance||0;
-DB.purchases.filter(p=>p.vendorId===id).forEach(p=>bal+=p.total);
-return bal;
-}
+function openLedger(id){
+currentLedgerVendor=id;
+ledgerBox.classList.remove("hidden");
+ledgerTitle.innerText="Ledger - "+DB.vendors.find(v=>v.id===id).name;
+ledgerTable.innerHTML="";
 
-function newVendorUI(){
-editingVendorId=null;
-v_name.value=v_opening.value="";
-vendorForm.classList.remove("hidden");
-}
+let bal=Number(DB.vendors.find(v=>v.id===id).openingBalance)||0;
 
-function editVendorUI(id){
-const v=DB.vendors.find(v=>v.id===id);
-editingVendorId=id;
-v_name.value=v.name;
-v_opening.value=v.openingBalance;
-vendorForm.classList.remove("hidden");
-}
+ledgerTable.innerHTML+=`
+<tr><td>-</td><td>Opening</td><td></td><td>${bal}</td></tr>`;
 
-function saveVendorUI(){
-if(editingVendorId){
-DB.vendors.find(v=>v.id===editingVendorId).name=v_name.value;
-}else{
-DB.vendors.push({id:uid("V"),name:v_name.value,openingBalance:+v_opening.value});
-}
-saveDB();
-vendorForm.classList.add("hidden");
-renderVendorsUI();
-}
-
-function deleteVendorUI(id){
-if(DB.purchases.some(p=>p.vendorId===id)){
-alert("Vendor has purchases");
-return;
-}
-DB.vendors=DB.vendors.filter(v=>v.id!==id);
-saveDB();
-renderVendorsUI();
-}
-
-function alertVendorLedger(id){
-let html="Ledger:\n";
-let bal=DB.vendors.find(v=>v.id===id).openingBalance||0;
-html+="Opening: "+bal+"\n";
 DB.purchases.filter(p=>p.vendorId===id).forEach(p=>{
 bal+=p.total;
-html+=p.date+" +"+p.total+" = "+bal+"\n";
+ledgerTable.innerHTML+=`
+<tr><td>${p.date}</td><td>Purchase</td><td>+${p.total}</td><td>${bal}</td></tr>`;
 });
-alert(html);
+
+DB.payments.filter(p=>p.vendorId===id).forEach(p=>{
+bal-=p.amount;
+ledgerTable.innerHTML+=`
+<tr><td>${p.date}</td><td>Payment</td><td>-${p.amount}</td><td>${bal}</td></tr>`;
+});
 }
 
-/* ================= SEARCH ================= */
-function searchProducts(q){
-q=q.toLowerCase();
-return DB.products.filter(p=>
-p.barcode.toLowerCase().includes(q)||
-p.itemNo.toLowerCase().includes(q)||
-p.description.toLowerCase().includes(q)
-).slice(0,5);
+function saveVendorPayment(){
+DB.payments.push({
+id:uid("PAY"),
+vendorId:currentLedgerVendor,
+date:new Date().toLocaleDateString(),
+amount:+pay_amount.value
+});
+pay_amount.value="";
+saveDB();
+openLedger(currentLedgerVendor);
+renderVendorsUI();
 }
 
 /* ================= PURCHASE ================= */
 let purchaseItems=[];
+
 function newPurchaseUI(){
 purchaseItems=[];
 purLines.innerHTML="";
+purTotal.innerText="0";
 pur_vendor.innerHTML=DB.vendors.map(v=>`<option value="${v.id}">${v.name}</option>`).join("");
 addPurchaseRow();
 }
@@ -372,6 +391,7 @@ purchaseItems[i]={productId:p.id,qty:1,rate:p.rate,discountPc:0};
 r.children[2].children[0].value=p.itemNo;
 r.children[3].children[0].value=p.description;
 r.children[5].children[0].value=p.rate;
+calcPurchase(i);
 }
 
 function calcPurchase(i){
@@ -386,6 +406,7 @@ purchaseItems[i].discountPc=d;
 purchaseItems[i].amount=amt;
 r.children[7].innerText=amt.toFixed(2);
 purTotal.innerText=purchaseItems.reduce((s,x)=>s+(x.amount||0),0).toFixed(2);
+if(i===purchaseItems.length-1)addPurchaseRow();
 }
 
 function savePurchaseUI(){
@@ -406,9 +427,12 @@ newPurchaseUI();
 
 /* ================= INVOICE ================= */
 let invoiceItems=[];
+
 function newInvoiceUI(){
 invoiceItems=[];
 invLines.innerHTML="";
+invTotal.innerText="0";
+invNo.innerText=DB.invoices.length+1;
 addInvoiceRow();
 }
 
@@ -443,6 +467,7 @@ invoiceItems[i]={productId:p.id,qty:1,rate:p.rate,discountPc:0};
 r.children[2].children[0].value=p.itemNo;
 r.children[3].children[0].value=p.description;
 r.children[5].children[0].value=p.rate;
+calcInvoice(i);
 }
 
 function calcInvoice(i){
@@ -457,11 +482,13 @@ invoiceItems[i].discountPc=d;
 invoiceItems[i].amount=amt;
 r.children[7].innerText=amt.toFixed(2);
 invTotal.innerText=invoiceItems.reduce((s,x)=>s+(x.amount||0),0).toFixed(2);
+if(i===invoiceItems.length-1)addInvoiceRow();
 }
 
 function saveInvoiceUI(){
 DB.invoices.push({
 id:uid("IN"),
+number:DB.invoices.length+1,
 date:new Date().toLocaleDateString(),
 items:invoiceItems,
 total:+invTotal.innerText
@@ -482,10 +509,20 @@ r_purchases.innerText=DB.purchases.length;
 r_invoices.innerText=DB.invoices.length;
 }
 
+/* ================= SEARCH ================= */
+function searchProducts(q){
+q=q.toLowerCase();
+return DB.products.filter(p=>
+p.barcode.toLowerCase().includes(q)||
+p.itemNo.toLowerCase().includes(q)||
+p.description.toLowerCase().includes(q)
+).slice(0,5);
+}
+
 /* INIT */
 renderProductsUI();
 renderReports();
 </script>
 
 </body>
-</html>
+  </html>
