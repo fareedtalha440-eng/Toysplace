@@ -1,430 +1,497 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Toysplace POS</title>
+<title>Dani Test Software</title>
 
 <style>
-:root{
-  --dark:#0b1d33;
-  --dark2:#102a52;
-  --border:#cfd7e6;
-  --bg:#f4f6fb;
-}
 body{
   margin:0;
-  font-family:Segoe UI, Arial;
-  background:var(--bg);
+  font-family:Segoe UI,Arial;
+  background:#f4f6f8;
 }
 header{
-  background:var(--dark);
-  color:#fff;
-  padding:14px;
-  font-size:20px;
-  text-align:center;
+  background:#0b5ed7;
+  color:white;
+  padding:14px 20px;
+  font-size:22px;
+  font-weight:600;
 }
 nav{
-  position:fixed;
-  top:0;left:0;
-  width:220px;
-  height:100vh;
-  background:var(--dark2);
-  padding-top:60px;
+  display:flex;
+  background:#084298;
 }
 nav div{
-  color:#fff;
-  padding:14px 20px;
+  padding:14px 18px;
+  color:white;
   cursor:pointer;
 }
-nav div:hover, nav div.active{
-  background:#163c78;
-}
-main{
-  margin-left:220px;
-  padding:20px;
+nav div.active{
+  background:#0d6efd;
 }
 section{
-  background:#fff;
+  display:none;
   padding:20px;
-  border-radius:8px;
-  box-shadow:0 4px 12px rgba(0,0,0,.08);
 }
-.hidden{display:none}
-button{
-  background:var(--dark2);
-  color:#fff;
-  border:none;
-  padding:6px 12px;
-  border-radius:4px;
-  cursor:pointer;
+section.active{
+  display:block;
 }
-button.red{background:#9b1c1c}
-button.gray{background:#64748b}
-input,select{
-  width:100%;
-  padding:6px;
-  box-sizing:border-box;
+.card{
+  background:white;
+  padding:15px;
+  margin-bottom:15px;
+  border-radius:6px;
 }
 table{
   width:100%;
   border-collapse:collapse;
-  margin-top:10px;
 }
 th,td{
-  border:1px solid var(--border);
+  border:1px solid #ccc;
   padding:6px;
-  font-size:14px;
 }
-th{background:#eef2fb}
-.card{
-  border:1px solid var(--border);
-  padding:12px;
-  border-radius:6px;
-  margin-top:10px;
+button{
+  padding:6px 12px;
+  cursor:pointer;
 }
+input,select{
+  padding:6px;
+  width:100%;
+}
+.red{background:#dc3545;color:white}
+.green{background:#198754;color:white}
 </style>
 </head>
 
 <body>
 
-<header>Toysplace Retail POS</header>
+<header>Dani Test Software</header>
 
-<nav>
-  <div class="active" onclick="openModule('products')">Products</div>
-  <div onclick="openModule('vendors')">Vendors</div>
-  <div onclick="openModule('purchase')">Purchase</div>
-  <div onclick="openModule('invoice')">Invoice</div>
-  <div onclick="openModule('cash')">Cash In Hand</div>
-  <div onclick="openModule('reports')">Reports</div>
+<nav id="menu">
+  <div onclick="openTab('invoice')" id="tab-invoice">Invoice</div>
+  <div onclick="openTab('cash')" id="tab-cash">Cash In Hand</div>
+  <div onclick="openTab('purchase')" id="tab-purchase">Purchase</div>
+  <div onclick="openTab('products')" id="tab-products">Products</div>
+  <div onclick="openTab('vendors')" id="tab-vendors">Vendor</div>
+  <div onclick="openTab('reports')" id="tab-reports">Reports</div>
+  <div onclick="openTab('settings')" id="tab-settings">Settings</div>
 </nav>
 
-<main>
-
-<section id="products">
-<h2>Products</h2>
-<button onclick="uiProductNew()">Add Product</button>
-<table>
-<thead>
-<tr><th>#</th><th>Barcode</th><th>Item</th><th>Description</th><th>Rate</th><th>Stock</th><th></th></tr>
-</thead>
-<tbody id="productTable"></tbody>
-</table>
-
-<div id="productForm" class="card hidden">
-<input id="p_barcode" placeholder="Barcode">
-<input id="p_item" placeholder="Item No">
-<input id="p_desc" placeholder="Description">
-<input id="p_rate" type="number" placeholder="Rate">
-<input id="p_stock" type="number" placeholder="Opening Stock">
-<br><br>
-<button onclick="productSave()">Save</button>
-<button class="gray" onclick="uiClose()">Cancel</button>
-</div>
-</section>
-
-<section id="vendors" class="hidden">
-<h2>Vendors</h2>
-<button onclick="uiVendorNew()">Add Vendor</button>
-<table>
-<thead>
-<tr><th>#</th><th>Name</th><th>Balance</th><th></th></tr>
-</thead>
-<tbody id="vendorTable"></tbody>
-</table>
-
-<div id="vendorForm" class="card hidden">
-<input id="v_name" placeholder="Vendor Name">
-<input id="v_opening" type="number" placeholder="Opening Balance">
-<br><br>
-<button onclick="vendorSave()">Save</button>
-<button class="gray" onclick="uiClose()">Cancel</button>
-</div>
-
-<div id="vendorLedger" class="card hidden">
-<h3 id="vendorLedgerTitle"></h3>
-<table>
-<thead>
-<tr><th>Date</th><th>Type</th><th>Amount</th><th>Balance</th></tr>
-</thead>
-<tbody id="vendorLedgerTable"></tbody>
-</table>
-<br>
-<input id="vendorPayAmount" type="number" placeholder="Payment Amount">
-<button onclick="vendorAddPayment()">Add Payment</button>
-<button class="gray" onclick="uiClose()">Close</button>
-</div>
-</section>
-
-<section id="purchase" class="hidden"></section>
-<section id="invoice" class="hidden"></section>
-<section id="cash" class="hidden"></section>
-<section id="reports" class="hidden"></section>
-
-</main>
-
+<!-- ================= DATABASE ================= -->
 <script>
-/* ================= DATABASE ================= */
-const DB = {
-  products: JSON.parse(localStorage.getItem("products")||"[]"),
-  vendors: JSON.parse(localStorage.getItem("vendors")||"[]"),
-  purchases: JSON.parse(localStorage.getItem("purchases")||"[]"),
-  invoices: JSON.parse(localStorage.getItem("invoices")||"[]"),
-  vendorPayments: JSON.parse(localStorage.getItem("vendorPayments")||"[]"),
-  cashTransactions: JSON.parse(localStorage.getItem("cashTransactions")||"[]")
+const DB={
+  products:JSON.parse(localStorage.getItem("products")||"[]"),
+  vendors:JSON.parse(localStorage.getItem("vendors")||"[]"),
+  purchases:JSON.parse(localStorage.getItem("purchases")||"[]"),
+  invoices:JSON.parse(localStorage.getItem("invoices")||"[]"),
+  vendorPayments:JSON.parse(localStorage.getItem("vendorPayments")||"[]"),
+  cash:JSON.parse(localStorage.getItem("cash")||"[]"),
+  deleted:JSON.parse(localStorage.getItem("deleted")||"[]")
 };
 
 function saveDB(){
-  Object.keys(DB).forEach(k=>{
-    localStorage.setItem(k, JSON.stringify(DB[k]));
-  });
+  for(let k in DB){
+    localStorage.setItem(k,JSON.stringify(DB[k]));
+  }
 }
 
-function uid(p){return p+"_"+Date.now()+"_"+Math.floor(Math.random()*1000);}
+function uid(p){return p+"_"+Date.now()+Math.floor(Math.random()*1000);}
+</script>
 
-/* ================= NAV ================= */
-function openModule(id){
-  document.querySelectorAll("section").forEach(s=>s.classList.add("hidden"));
-  document.getElementById(id).classList.remove("hidden");
-  if(id==="purchase") renderPurchaseUI();
-  if(id==="invoice") renderInvoiceUI();
-  if(id==="cash") renderCash();
-  if(id==="reports") renderReports();
+<!-- ================= INVOICE ================= -->
+<section id="invoice">
+  <div class="card">
+    <h2>Invoice</h2>
+    <button class="green" onclick="addInvoiceRow()">Add Item</button>
+    <table>
+      <thead>
+        <tr><th>Item</th><th>Qty</th><th>Rate</th><th>Total</th><th></th></tr>
+      </thead>
+      <tbody id="invoiceRows"></tbody>
+    </table>
+    <h3>Total: <span id="invTotal">0</span></h3>
+    <button onclick="saveInvoice()" class="green">Save Invoice</button>
+  </div>
+</section>
+
+<script>
+let invoiceDraft=[];
+
+function addInvoiceRow(){
+  invoiceDraft.push({productId:"",qty:1,rate:0});
+  renderInvoice();
 }
 
-/* ================= PRODUCTS ================= */
-function renderProducts(){
-  productTable.innerHTML="";
-  DB.products.filter(p=>p.itemNo).forEach((p,i)=>{
-    productTable.innerHTML+=`
+function renderInvoice(){
+  invoiceRows.innerHTML="";
+  let total=0;
+
+  invoiceDraft.forEach((r,i)=>{
+    const p=DB.products.find(x=>x.id===r.productId)||{};
+    const rowTotal=r.qty*r.rate;
+    total+=rowTotal;
+
+    invoiceRows.innerHTML+=`
       <tr>
-        <td>${i+1}</td>
-        <td>${p.barcode||""}</td>
-        <td>${p.itemNo}</td>
-        <td>${p.desc}</td>
-        <td>${p.rate}</td>
-        <td>${p.stock}</td>
-        <td><button class="red" onclick="productDelete('${p.id}')">X</button></td>
+        <td>
+          <select onchange="invSetProd(${i},this.value)">
+            <option></option>
+            ${DB.products.map(p=>`<option value="${p.id}">${p.itemNo}</option>`).join("")}
+          </select>
+        </td>
+        <td><input type="number" value="${r.qty}" onchange="invSetQty(${i},this.value)"></td>
+        <td><input type="number" value="${r.rate}" onchange="invSetRate(${i},this.value)"></td>
+        <td>${rowTotal}</td>
+        <td><button class="red" onclick="invDel(${i})">X</button></td>
+      </tr>
+    `;
+  });
+
+  invTotal.innerText=total.toFixed(2);
+}
+
+function invSetProd(i,v){
+  const p=DB.products.find(x=>x.id===v);
+  invoiceDraft[i].productId=v;
+  invoiceDraft[i].rate=p?p.rate:0;
+  renderInvoice();
+}
+function invSetQty(i,v){invoiceDraft[i].qty=+v;renderInvoice();}
+function invSetRate(i,v){invoiceDraft[i].rate=+v;renderInvoice();}
+function invDel(i){invoiceDraft.splice(i,1);renderInvoice();}
+
+function saveInvoice(){
+  if(!invoiceDraft.length)return alert("Empty invoice");
+  const total=invoiceDraft.reduce((s,r)=>s+r.qty*r.rate,0);
+
+  DB.invoices.push({id:uid("INV"),date:new Date().toLocaleDateString(),items:invoiceDraft,total});
+  DB.cash.push({id:uid("CASH"),type:"IN",amount:total,ref:"INVOICE",date:new Date().toLocaleDateString()});
+
+  saveDB();
+  invoiceDraft=[];
+  renderInvoice();
+  alert("Invoice saved");
+}
+</script>
+
+<!-- ================= CASH ================= -->
+<section id="cash">
+  <div class="card">
+    <h2>Cash In Hand</h2>
+    <h3>Balance: <span id="cashBal"></span></h3>
+
+    <label>From</label><input type="date" id="cashFrom">
+    <label>To</label><input type="date" id="cashTo">
+    <button onclick="renderCash()">Filter</button>
+
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Type</th><th>Amount</th><th>Ref</th><th>Balance</th></tr>
+      </thead>
+      <tbody id="cashRows"></tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+function cashBalance(){
+  return DB.cash.reduce((s,t)=>t.type=="IN"?s+t.amount:s-t.amount,0);
+}
+
+function renderCash(){
+  cashRows.innerHTML="";
+  cashBal.innerText=cashBalance().toFixed(2);
+  let bal=0;
+
+  DB.cash.forEach(c=>{
+    bal=c.type=="IN"?bal+c.amount:bal-c.amount;
+    cashRows.innerHTML+=`
+      <tr>
+        <td>${c.date}</td>
+        <td>${c.type}</td>
+        <td>${c.amount}</td>
+        <td>${c.ref}</td>
+        <td>${bal.toFixed(2)}</td>
       </tr>`;
   });
 }
-function uiProductNew(){uiClose();productForm.classList.remove("hidden");}
-function productSave(){
-  if(!p_item.value) return alert("Item required");
-  DB.products.push({
-    id:uid("P"),
-    barcode:p_barcode.value,
-    itemNo:p_item.value,
-    desc:p_desc.value,
-    rate:+p_rate.value||0,
-    stock:+p_stock.value||0
-  });
-  saveDB();uiClose();renderProducts();
-}
-function productDelete(id){
-  if(DB.purchases.some(p=>p.items.some(i=>i.productId===id))||
-     DB.invoices.some(i=>i.items.some(x=>x.productId===id)))
-    return alert("Product used");
-  DB.products=DB.products.filter(p=>p.id!==id);
-  saveDB();renderProducts();
-}
-
-/* ================= VENDORS ================= */
-function ensureTestVendor(){
-  if(!DB.vendors.some(v=>v.id==="V_TEST")){
-    DB.vendors.unshift({id:"V_TEST",name:"test",opening:0});
-    saveDB();
-  }
-}
-ensureTestVendor();
-
-function vendorBalance(id){
-  let bal=DB.vendors.find(v=>v.id===id)?.opening||0;
-  DB.purchases.filter(p=>p.vendorId===id).forEach(p=>bal+=p.total);
-  DB.vendorPayments.filter(p=>p.vendorId===id).forEach(p=>bal-=p.amount);
-  return bal;
-}
-function renderVendors(){
-  vendorTable.innerHTML="";
-  DB.vendors.forEach((v,i)=>{
-    vendorTable.innerHTML+=`
-    <tr>
-      <td>${i+1}</td>
-      <td><a href="#" onclick="openVendorLedger('${v.id}')">${v.name}</a></td>
-      <td>${vendorBalance(v.id).toFixed(2)}</td>
-      <td>${v.id==="V_TEST"?"":`<button class="red" onclick="vendorDelete('${v.id}')">X</button>`}</td>
-    </tr>`;
-  });
-}
-function uiVendorNew(){uiClose();vendorForm.classList.remove("hidden");}
-function vendorSave(){
-  if(!v_name.value) return alert("Name required");
-  DB.vendors.push({id:uid("V"),name:v_name.value,opening:+v_opening.value||0});
-  saveDB();uiClose();renderVendors();
-}
-function vendorDelete(id){
-  if(id==="V_TEST") return;
-  if(DB.purchases.some(p=>p.vendorId===id)) return alert("Vendor has purchases");
-  DB.vendors=DB.vendors.filter(v=>v.id!==id);
-  saveDB();renderVendors();
-}
-
-/* ================= CASH ENGINE ================= */
-function cashBalance(){
-  return DB.cashTransactions.reduce((s,t)=>t.type==="IN"?s+t.amount:s-t.amount,0);
-}
-function cashAdd(type,amount,ref,note){
-  if(type==="OUT" && cashBalance()<amount) return alert("Insufficient Cash");
-  DB.cashTransactions.push({
-    id:uid("CASH"),
-    date:new Date().toLocaleDateString(),
-    type,amount,ref,note
-  });
-  saveDB();
-}
-
-/* ================= UI HELPERS ================= */
-function uiClose(){
-  document.querySelectorAll(".card").forEach(c=>c.classList.add("hidden"));
-}
-renderProducts();renderVendors();
 </script>
+
+<!-- ================= REPORTS ================= -->
+<section id="reports">
+  <div class="card">
+    <h2>Reports</h2>
+    <p>Products: ${DB.products.length}</p>
+    <p>Invoices: ${DB.invoices.length}</p>
+    <p>Cash: ${cashBalance()}</p>
+
+    <h3>Deleted Records</h3>
+    <pre id="deletedLog"></pre>
+  </div>
+</section>
+
 <script>
-/* ================= PURCHASE ================= */
-function renderPurchaseUI(){
-document.getElementById("purchase").innerHTML=`
-<h2>Purchase</h2>
-<div class="card">
-<select id="pur_vendor"></select>
-<table>
-<thead><tr><th>#</th><th>Product</th><th>Qty</th><th>Rate</th><th>Amt</th><th></th></tr></thead>
-<tbody id="pur_items"></tbody>
-</table>
-<button onclick="addPurRow()">Add</button>
-<h3>Total: <span id="pur_total">0</span></h3>
-<button onclick="savePurchase()">Save</button>
-</div>`;
-fillVendorSelect();purRows=[];
-}
-let purRows=[];
-function fillVendorSelect(){
-  pur_vendor.innerHTML="";
-  DB.vendors.forEach(v=>pur_vendor.innerHTML+=`<option value="${v.id}">${v.name}</option>`);
-}
-function addPurRow(){purRows.push({productId:"",qty:0,rate:0});renderPur();}
-function renderPur(){
-  pur_items.innerHTML="";
-  purRows.forEach((r,i)=>{
-    pur_items.innerHTML+=`
-    <tr>
-      <td>${i+1}</td>
-      <td><select onchange="purRows[${i}].productId=this.value">${DB.products.map(p=>`<option value="${p.id}">${p.itemNo}</option>`).join("")}</select></td>
-      <td><input type="number" onchange="purRows[${i}].qty=+this.value;renderPur()"></td>
-      <td><input type="number" onchange="purRows[${i}].rate=+this.value;renderPur()"></td>
-      <td>${(r.qty*r.rate).toFixed(2)}</td>
-      <td><button class="red" onclick="purRows.splice(${i},1);renderPur()">X</button></td>
-    </tr>`;
-  });
-  pur_total.innerText=purRows.reduce((s,r)=>s+r.qty*r.rate,0).toFixed(2);
-}
-function savePurchase(){
-  const total=purRows.reduce((s,r)=>s+r.qty*r.rate,0);
-  DB.purchases.push({id:uid("PUR"),vendorId:pur_vendor.value,date:new Date().toLocaleDateString(),items:purRows,total});
-  purRows.forEach(r=>DB.products.find(p=>p.id===r.productId).stock+=r.qty);
-  saveDB();renderProducts();renderVendors();alert("Saved");
-}
-
-/* ================= INVOICE ================= */
-function renderInvoiceUI(){
-document.getElementById("invoice").innerHTML=`
-<h2>Invoice</h2>
-<div class="card">
-<table>
-<thead><tr><th>#</th><th>Product</th><th>Qty</th><th>Rate</th><th>Amt</th><th></th></tr></thead>
-<tbody id="inv_items"></tbody>
-</table>
-<button onclick="addInvRow()">Add</button>
-<h3>Total: <span id="inv_total">0</span></h3>
-<button onclick="saveInvoice()">Save</button>
-</div>`;
-invRows=[];
-}
-let invRows=[];
-function addInvRow(){invRows.push({productId:"",qty:0,rate:0});renderInv();}
-function renderInv(){
-  inv_items.innerHTML="";
-  invRows.forEach((r,i)=>{
-    inv_items.innerHTML+=`
-    <tr>
-      <td>${i+1}</td>
-      <td><select onchange="invRows[${i}].productId=this.value">${DB.products.map(p=>`<option value="${p.id}">${p.itemNo}</option>`).join("")}</select></td>
-      <td><input type="number" onchange="invRows[${i}].qty=+this.value;renderInv()"></td>
-      <td><input type="number" onchange="invRows[${i}].rate=+this.value;renderInv()"></td>
-      <td>${(r.qty*r.rate).toFixed(2)}</td>
-      <td><button class="red" onclick="invRows.splice(${i},1);renderInv()">X</button></td>
-    </tr>`;
-  });
-  inv_total.innerText=invRows.reduce((s,r)=>s+r.qty*r.rate,0).toFixed(2);
-}
-function saveInvoice(){
-  const total=invRows.reduce((s,r)=>s+r.qty*r.rate,0);
-  invRows.forEach(r=>{
-    if(DB.products.find(p=>p.id===r.productId).stock<r.qty)
-      throw alert("Stock low");
-  });
-  DB.invoices.push({id:uid("INV"),date:new Date().toLocaleDateString(),items:invRows,total});
-  invRows.forEach(r=>DB.products.find(p=>p.id===r.productId).stock-=r.qty);
-  cashAdd("IN",total,"INVOICE","Sale");
-  saveDB();renderProducts();alert("Invoice Saved");
-}
-
-/* ================= CASH UI ================= */
-document.getElementById("cash").innerHTML=`
-<h2>Cash In Hand</h2>
-<div class="card"><h3>Balance: <span id="cashBal"></span></h3></div>
-<div class="card">
-<select id="c_type"><option value="IN">IN</option><option value="OUT">OUT</option></select>
-<input id="c_amt" type="number">
-<input id="c_note" placeholder="Note">
-<button onclick="manualCash()">Save</button>
-</div>
-<div class="card">
-<table>
-<thead><tr><th>#</th><th>Date</th><th>Type</th><th>Amt</th><th>Note</th><th>Bal</th></tr></thead>
-<tbody id="cashTable"></tbody>
-</table>
-</div>`;
-
-function manualCash(){
-  cashAdd(c_type.value,+c_amt.value,"MANUAL",c_note.value);
-  renderCash();
-}
-function renderCash(){
-  cashBal.innerText=cashBalance().toFixed(2);
-  cashTable.innerHTML="";
-  let bal=0;
-  DB.cashTransactions.forEach((t,i)=>{
-    bal=t.type==="IN"?bal+t.amount:bal-t.amount;
-    cashTable.innerHTML+=`
-    <tr><td>${i+1}</td><td>${t.date}</td><td>${t.type}</td><td>${t.amount}</td><td>${t.note}</td><td>${bal}</td></tr>`;
-  });
-}
-
-/* ================= REPORTS ================= */
-document.getElementById("reports").innerHTML=`
-<h2>Reports</h2>
-<p>Products: <b id="r_prod"></b></p>
-<p>Vendors: <b id="r_vend"></b></p>
-<p>Purchases: <b id="r_pur"></b></p>
-<p>Invoices: <b id="r_inv"></b></p>
-<p>Cash In Hand: <b id="r_cash"></b></p>`;
 function renderReports(){
-  r_prod.innerText=DB.products.length;
-  r_vend.innerText=DB.vendors.length;
-  r_pur.innerText=DB.purchases.length;
-  r_inv.innerText=DB.invoices.length;
-  r_cash.innerText=cashBalance().toFixed(2);
+  deletedLog.innerText=JSON.stringify(DB.deleted,null,2);
 }
+</script>
+
+<!-- ================= SETTINGS ================= -->
+<section id="settings">
+  <div class="card">
+    <h2>Settings</h2>
+    <button onclick="localStorage.clear();location.reload()" class="red">
+      Factory Reset
+    </button>
+  </div>
+</section>
+
+<script>
+function openTab(id){
+  document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
+  document.querySelectorAll("nav div").forEach(d=>d.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  document.getElementById("tab-"+id).classList.add("active");
+
+  if(id==="cash")renderCash();
+  if(id==="reports")renderReports();
+}
+openTab("invoice");
 </script>
 
 </body>
 </html>
+<section id="products">
+  <div class="card">
+    <h2>Products</h2>
+
+    <input type="file" accept=".xlsx,.xls" onchange="uploadProductExcel(this)">
+    <button onclick="exportProductsCSV()">Download CSV</button>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <input placeholder="Search Barcode" oninput="searchProducts()"
+        id="s_barcode">
+      <input placeholder="Search Item No" oninput="searchProducts()"
+        id="s_item">
+      <input placeholder="Search Description" oninput="searchProducts()"
+        id="s_desc">
+    </div>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Barcode</th><th>Item No</th>
+          <th>Description</th><th>Rate</th><th>Stock</th>
+        </tr>
+      </thead>
+      <tbody id="productRows"></tbody>
+    </table>
+    <button onclick="prevPage()">Prev</button>
+    <button onclick="nextPage()">Next</button>
+  </div>
+</section>
+let prodPage=1,prodPerPage=100,prodFiltered=[];
+
+function renderProducts(){
+  productRows.innerHTML="";
+  const start=(prodPage-1)*prodPerPage;
+  const page=prodFiltered.slice(start,start+prodPerPage);
+
+  page.forEach((p,i)=>{
+    productRows.innerHTML+=`
+      <tr>
+        <td>${start+i+1}</td>
+        <td>${p.barcode||""}</td>
+        <td>${p.itemNo}</td>
+        <td>${p.desc}</td>
+        <td>${p.rate}</td>
+        <td>${p.stock||0}</td>
+      </tr>`;
+  });
+}
+
+function searchProducts(){
+  const b=s_barcode.value.toLowerCase();
+  const i=s_item.value.toLowerCase();
+  const d=s_desc.value.toLowerCase();
+
+  prodFiltered=DB.products.filter(p=>
+    (!b||p.barcode?.toLowerCase().includes(b)) &&
+    (!i||p.itemNo.toLowerCase().includes(i)) &&
+    (!d||p.desc.toLowerCase().includes(d))
+  );
+  prodPage=1;
+  renderProducts();
+}
+
+function nextPage(){prodPage++;renderProducts();}
+function prevPage(){if(prodPage>1)prodPage--;renderProducts();}
+
+prodFiltered=DB.products;
+function uploadProductExcel(input){
+  const file=input.files[0];
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const wb=XLSX.read(e.target.result,{type:"binary"});
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+
+    rows.forEach(r=>{
+      DB.products.push({
+        id:uid("P"),
+        barcode:r.Barcode||"",
+        itemNo:r["Item No"],
+        desc:r.Description,
+        rate:+r["Retail Rate"]||0,
+        stock:0
+      });
+    });
+
+    saveDB();
+    prodFiltered=DB.products;
+    renderProducts();
+  };
+  reader.readAsBinaryString(file);
+}
+function exportProductsCSV(){
+  let csv="Barcode,Item No,Description,Rate,Stock\n";
+  DB.products.forEach(p=>{
+    csv+=`${p.barcode},${p.itemNo},${p.desc},${p.rate},${p.stock}\n`;
+  });
+  const blob=new Blob([csv]);
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="products.csv";
+  a.click();
+}
+<section id="purchase">
+  <div class="card">
+    <h2>Purchase</h2>
+
+    <input type="file" accept=".xlsx,.xls" onchange="uploadPurchaseExcel(this)">
+    <button onclick="addPurchaseRow()">Add Item</button>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th><th>Qty</th><th>Price</th><th>Total</th>
+        </tr>
+      </thead>
+      <tbody id="purchaseRows"></tbody>
+    </table>
+
+    <h3>Total: <span id="purTotal">0</span></h3>
+    <button onclick="savePurchase()" class="green">Save Purchase</button>
+  </div>
+</section>
+let purchaseDraft=[];
+
+function addPurchaseRow(){
+  purchaseDraft.push({productId:"",qty:1,price:0});
+  renderPurchase();
+}
+
+function renderPurchase(){
+  purchaseRows.innerHTML="";
+  let t=0;
+  purchaseDraft.forEach((r,i)=>{
+    const total=r.qty*r.price;
+    t+=total;
+    purchaseRows.innerHTML+=`
+      <tr>
+        <td>
+          <select onchange="purSetProd(${i},this.value)">
+            <option></option>
+            ${DB.products.map(p=>`<option value="${p.id}">${p.itemNo}</option>`)}
+          </select>
+        </td>
+        <td><input type="number" value="${r.qty}"
+          onchange="purSetQty(${i},this.value)"></td>
+        <td><input type="number" value="${r.price}"
+          onchange="purSetPrice(${i},this.value)"></td>
+        <td>${total}</td>
+      </tr>`;
+  });
+  purTotal.innerText=t.toFixed(2);
+}
+
+function purSetProd(i,v){purchaseDraft[i].productId=v;}
+function purSetQty(i,v){purchaseDraft[i].qty=+v;renderPurchase();}
+function purSetPrice(i,v){purchaseDraft[i].price=+v;renderPurchase();}
+
+function savePurchase(){
+  const total=purchaseDraft.reduce((s,r)=>s+r.qty*r.price,0);
+  DB.purchases.push({id:uid("PUR"),items:purchaseDraft,total});
+
+  DB.cash.push({
+    id:uid("CASH"),
+    type:"OUT",
+    amount:total,
+    ref:"PURCHASE",
+    date:new Date().toLocaleDateString()
+  });
+
+  purchaseDraft.forEach(r=>{
+    const p=DB.products.find(x=>x.id===r.productId);
+    if(p)p.stock+=r.qty;
+  });
+
+  saveDB();
+  purchaseDraft=[];
+  renderPurchase();
+}
+function uploadPurchaseExcel(input){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const wb=XLSX.read(e.target.result,{type:"binary"});
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+
+    rows.forEach(r=>{
+      const p=DB.products.find(x=>x.itemNo==r["Item No"]);
+      if(p){
+        purchaseDraft.push({
+          productId:p.id,
+          qty:+r.Qty,
+          price:+r.Price
+        });
+      }
+    });
+    renderPurchase();
+  };
+  reader.readAsBinaryString(input.files[0]);
+}
+<section id="vendors">
+  <div class="card">
+    <h2>Vendors</h2>
+    <input id="v_name" placeholder="Vendor Name">
+    <button onclick="addVendor()">Add</button>
+    <ul id="vendorList"></ul>
+  </div>
+</section>
+function addVendor(){
+  DB.vendors.push({id:uid("V"),name:v_name.value});
+  v_name.value="";
+  saveDB();
+  renderVendors();
+}
+function renderVendors(){
+  vendorList.innerHTML="";
+  DB.vendors.forEach(v=>{
+    vendorList.innerHTML+=`<li>${v.name}</li>`;
+  });
+}
+<section id="settings">
+  <div class="card">
+    <h2>Settings</h2>
+    <label>Company Name</label>
+    <input id="companyName" value="Dani Test Software">
+    <button onclick="saveSettings()">Save</button>
+  </div>
+</section>
+function saveSettings(){
+  document.querySelector("header").innerText=companyName.value;
+  localStorage.setItem("companyName",companyName.value);
+}
+document.querySelector("header").innerText=
+  localStorage.getItem("companyName")||"Dani Test Software";
