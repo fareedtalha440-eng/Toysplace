@@ -5,16 +5,16 @@
 <title>Toysplace POS</title>
 <style>
 body{margin:0;font-family:Arial;background:#f4f6fb}
-header{background:#0b2a4a;color:#fff;padding:14px;font-size:20px}
+header{background:#0b2a4a;color:#fff;padding:12px;font-size:20px}
 nav{background:#0b2a4a;color:#fff;display:flex}
-nav span{padding:14px 18px;cursor:pointer}
+nav span{padding:12px 18px;cursor:pointer}
 nav span.active{border-bottom:3px solid #fff}
 section{display:none;padding:15px}
 table{width:100%;border-collapse:collapse;margin-top:8px}
 th,td{border:1px solid #ccc;padding:5px;font-size:13px}
 th{background:#e9eef5}
 input,select{width:100%;padding:4px}
-button{padding:6px 10px;margin:4px}
+button{padding:6px 12px;margin:6px}
 tfoot td{font-weight:bold}
 </style>
 </head>
@@ -27,210 +27,188 @@ tfoot td{font-weight:bold}
 <span onclick="openTab('purchase',this)">Purchase</span>
 <span onclick="openTab('product',this)">Product</span>
 <span onclick="openTab('vendor',this)">Vendor</span>
-<span onclick="openTab('reports',this)">Reports</span>
 </nav>
 
 <section id="invoice"></section>
 <section id="purchase"></section>
 <section id="product"></section>
 <section id="vendor"></section>
-<section id="reports"></section>
 
 <script>
-let db=JSON.parse(localStorage.getItem("tpdb"))||{
-products:[],vendors:[],invoices:[],purchases:[]
-}
-const save=()=>localStorage.setItem("tpdb",JSON.stringify(db))
+/* ---------- DATABASE ---------- */
+let db = JSON.parse(localStorage.getItem("tpdb")) || {
+  products: [],
+  vendors: [],
+  invoices: [],
+  purchases: []
+};
+function saveDB(){ localStorage.setItem("tpdb", JSON.stringify(db)); }
 
+/* ---------- NAV ---------- */
 function openTab(id,el){
-document.querySelectorAll("nav span").forEach(x=>x.classList.remove("active"))
-el.classList.add("active")
-document.querySelectorAll("section").forEach(s=>s.style.display="none")
-document.getElementById(id).style.display="block"
-if(id==="invoice")invoiceList()
-if(id==="purchase")purchaseList()
-if(id==="product")productList()
-if(id==="vendor")vendorList()
-if(id==="reports")reports()
+  document.querySelectorAll("nav span").forEach(x=>x.classList.remove("active"));
+  el.classList.add("active");
+  document.querySelectorAll("section").forEach(s=>s.style.display="none");
+  document.getElementById(id).style.display="block";
+  if(id==="invoice")invoiceList();
+  if(id==="purchase")purchaseList();
+  if(id==="product")productList();
+  if(id==="vendor")vendorList();
 }
-openTab("invoice",document.querySelector("nav span"))
+openTab("invoice",document.querySelector("nav span"));
 
-/* ---------------- INVOICE ---------------- */
+/* ---------- INVOICE ---------- */
 function invoiceList(){
-let h=`<button onclick="invoiceEdit()">New Invoice</button>
-<table><tr>
-<th>#</th><th>Date</th><th>Bill</th><th>Items</th><th>Amount</th><th>Discount</th><th>Total</th></tr>`
-db.invoices.forEach((i,x)=>{
-h+=`<tr onclick="invoiceEdit(${x})">
-<td>${x+1}</td><td>${i.date}</td><td>${i.bill}</td>
-<td>${i.items.length}</td><td>${i.amount}</td><td>${i.discount}</td><td>${i.total}</td></tr>`
-})
-h+=`</table>`
-invoice.innerHTML=h
+  let h=`<button onclick="newInvoice()">New Invoice</button>
+  <table><tr>
+  <th>#</th><th>Bill</th><th>Items</th><th>Total</th>
+  </tr>`;
+  db.invoices.forEach((i,x)=>{
+    h+=`<tr onclick="editInvoice(${x})">
+    <td>${x+1}</td><td>${i.bill}</td>
+    <td>${i.items.length}</td><td>${i.total}</td></tr>`;
+  });
+  h+=`</table>`;
+  invoice.innerHTML=h;
 }
 
-function invoiceEdit(idx=null){
-let inv=idx!=null?db.invoices[idx]:
-{bill:"INV"+(db.invoices.length+1),items:[],amount:0,discount:0,total:0}
-
-let h=`<h3>Invoice ${inv.bill}</h3>
-<table id="invTable">
-<tr>
-<th>Barcode</th><th>Item No</th><th>Description</th>
-<th>Qty</th><th>Rate</th><th>Disc</th><th>Amount</th>
-</tr>`
-inv.items.forEach((r,i)=>h+=invRow(r,i))
-h+=invRow({},inv.items.length)
-h+=`</table>
-<br>
-Amount <input id="amt" readonly>
-Discount <input id="disc" readonly>
-Total <input id="tot" readonly><br>
-<button onclick="saveInvoice(${idx})">Save</button>
-<button onclick="invoiceList()">Back</button>`
-invoice.innerHTML=h
-calcInv()
+function newInvoice(){
+  editInvoice(null);
 }
 
-function invRow(r,i){
-return `<tr>
-<td><input onblur="pickProd(this,${i},'barcode')" value="${r.barcode||''}"></td>
-<td><input onblur="pickProd(this,${i},'item')" value="${r.item||''}"></td>
-<td><input onblur="pickProd(this,${i},'desc')" value="${r.desc||''}"></td>
-<td><input type="number" value="${r.qty||1}" oninput="calcInv()"></td>
-<td><input readonly value="${r.rate||0}"></td>
-<td><input value="${r.disc||0}" oninput="calcInv()"></td>
-<td><input readonly></td>
-</tr>`
+function editInvoice(index){
+  let inv = index!=null ? db.invoices[index] : {
+    bill:"INV"+(db.invoices.length+1),
+    items:[],
+    total:0
+  };
+  let h=`<h3>Invoice ${inv.bill}</h3>
+  <table id="invTable">
+  <tr><th>Product</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>`;
+  inv.items.forEach(r=>{
+    h+=rowHTML(r.product,r.qty,r.rate);
+  });
+  h+=rowHTML("","1","0");
+  h+=`</table>
+  <br>Total: <input id="invTotal" readonly>
+  <br>
+  <button onclick="saveInvoice(${index})">Save</button>
+  <button onclick="invoiceList()">Back</button>`;
+  invoice.innerHTML=h;
+  calcInvoice();
 }
 
-function pickProd(el,i,key){
-let p=db.products.find(x=>x[key]==el.value)
-if(!p)return
-let r=invTable.rows[i+1].cells
-r[0].children[0].value=p.barcode
-r[1].children[0].value=p.item
-r[2].children[0].value=p.desc
-r[4].children[0].value=p.rate
-calcInv()
+function rowHTML(p,q,r){
+  return `<tr>
+  <td><select onchange="fillRate(this)">
+    <option></option>
+    ${db.products.map(x=>`<option value="${x.name}">${x.name}</option>`)}
+  </select></td>
+  <td><input type="number" value="${q}" oninput="calcInvoice()"></td>
+  <td><input type="number" value="${r}" readonly></td>
+  <td><input readonly></td>
+  </tr>`;
 }
 
-function calcInv(){
-let amt=0,disc=0
-for(let i=1;i<invTable.rows.length;i++){
-let r=invTable.rows[i].cells
-if(!r[2])continue
-let q=+r[3].children[0].value
-let rate=+r[4].children[0].value
-let d=+r[5].children[0].value
-let a=(q*rate)-d
-r[6].children[0].value=a
-amt+=q*rate
-disc+=d
-}
-amtEl.value=amt
-discEl.value=disc
-totEl.value=amt-disc
+function fillRate(sel){
+  let prod=db.products.find(p=>p.name===sel.value);
+  let row=sel.parentNode.parentNode;
+  if(prod) row.cells[2].children[0].value=prod.rate;
+  calcInvoice();
 }
 
-const amtEl=document.createElement("input")
-const discEl=document.createElement("input")
-const totEl=document.createElement("input")
+function calcInvoice(){
+  let t=0;
+  document.querySelectorAll("#invTable tr").forEach((r,i)=>{
+    if(i===0) return;
+    let q=+r.cells[1].children[0].value||0;
+    let rate=+r.cells[2].children[0].value||0;
+    let a=q*rate;
+    r.cells[3].children[0].value=a;
+    t+=a;
+  });
+  invTotal.value=t;
+}
 
 function saveInvoice(idx){
-let items=[]
-for(let i=1;i<invTable.rows.length;i++){
-let r=invTable.rows[i].cells
-if(!r[2]||!r[2].children[0].value)continue
-items.push({
-barcode:r[0].children[0].value,
-item:r[1].children[0].value,
-desc:r[2].children[0].value,
-qty:+r[3].children[0].value,
-rate:+r[4].children[0].value,
-disc:+r[5].children[0].value
-})
-}
-let inv={
-bill:idx!=null?db.invoices[idx].bill:"INV"+(db.invoices.length+1),
-date:new Date().toLocaleString(),
-items,
-amount:+amtEl.value,
-discount:+discEl.value,
-total:+totEl.value
-}
-if(idx!=null)db.invoices[idx]=inv
-else db.invoices.push(inv)
-save();invoiceList()
+  let items=[];
+  document.querySelectorAll("#invTable tr").forEach((r,i)=>{
+    if(i===0) return;
+    let p=r.cells[0].children[0].value;
+    if(!p) return;
+    items.push({
+      product:p,
+      qty:+r.cells[1].children[0].value,
+      rate:+r.cells[2].children[0].value
+    });
+  });
+  let inv={
+    bill: idx!=null?db.invoices[idx].bill:"INV"+(db.invoices.length+1),
+    items,
+    total:+invTotal.value
+  };
+  if(idx!=null) db.invoices[idx]=inv;
+  else db.invoices.push(inv);
+  saveDB(); invoiceList();
 }
 
-/* ---------------- PURCHASE ---------------- */
+/* ---------- PURCHASE ---------- */
 function purchaseList(){
-let h=`<button onclick="purchaseEdit()">New Purchase</button>
-<table><tr><th>#</th><th>Vendor</th><th>Items</th><th>Total</th></tr>`
-db.purchases.forEach((p,i)=>{
-h+=`<tr onclick="purchaseEdit(${i})"><td>${i+1}</td><td>${p.vendor}</td><td>${p.items.length}</td><td>${p.total}</td></tr>`
-})
-h+=`</table>`
-purchase.innerHTML=h
+  let h=`<button onclick="newPurchase()">New Purchase</button>
+  <table><tr><th>#</th><th>Vendor</th><th>Total</th></tr>`;
+  db.purchases.forEach((p,i)=>{
+    h+=`<tr><td>${i+1}</td><td>${p.vendor}</td><td>${p.total}</td></tr>`;
+  });
+  h+=`</table>`;
+  purchase.innerHTML=h;
 }
 
-function purchaseEdit(idx=null){
-let p=idx!=null?db.purchases[idx]:{vendor:"",items:[],total:0}
-let h=`Vendor:
-<select id="pven">${db.vendors.map(v=>`<option>${v.name}</option>`)}</select>
-<table id="purTable">
-<tr><th>Barcode</th><th>Item No</th><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>
-</table>
-<button onclick="savePurchase(${idx})">Save</button>
-<button onclick="purchaseList()">Back</button>`
-purchase.innerHTML=h
+function newPurchase(){
+  let h=`Vendor:
+  <select id="pVendor">
+  ${db.vendors.map(v=>`<option>${v.name}</option>`)}
+  </select>
+  <table id="purTable">
+  <tr><th>Product</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>
+  </table>
+  <button onclick="savePurchase()">Save</button>
+  <button onclick="purchaseList()">Back</button>`;
+  purchase.innerHTML=h;
 }
 
-function savePurchase(idx){
-let p={vendor:pven.value,items:[],total:0}
-if(idx!=null)db.purchases[idx]=p
-else db.purchases.push(p)
-save();purchaseList()
-}
-
-/* ---------------- PRODUCT ---------------- */
+/* ---------- PRODUCT ---------- */
 function productList(){
-let h=`<button onclick="addProduct()">Add Product</button>
-<table><tr><th>#</th><th>Barcode</th><th>Item</th><th>Description</th><th>Rate</th></tr>`
-db.products.forEach((p,i)=>{
-h+=`<tr>
-<td>${i+1}</td><td>${p.barcode}</td><td>${p.item}</td><td>${p.desc}</td><td>${p.rate}</td>
-</tr>`
-})
-h+=`</table>`
-product.innerHTML=h
+  let h=`<button onclick="addProduct()">Add Product</button>
+  <table><tr><th>#</th><th>Name</th><th>Rate</th></tr>`;
+  db.products.forEach((p,i)=>{
+    h+=`<tr><td>${i+1}</td><td>${p.name}</td><td>${p.rate}</td></tr>`;
+  });
+  h+=`</table>`;
+  product.innerHTML=h;
 }
 function addProduct(){
-let b=prompt("Barcode"),i=prompt("Item No"),d=prompt("Description"),r=+prompt("Rate")
-if(!d)return
-db.products.push({barcode:b,item:i,desc:d,rate:r})
-save();productList()
+  let n=prompt("Product Name");
+  let r=+prompt("Rate");
+  if(!n) return;
+  db.products.push({name:n,rate:r});
+  saveDB(); productList();
 }
 
-/* ---------------- VENDOR ---------------- */
+/* ---------- VENDOR ---------- */
 function vendorList(){
-let h=`<button onclick="addVendor()">Add Vendor</button>
-<table><tr><th>#</th><th>Name</th></tr>`
-db.vendors.forEach((v,i)=>h+=`<tr><td>${i+1}</td><td>${v.name}</td></tr>`)
-h+=`</table>`
-vendor.innerHTML=h
+  let h=`<button onclick="addVendor()">Add Vendor</button>
+  <table><tr><th>#</th><th>Name</th></tr>`;
+  db.vendors.forEach((v,i)=>{
+    h+=`<tr><td>${i+1}</td><td>${v.name}</td></tr>`;
+  });
+  h+=`</table>`;
+  vendor.innerHTML=h;
 }
 function addVendor(){
-let n=prompt("Vendor Name")
-if(!n)return
-db.vendors.push({name:n})
-save();vendorList()
-}
-
-/* ---------------- REPORTS ---------------- */
-function reports(){
-reports.innerHTML="<h3>Reports module ready for profit & stock</h3>"
+  let n=prompt("Vendor Name");
+  if(!n) return;
+  db.vendors.push({name:n});
+  saveDB(); vendorList();
 }
 </script>
 </body>
