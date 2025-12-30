@@ -201,13 +201,152 @@ function render_settings(){
   <p>Theme, tax, invoice config will be here.</p>`;
 }
 
-/* ---------------- PLACEHOLDER ---------------- */
+<script>
+/* ---------------- INVOICE ---------------- */
+let invoiceDraft=null;
+
 function render_invoice(){
-  invoice.innerHTML="<h3>Invoice module (logic preserved – next step)</h3>";
+  if(!invoiceDraft){
+    invoice.innerHTML=`<h3>Invoices</h3>
+    <button onclick="newInvoice()">New Invoice</button>
+    <table>
+    <tr>
+      <th>#</th><th>Date</th><th>Bill</th><th>Products</th>
+      <th>Amount</th><th>Discount</th><th>Total</th><th>Time</th>
+    </tr>`;
+    db.invoices.forEach((i,x)=>{
+      h=`<tr onclick="editInvoice(${x})">
+      <td>${x+1}</td><td>${i.date}</td><td>${i.bill}</td>
+      <td>${i.items.length}</td>
+      <td>${i.amount}</td><td>${i.discount}</td>
+      <td>${i.total}</td><td>${i.time}</td></tr>`;
+      invoice.innerHTML+=h;
+    });
+    invoice.innerHTML+=`</table>`;
+    return;
+  }
+  drawInvoiceEditor();
 }
+
+function newInvoice(){
+  invoiceDraft={
+    bill:"INV"+(db.invoices.length+1),
+    items:[],
+    discRs:0,
+    discPc:0
+  };
+  drawInvoiceEditor();
+}
+
+function drawInvoiceEditor(){
+  let h=`<h3>Invoice ${invoiceDraft.bill}</h3>
+  <table id="invTable">
+  <tr>
+    <th>Barcode</th><th>Item No</th><th>Description</th>
+    <th>Qty</th><th>Rate</th><th>Disc Rs</th><th>Disc %</th><th>Amount</th>
+  </tr>`;
+  invoiceDraft.items.forEach(drawRow);
+  h+=drawRow();
+  h+=`</table>
+
+  <div class="total-box">
+    <div>Amount <input id="iAmt" readonly></div>
+    <div>Discount <input id="iDisc" readonly></div>
+    <div>Total <input id="iTotal" readonly></div>
+  </div>
+
+  <button onclick="saveInvoice()">Save</button>
+  <button class="secondary" onclick="invoiceDraft=null;render_invoice()">Back</button>`;
+  invoice.innerHTML=h;
+  calcInvoice();
+}
+
+function drawRow(r={}){
+  return `<tr>
+    <td><input value="${r.barcode||""}"></td>
+    <td><input value="${r.item||""}"></td>
+    <td><input value="${r.desc||""}"></td>
+    <td><input type="number" value="${r.qty||1}" oninput="calcInvoice()"></td>
+    <td><input type="number" value="${r.rate||0}" readonly></td>
+    <td><input type="number" value="${r.discRs||0}" oninput="calcInvoice()"></td>
+    <td><input type="number" value="${r.discPc||0}" oninput="calcInvoice()"></td>
+    <td><input readonly></td>
+  </tr>`;
+}
+
+function calcInvoice(){
+  let amt=0,disc=0;
+  document.querySelectorAll("#invTable tr").forEach((r,i)=>{
+    if(i===0) return;
+    let q=+r.cells[3].children[0].value||0;
+    let rate=+r.cells[4].children[0].value||0;
+    let d=+r.cells[5].children[0].value||0;
+    let a=(q*rate)-d;
+    r.cells[7].children[0].value=a>0?a:0;
+    amt+=q*rate;
+    disc+=d;
+  });
+  iAmt.value=amt;
+  iDisc.value=disc;
+  iTotal.value=amt-disc;
+}
+
+function saveInvoice(){
+  let items=[];
+  document.querySelectorAll("#invTable tr").forEach((r,i)=>{
+    if(i===0) return;
+    let d=r.cells[2].children[0].value;
+    if(!d) return;
+    items.push({
+      desc:d,
+      qty:+r.cells[3].children[0].value,
+      rate:+r.cells[4].children[0].value
+    });
+  });
+  let now=new Date();
+  db.invoices.push({
+    bill:invoiceDraft.bill,
+    date:now.toLocaleDateString(),
+    time:now.toLocaleTimeString(),
+    items,
+    amount:+iAmt.value,
+    discount:+iDisc.value,
+    total:+iTotal.value
+  });
+  saveDB();
+  invoiceDraft=null;
+  render_invoice();
+}
+
+/* ---------------- PURCHASE ---------------- */
 function render_purchase(){
-  purchase.innerHTML="<h3>Purchase module (logic preserved – next step)</h3>";
+  purchase.innerHTML=`<h3>Purchases</h3>
+  <button onclick="newPurchase()">New Purchase</button>`;
+}
+
+function newPurchase(){
+  purchase.innerHTML=`<h3>New Purchase</h3>
+  Vendor:
+  <select id="pv">${db.vendors.map(v=>`<option>${v.name}</option>`)}</select>
+  <table id="purTable">
+  <tr>
+    <th>Barcode</th><th>Item No</th><th>Description</th>
+    <th>Qty</th><th>Rate</th><th>Amount</th>
+  </tr>
+  </table>
+  <button onclick="savePurchase()">Save</button>
+  <button class="secondary" onclick="render_purchase()">Back</button>`;
+}
+
+function savePurchase(){
+  let total=0;
+  document.querySelectorAll("#purTable tr").forEach((r,i)=>{
+    if(i===0) return;
+    let q=+r.cells[3].children[0].value||0;
+    let rate=+r.cells[4].children[0].value||0;
+    total+=q*rate;
+  });
+  saveDB();
+  render_purchase();
 }
 </script>
-</body>
-</html>
