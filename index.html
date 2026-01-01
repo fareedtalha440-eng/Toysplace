@@ -3,16 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <title>Toysplace Dani Test</title>
+
 <style>
 body{font-family:Arial;margin:0;background:#f5f5f5}
 header{background:#222;color:#fff;padding:10px;text-align:center}
-nav{background:#333;color:#fff;display:flex;gap:10px;padding:10px}
+nav{background:#333;padding:10px;display:flex;gap:10px}
 nav button{background:#555;color:#fff;border:0;padding:8px 12px;cursor:pointer}
 nav button:hover{background:#777}
 section{display:none;padding:15px}
 .card{background:#fff;padding:15px;border-radius:6px}
 table{width:100%;border-collapse:collapse;margin-top:10px}
-th,td{border:1px solid #ccc;padding:6px;text-align:left}
+th,td{border:1px solid #ccc;padding:6px}
 input,select,button{padding:6px;margin:4px}
 .green{background:#2ecc71;color:#fff;border:0}
 .red{background:#e74c3c;color:#fff;border:0}
@@ -28,11 +29,11 @@ input,select,button{padding:6px;margin:4px}
 </header>
 
 <nav>
-<button onclick="show('invoice')">Invoice</button>
-<button onclick="show('purchase')">Purchase</button>
-<button onclick="show('products')">Products</button>
-<button onclick="show('vendors')">Vendors</button>
-<button onclick="show('reports')">Reports</button>
+<button onclick="openSection('invoice')">Invoice</button>
+<button onclick="openSection('purchase')">Purchase</button>
+<button onclick="openSection('products')">Products</button>
+<button onclick="openSection('vendors')">Vendors</button>
+<button onclick="openSection('reports')">Reports</button>
 </nav>
 
 <!-- INVOICE -->
@@ -52,11 +53,11 @@ input,select,button{padding:6px;margin:4px}
 <section id="purchase">
 <div class="card">
 <h3>Purchase</h3>
-<select id="purVendor"></select>
+<select id="purVendor"></select><br>
 <input id="purBarcode" placeholder="Barcode">
 <input id="purQty" type="number" placeholder="Qty">
 <input id="purCost" type="number" placeholder="Cost">
-<button onclick="addPurchase()">Add</button>
+<button onclick="addPurchase()">Add Purchase</button>
 </div>
 </section>
 
@@ -77,9 +78,11 @@ input,select,button{padding:6px;margin:4px}
 <h3>Vendors</h3>
 <input id="vendorName" placeholder="Vendor Name">
 <button onclick="addVendor()">Add Vendor</button>
+
 <table id="vendorTable">
 <tr><th>Name</th><th>Balance</th></tr>
 </table>
+
 <div id="ledger"></div>
 </div>
 </section>
@@ -98,7 +101,7 @@ input,select,button{padding:6px;margin:4px}
 <div style="background:#fff;width:300px;margin:80px auto;padding:15px">
 <input id="pBarcode" placeholder="Barcode">
 <input id="pItem" placeholder="Item No">
-<input id="pRate" type="number" placeholder="Rate">
+<input id="pRate" type="number" placeholder="Rate"><br>
 <button onclick="saveProduct()">Save</button>
 <button onclick="closeProduct()">Cancel</button>
 </div>
@@ -113,13 +116,16 @@ purchases:[],
 cash:0
 };
 
-function save(){localStorage.setItem("DB",JSON.stringify(DB))}
-function load(){let d=localStorage.getItem("DB");if(d)DB=JSON.parse(d)}
-load();
+function saveDB(){localStorage.setItem("DB",JSON.stringify(DB))}
+function loadDB(){
+let d=localStorage.getItem("DB");
+if(d) DB=JSON.parse(d);
+}
+loadDB();
 
 function uid(p){return p+Math.random().toString(36).substr(2,9)}
 
-function show(id){
+function openSection(id){
 document.querySelectorAll("section").forEach(s=>s.style.display="none");
 document.getElementById(id).style.display="block";
 renderAll();
@@ -128,20 +134,21 @@ renderAll();
 function renderAll(){
 renderProducts();
 renderVendors();
-renderCash();
 renderReports();
+renderCash();
 }
 
 function renderCash(){
 document.getElementById("cashDisplay").innerText="Cash In Hand: "+DB.cash;
 }
 
+/* INVOICE */
 let invoiceDraft=[];
 
 function scanBarcode(e){
 if(e.key==="Enter"){
 let p=DB.products.find(x=>x.barcode===e.target.value);
-if(!p||p.stock<=0){alert("Not found / Out of stock");return}
+if(!p || p.stock<=0){alert("Product not found or out of stock");return;}
 invoiceDraft.push({pid:p.id,qty:1,rate:p.rate});
 p.stock--;
 renderInvoice();
@@ -154,24 +161,25 @@ let t=document.getElementById("invTable");
 t.innerHTML="<tr><th>Item</th><th>Qty</th><th>Rate</th><th>Total</th><th></th></tr>";
 invoiceDraft.forEach((r,i)=>{
 let p=DB.products.find(x=>x.id===r.pid);
-t.innerHTML+=`<tr>
+t.innerHTML+=`
+<tr>
 <td>${p.item}</td>
 <td>${r.qty}</td>
 <td>${r.rate}</td>
 <td>${r.qty*r.rate}</td>
-<td><button class="red" onclick="delInv(${i})">X</button></td>
+<td><button class="red" onclick="removeInv(${i})">X</button></td>
 </tr>`;
 });
 }
 
-function delInv(i){invoiceDraft.splice(i,1);renderInvoice()}
+function removeInv(i){invoiceDraft.splice(i,1);renderInvoice()}
 
 function saveInvoice(){
 let total=invoiceDraft.reduce((a,b)=>a+b.qty*b.rate,0);
 DB.invoices.push({items:invoiceDraft,total});
 DB.cash+=total;
 invoiceDraft=[];
-save();
+saveDB();
 renderInvoice();
 renderCash();
 }
@@ -179,15 +187,16 @@ renderCash();
 function printInvoice(){
 let w=window.open("");
 w.document.write("<h3>Invoice</h3>");
-invoiceDraft.forEach(r=>{
+DB.invoices.at(-1)?.items.forEach(r=>{
 let p=DB.products.find(x=>x.id===r.pid);
-w.document.write(`${p.item} ${r.qty} x ${r.rate}<br>`);
+w.document.write(`${p.item} - ${r.qty} x ${r.rate}<br>`);
 });
 w.print();
 }
 
-function openProduct(){document.getElementById("prodModal").style.display="block"}
-function closeProduct(){document.getElementById("prodModal").style.display="none"}
+/* PRODUCTS */
+function openProduct(){prodModal.style.display="block"}
+function closeProduct(){prodModal.style.display="none"}
 
 function saveProduct(){
 DB.products.push({
@@ -197,7 +206,7 @@ item:pItem.value,
 rate:+pRate.value,
 stock:0
 });
-save();
+saveDB();
 closeProduct();
 renderProducts();
 }
@@ -210,46 +219,54 @@ t.innerHTML+=`<tr><td>${p.barcode}</td><td>${p.item}</td><td>${p.rate}</td><td>$
 });
 }
 
+/* VENDORS */
 function addVendor(){
 DB.vendors.push({id:uid("V"),name:vendorName.value,bal:0,ledger:[]});
-save();
+saveDB();
 renderVendors();
 }
 
 function renderVendors(){
 let t=document.getElementById("vendorTable");
 t.innerHTML="<tr><th>Name</th><th>Balance</th></tr>";
+
 DB.vendors.forEach(v=>{
 t.innerHTML+=`<tr onclick="showLedger('${v.id}')"><td>${v.name}</td><td>${v.bal}</td></tr>`;
 });
-purVendor.innerHTML=DB.vendors.map(v=>`<option value="${v.id}">${v.name}</option>`).join("");
+
+let pv=document.getElementById("purVendor");
+pv.innerHTML="";
+DB.vendors.forEach(v=>{
+pv.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
+});
 }
 
 function showLedger(id){
 let v=DB.vendors.find(x=>x.id===id);
-let h="<h4>Ledger</h4>";
-v.ledger.forEach(l=>h+=`${l}<br>`);
-ledger.innerHTML=h;
+ledger.innerHTML="<h4>Ledger</h4>"+v.ledger.join("<br>");
 }
 
+/* PURCHASE */
 function addPurchase(){
 let v=DB.vendors.find(x=>x.id===purVendor.value);
 let p=DB.products.find(x=>x.barcode===purBarcode.value);
-if(!p){alert("Product missing");return}
+if(!p){alert("Product not found");return;}
+let amt=+purQty.value * +purCost.value;
 p.stock+=+purQty.value;
-v.bal+=+purQty.value*+purCost.value;
-v.ledger.push("Purchase "+purQty.value);
-DB.purchases.push({v:v.name,amt:+purQty.value*+purCost.value});
-save();
+v.bal+=amt;
+v.ledger.push("Purchase: "+amt);
+DB.purchases.push({amt});
+saveDB();
 renderAll();
 }
 
+/* REPORTS */
 function renderReports(){
 repSales.innerText="Total Sales: "+DB.invoices.reduce((a,b)=>a+b.total,0);
 repPurchase.innerText="Total Purchases: "+DB.purchases.reduce((a,b)=>a+b.amt,0);
 }
 
-show("invoice");
+openSection("invoice");
 </script>
 
 </body>
