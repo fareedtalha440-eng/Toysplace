@@ -3,9 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Dani Test Software</title>
-
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-
 <style>
 :root{--primary:#0b2a4a;--secondary:#143a63;--border:#d0d7e2;}
 *{box-sizing:border-box;}
@@ -28,9 +26,7 @@ input,select{padding:7px;width:100%;border:1px solid var(--border);border-radius
 .option-btn{margin:4px;padding:6px 10px;border-radius:4px;border:1px solid var(--primary);cursor:pointer;}
 </style>
 </head>
-
 <body>
-
 <header>
 <span id="softwareName">Dani Test Software</span>
 <span style="float:right">Cash In Hand: <b id="cashHeader">0</b></span>
@@ -47,7 +43,6 @@ input,select{padding:7px;width:100%;border:1px solid var(--border);border-radius
 </nav>
 
 <script>
-/* ===================== DATABASE (UNCHANGED STRUCTURE) ===================== */
 const DB={
 products:JSON.parse(localStorage.getItem("products")||"[]"),
 vendors:JSON.parse(localStorage.getItem("vendors")||"[]"),
@@ -59,31 +54,21 @@ settings:JSON.parse(localStorage.getItem("settings")||"{}")
 };
 
 function saveDB(){
-for(let k in DB){
-localStorage.setItem(k,JSON.stringify(DB[k]));
-}
+for(let k in DB) localStorage.setItem(k,JSON.stringify(DB[k]));
 updateCashHeader();
 }
 
-function uid(p){
-return p+"_"+Date.now()+"_"+Math.floor(Math.random()*1000);
-}
-
+function uid(p){return p+"_"+Date.now()+"_"+Math.floor(Math.random()*1000);}
 function updateCashHeader(){
 let bal=0;
-DB.cash.forEach(c=>{
-bal += (c.type==="IN"?c.amount:-c.amount);
-});
+DB.cash.forEach(c=>bal+=(c.type==="IN"?c.amount:-c.amount));
 document.getElementById("cashHeader").innerText=bal.toFixed(2);
 }
-
-/* ===================== TAB HANDLER (FIXED – NO BREAK) ===================== */
 function openTab(id){
 document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
 document.querySelectorAll("nav div").forEach(d=>d.classList.remove("active"));
 document.getElementById(id).classList.add("active");
 document.getElementById("tab-"+id).classList.add("active");
-
 if(id==="products") renderProducts();
 if(id==="vendors") renderVendors();
 if(id==="purchase") renderPurchase();
@@ -91,29 +76,16 @@ if(id==="cash") renderCash();
 if(id==="reports") renderReports();
 if(id==="invoice") renderOldInvoices();
 }
-
-/* ===================== PRODUCTS (ADD / EDIT / DELETE) ===================== */
 </script>
 
 <!-- ================= PRODUCTS ================= -->
 <section id="products">
 <div class="card">
 <h2>Products</h2>
-
-<button class="secondary" onclick="openProductForm()">Add Single Product</button>
-
+<input type="file" accept=".xlsx,.xls" onchange="uploadProductExcel(this)">
+<button onclick="exportProductsCSV()">Download CSV</button>
 <table>
-<thead>
-<tr>
-<th>S No</th>
-<th>Barcode</th>
-<th>Item No</th>
-<th>Description</th>
-<th>Retail Rate</th>
-<th>Stock</th>
-<th>Actions</th>
-</tr>
-</thead>
+<thead><tr><th>S No</th><th>Barcode</th><th>Item No</th><th>Description</th><th>Retail Rate</th><th>Stock</th><th>Actions</th></tr></thead>
 <tbody id="productRows"></tbody>
 </table>
 </div>
@@ -135,11 +107,9 @@ if(id==="invoice") renderOldInvoices();
 let editProductId=null;
 
 function renderProducts(){
-const tbody=document.getElementById("productRows");
-tbody.innerHTML="";
+const tbody=document.getElementById("productRows");tbody.innerHTML="";
 DB.products.forEach((p,i)=>{
-tbody.innerHTML+=`
-<tr>
+tbody.innerHTML+=`<tr>
 <td>${i+1}</td>
 <td>${p.barcode||""}</td>
 <td>${p.itemNo||""}</td>
@@ -149,62 +119,51 @@ tbody.innerHTML+=`
 <td>
 <button onclick="editProduct('${p.id}')">Edit</button>
 <button class="red" onclick="deleteProduct('${p.id}')">Delete</button>
-</td>
-</tr>`;
+</td></tr>`;
 });
 }
 
-function openProductForm(){
-editProductId=null;
-pf_barcode.value="";
-pf_item.value="";
-pf_desc.value="";
-pf_rate.value="";
-document.getElementById("productForm").style.display="block";
-}
-
-function closeProductForm(){
-document.getElementById("productForm").style.display="none";
-}
+function openProductForm(){editProductId=null;pf_barcode.value="";pf_item.value="";pf_desc.value="";pf_rate.value="";document.getElementById("productForm").style.display="block";}
+function closeProductForm(){document.getElementById("productForm").style.display="none";}
 
 function saveProduct(){
 if(!pf_item.value)return alert("Item No required");
+if(DB.products.find(x=>(x.barcode===pf_barcode.value||x.itemNo===pf_item.value)&&x.id!==editProductId)) return alert("Duplicate Barcode/Item No");
 if(editProductId){
 let p=DB.products.find(x=>x.id===editProductId);
-p.barcode=pf_barcode.value;
-p.itemNo=pf_item.value;
-p.desc=pf_desc.value;
-p.rate=+pf_rate.value;
+p.barcode=pf_barcode.value;p.itemNo=pf_item.value;p.desc=pf_desc.value;p.rate=+pf_rate.value;
 }else{
-DB.products.push({
-id:uid("P"),
-barcode:pf_barcode.value,
-itemNo:pf_item.value,
-desc:pf_desc.value,
-rate:+pf_rate.value,
-stock:0
-});
+DB.products.push({id:uid("P"),barcode:pf_barcode.value,itemNo:pf_item.value,desc:pf_desc.value,rate:+pf_rate.value,stock:0});
 }
-saveDB();
-closeProductForm();
-renderProducts();
+saveDB();closeProductForm();renderProducts();
 }
 
 function editProduct(id){
-let p=DB.products.find(x=>x.id===id);
-editProductId=id;
-pf_barcode.value=p.barcode||"";
-pf_item.value=p.itemNo||"";
-pf_desc.value=p.desc||"";
-pf_rate.value=p.rate||0;
+let p=DB.products.find(x=>x.id===id);editProductId=id;
+pf_barcode.value=p.barcode||"";pf_item.value=p.itemNo||"";pf_desc.value=p.desc||"";pf_rate.value=p.rate||0;
 document.getElementById("productForm").style.display="block";
 }
 
-function deleteProduct(id){
-if(!confirm("Delete product?"))return;
-DB.products=DB.products.filter(p=>p.id!==id);
-saveDB();
-renderProducts();
+function deleteProduct(id){if(!confirm("Delete product?"))return;DB.products=DB.products.filter(p=>p.id!==id);saveDB();renderProducts();}
+
+function uploadProductExcel(input){
+const reader=new FileReader();
+reader.onload=e=>{
+const wb=XLSX.read(e.target.result,{type:"binary"});
+const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+rows.forEach(r=>{
+if(DB.products.find(x=>x.barcode===r.Barcode||x.itemNo===r["Item No"])) return;
+DB.products.push({id:uid("P"),barcode:r.Barcode||"",itemNo:r["Item No"]||"",desc:r.Description||"",rate:+r["Retail Rate"]||0,stock:0});
+});
+saveDB();renderProducts();
+};
+reader.readAsBinaryString(input.files[0]);
+}
+
+function exportProductsCSV(){
+let csv="S No,Barcode,Item No,Description,Retail Rate,Stock\n";
+DB.products.forEach((p,i)=>csv+=`${i+1},${p.barcode},${p.itemNo},${p.desc},${p.rate},${p.stock}\n`);
+const blob=new Blob([csv]);const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="products.csv";a.click();
 }
 </script>
 
@@ -212,50 +171,16 @@ renderProducts();
 <section id="vendors">
 <div class="card">
 <h2>Vendors</h2>
-
-<input id="vendorName" placeholder="Vendor Name">
-<button class="green" onclick="addVendor()">Add Vendor</button>
-
 <table>
-<thead>
-<tr>
-<th>S No</th>
-<th>Name</th>
-<th>Last Payment</th>
-<th>Last Purchase</th>
-<th>Balance</th>
-</tr>
-</thead>
+<thead><tr><th>S No</th><th>Name</th><th>Last Payment</th><th>Last Purchase</th><th>Balance</th><th>Actions</th></tr></thead>
 <tbody id="vendorRows"></tbody>
 </table>
-
-<div id="ledgerBlock" style="display:none;margin-top:20px;">
-<h3>Ledger: <span id="ledgerVendorName"></span></h3>
-<table>
-<thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Ref</th></tr></thead>
-<tbody id="ledgerRows"></tbody>
-</table>
-</div>
-
 </div>
 </section>
 
 <script>
-function addVendor(){
-if(!vendorName.value)return;
-DB.vendors.push({
-id:uid("V"),
-name:vendorName.value,
-ledger:[]
-});
-vendorName.value="";
-saveDB();
-renderVendors();
-}
-
 function renderVendors(){
-const tbody=document.getElementById("vendorRows");
-tbody.innerHTML="";
+const tbody=document.getElementById("vendorRows");tbody.innerHTML="";
 DB.vendors.forEach((v,i)=>{
 let bal=0,lastPay="-",lastPur="-";
 v.ledger.forEach(l=>{
@@ -263,60 +188,35 @@ bal+=(l.type==="OUT"?l.amount:-l.amount);
 if(l.ref==="PAYMENT")lastPay=l.amount+" ("+l.date+")";
 if(l.ref==="PURCHASE")lastPur=l.amount+" ("+l.date+")";
 });
-tbody.innerHTML+=`
-<tr>
+tbody.innerHTML+=`<tr>
 <td>${i+1}</td>
-<td><a href="#" onclick="showLedger('${v.id}')">${v.name}</a></td>
+<td>${v.name}</td>
 <td>${lastPay}</td>
 <td>${lastPur}</td>
 <td>${bal.toFixed(2)}</td>
+<td>
+<button onclick="editVendor('${v.id}')">Edit</button>
+<button class="red" onclick="deleteVendor('${v.id}')">Delete</button>
+</td>
 </tr>`;
 });
 }
 
-function showLedger(id){
-let v=DB.vendors.find(x=>x.id===id);
-document.getElementById("ledgerBlock").style.display="block";
-document.getElementById("ledgerVendorName").innerText=v.name;
-const tbody=document.getElementById("ledgerRows");
-tbody.innerHTML="";
-v.ledger.forEach(l=>{
-tbody.innerHTML+=`
-<tr>
-<td>${l.date}</td>
-<td>${l.type}</td>
-<td>${l.amount}</td>
-<td>${l.ref}</td>
-</tr>`;
-});
-}
+function editVendor(id){let v=DB.vendors.find(x=>x.id===id);let n=prompt("Edit Name",v.name);if(n){v.name=n;saveDB();renderVendors();}}
+function deleteVendor(id){if(confirm("Delete?")){DB.vendors=DB.vendors.filter(v=>v.id!==id);saveDB();renderVendors();}}
+renderVendors();
 </script>
 
 <!-- ================= PURCHASE ================= -->
 <section id="purchase">
 <div class="card">
 <h2>Purchase</h2>
-
-<label>Vendor</label>
-<select id="purchaseVendor"></select>
-
-<table>
-<thead>
-<tr><th>Item</th><th>Qty</th><th>Cost</th><th>Total</th></tr>
-</thead>
-<tbody id="purchaseRows"></tbody>
-</table>
-
-<button class="secondary" onclick="addManualPurchaseRow()">Add Product Manually</button>
+<label>Vendor</label><select id="purchaseVendor"></select>
+<table><thead><tr><th>Item</th><th>Qty</th><th>Cost</th><th>Total</th><th>Actions</th></tr></thead><tbody id="purchaseRows"></tbody></table>
 <input type="file" accept=".xlsx,.xls" onchange="uploadPurchaseExcel(this)">
 <button class="green" onclick="savePurchase()">Save Purchase</button>
-
 <h3>Previous Purchases</h3>
-<table>
-<thead><tr><th>S No</th><th>ID</th><th>Date</th><th>Total</th></tr></thead>
-<tbody id="oldPurchases"></tbody>
-</table>
-
+<table><thead><tr><th>S No</th><th>ID</th><th>Date</th><th>Total</th><th>Actions</th></tr></thead><tbody id="oldPurchases"></tbody></table>
 </div>
 </section>
 
@@ -325,35 +225,24 @@ let purchaseDraft=[];
 
 function renderPurchase(){
 purchaseVendor.innerHTML="";
-DB.vendors.forEach(v=>{
-purchaseVendor.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
-});
-
-const tbody=document.getElementById("purchaseRows");
-tbody.innerHTML="";
-let total=0;
+DB.vendors.forEach(v=>purchaseVendor.innerHTML+=`<option value="${v.id}">${v.name}</option>`);
+const tbody=document.getElementById("purchaseRows");tbody.innerHTML="";
 purchaseDraft.forEach((r,i)=>{
-let amt=r.qty*r.cost;
-total+=amt;
-tbody.innerHTML+=`
-<tr>
+tbody.innerHTML+=`<tr>
 <td>${r.item}</td>
 <td><input type="number" value="${r.qty}" onchange="purchaseDraft[${i}].qty=+this.value;renderPurchase()"></td>
 <td><input type="number" value="${r.cost}" onchange="purchaseDraft[${i}].cost=+this.value;renderPurchase()"></td>
-<td>${amt.toFixed(2)}</td>
+<td>${(r.qty*r.cost).toFixed(2)}</td>
+<td><button class="red" onclick="purchaseDraft.splice(${i},1);renderPurchase()">X</button></td>
 </tr>`;
 });
-
 document.getElementById("oldPurchases").innerHTML="";
 DB.purchases.forEach((p,i)=>{
-document.getElementById("oldPurchases").innerHTML+=`
-<tr><td>${i+1}</td><td>${p.id}</td><td>${p.date}</td><td>${p.total}</td></tr>`;
+document.getElementById("oldPurchases").innerHTML+=`<tr>
+<td>${i+1}</td><td>${p.id}</td><td>${p.date}</td><td>${p.total}</td>
+<td><button onclick="editPurchase('${p.id}')">Edit</button> <button class="red" onclick="deletePurchase('${p.id}')">Delete</button></td>
+</tr>`;
 });
-}
-
-function addManualPurchaseRow(){
-purchaseDraft.push({item:"MANUAL",qty:1,cost:0});
-renderPurchase();
 }
 
 function uploadPurchaseExcel(input){
@@ -361,13 +250,7 @@ const reader=new FileReader();
 reader.onload=e=>{
 const wb=XLSX.read(e.target.result,{type:"binary"});
 const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-rows.forEach(r=>{
-purchaseDraft.push({
-item:r["Item No"]||"",
-qty:+r.Qty||0,
-cost:+r.Cost||+r.Price||0
-});
-});
+rows.forEach(r=>purchaseDraft.push({item:r["Item No"]||"",qty:+r.Qty||0,cost:+r.Cost||+r.Price||0}));
 renderPurchase();
 };
 reader.readAsBinaryString(input.files[0]);
@@ -385,18 +268,17 @@ let vid=purchaseVendor.value;
 let v=DB.vendors.find(x=>x.id===vid);
 v.ledger.push({date:new Date().toLocaleDateString(),type:"OUT",amount:total,ref:"PURCHASE"});
 DB.purchases.push({id:uid("PUR"),date:new Date().toLocaleDateString(),items:purchaseDraft,total});
-saveDB();
-purchaseDraft=[];
-renderPurchase();
+purchaseDraft=[];saveDB();renderPurchase();alert("Purchase saved");
 }
+
+function editPurchase(id){let p=DB.purchases.find(x=>x.id===id);if(!p)return;purchaseDraft=p.items.slice();purchaseVendor.value=p.vendorId||"";renderPurchase();}
+function deletePurchase(id){if(confirm("Delete purchase?")){DB.purchases=DB.purchases.filter(p=>p.id!==id);saveDB();renderPurchase();}}
 </script>
 <!-- ================= INVOICE ================= -->
 <section id="invoice">
 <div class="card">
 <h2>Invoice</h2>
-<button class="secondary" onclick="startNewInvoice()">Create New Invoice</button>
 
-<div id="invoiceBlock" style="display:none;margin-top:16px;">
 <div style="display:flex;gap:10px;margin-bottom:10px;">
 <input placeholder="Search Barcode" id="invSearchBarcode" oninput="filterInvoiceProducts()">
 <input placeholder="Search Item No" id="invSearchItem" oninput="filterInvoiceProducts()">
@@ -405,7 +287,7 @@ renderPurchase();
 
 <table>
 <thead>
-<tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th><th>Discount</th><th>Total</th><th></th></tr>
+<tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th><th>Discount</th><th>Total</th><th>Actions</th></tr>
 </thead>
 <tbody id="invoiceRows"></tbody>
 </table>
@@ -414,90 +296,68 @@ renderPurchase();
 
 <button class="green" onclick="saveInvoice()">Save Invoice</button>
 <button class="secondary" onclick="printInvoice()">Print Invoice</button>
-</div>
 
-<div style="margin-top:20px;">
 <h3>Previous Invoices</h3>
 <table>
-<thead>
-<tr><th>S No</th><th>Bill No</th><th>Date</th><th>Items Qty</th><th>Discount</th><th>Total</th><th>Time</th></tr>
-</thead>
+<thead><tr><th>S No</th><th>Bill No</th><th>Date</th><th>Items Qty</th><th>Discount</th><th>Total</th><th>Actions</th></tr></thead>
 <tbody id="oldInvoices"></tbody>
 </table>
-</div>
 </div>
 </section>
 
 <script>
-let invoiceDraft=[],currentInvoice=null;
-
-function startNewInvoice(){
-invoiceDraft=[];
-currentInvoice={id:uid("INV"),items:[],date:new Date().toLocaleDateString(),time:new Date().toLocaleTimeString()};
-document.getElementById("invoiceBlock").style.display="block";
-renderInvoice();
-}
+let invoiceDraft=[]; let currentInvoice=null;
 
 function filterInvoiceProducts(){
 const barcode=invSearchBarcode.value.toLowerCase();
 const itemNo=invSearchItem.value.toLowerCase();
 const desc=invSearchDesc.value.toLowerCase();
-const tbody=document.getElementById("invoiceRows");
-tbody.innerHTML="";
+const tbody=document.getElementById("invoiceRows"); tbody.innerHTML="";
 DB.products.forEach(p=>{
 if((!barcode||p.barcode.toLowerCase().includes(barcode)) &&
 (!itemNo||p.itemNo.toLowerCase().includes(itemNo)) &&
-(!desc||p.desc.toLowerCase().includes(desc))){
+(!desc||p.desc.toLowerCase().includes(desc)) &&
+p.stock>0){
 tbody.innerHTML+=`<tr>
 <td>${p.itemNo}</td>
-<td><input type="number" value="1" min="1" onchange="addInvoiceItem('${p.id}',+this.value)"></td>
+<td><input type="number" value="1" min="1" max="${p.stock}" onchange="addInvoiceItem('${p.id}',+this.value)"></td>
 <td>${p.rate}</td>
 <td>${p.rate.toFixed(2)}</td>
 <td><input type="number" value="0" min="0" onchange="addInvoiceDiscount('${p.id}',+this.value)"></td>
 <td>${p.rate.toFixed(2)}</td>
-<td><button onclick="addInvoiceItem('${p.id}',1)">Add</button></td>
+<td><button onclick="removeInvoiceItem('${p.id}')">Remove</button></td>
 </tr>`;
 }
 });
 }
 
 function addInvoiceItem(id,qty=1){
-const p=DB.products.find(x=>x.id===id);
+let p=DB.products.find(x=>x.id===id);
 if(!p||p.stock<1)return alert("Product not available in stock");
 let item=invoiceDraft.find(x=>x.productId===id);
-if(item){
-item.qty+=qty;
-}else{
-invoiceDraft.push({productId:id,qty:qty,rate:p.rate,discount:0});
-}
-recalcInvoice();
-renderInvoice();
+if(item){item.qty=qty;}else{invoiceDraft.push({productId:id,qty:qty,rate:p.rate,discount:0});}
+recalcInvoice(); renderInvoice();
 }
 
-function addInvoiceDiscount(id,disc){
-let item=invoiceDraft.find(x=>x.productId===id);
-if(item)item.discount=disc;
-recalcInvoice();
-renderInvoice();
-}
+function addInvoiceDiscount(id,disc){let item=invoiceDraft.find(x=>x.productId===id); if(item)item.discount=disc; recalcInvoice(); renderInvoice();}
+function removeInvoiceItem(id){invoiceDraft=invoiceDraft.filter(x=>x.productId!==id);renderInvoice();}
 
 function renderInvoice(){
-const tbody=document.getElementById("invoiceRows");
-tbody.innerHTML="";
+const tbody=document.getElementById("invoiceRows");tbody.innerHTML="";
 let total=0,totalDiscount=0;
 invoiceDraft.forEach((r,i)=>{
-const p=DB.products.find(x=>x.id===r.productId)||{};
-const amt=r.qty*r.rate;
-const t=amt-r.discount;
-total+=t;totalDiscount+=r.discount;
+let p=DB.products.find(x=>x.id===r.productId)||{};
+let amt=r.qty*r.rate;
+let t=amt-r.discount;
+total+=t; totalDiscount+=r.discount;
 tbody.innerHTML+=`<tr>
 <td>${p.itemNo}</td>
-<td><input type="number" value="${r.qty}" min="1" onchange="invoiceDraft[${i}].qty=+this.value;recalcInvoice();"></td>
+<td>${r.qty}</td>
 <td>${r.rate}</td>
 <td>${amt.toFixed(2)}</td>
-<td><input type="number" value="${r.discount}" min="0" onchange="invoiceDraft[${i}].discount=+this.value;recalcInvoice();"></td>
+<td>${r.discount}</td>
 <td>${t.toFixed(2)}</td>
-<td><button class="red" onclick="invoiceDraft.splice(${i},1);renderInvoice();">X</button></td>
+<td><button class="red" onclick="removeInvoiceItem('${r.productId}')">X</button></td>
 </tr>`;
 });
 document.getElementById("invTotal").innerText=total.toFixed(2);
@@ -505,41 +365,22 @@ document.getElementById("invTotalDiscount").value=totalDiscount;
 renderOldInvoices();
 }
 
-function recalcInvoice(){
-let total=0;invoiceDraft.forEach(r=>{
-total+=r.qty*r.rate-r.discount;
-});
-document.getElementById("invTotal").innerText=total.toFixed(2);
-}
+function recalcInvoice(){let total=0; invoiceDraft.forEach(r=>total+=r.qty*r.rate-r.discount); document.getElementById("invTotal").innerText=total.toFixed(2);}
 
 function saveInvoice(){
 if(!invoiceDraft.length)return alert("Empty invoice");
-currentInvoice.items=invoiceDraft;
+currentInvoice={id:uid("INV"),items:invoiceDraft,date:new Date().toLocaleDateString(),time:new Date().toLocaleTimeString()};
 currentInvoice.total=parseFloat(document.getElementById("invTotal").innerText);
 DB.invoices.push(currentInvoice);
-
-// Add cash entry once
+invoiceDraft.forEach(it=>{let p=DB.products.find(x=>x.id===it.productId); if(p)p.stock-=it.qty;});
 DB.cash.push({id:uid("CASH"),type:"IN",amount:currentInvoice.total,ref:"INVOICE",invoiceId:currentInvoice.id,date:new Date().toLocaleDateString()});
-
-// Reduce stock
-invoiceDraft.forEach(it=>{
-let p=DB.products.find(x=>x.id===it.productId);
-if(p)p.stock-=it.qty;
-});
-
-saveDB();
-invoiceDraft=[];
-currentInvoice=null;
-document.getElementById("invoiceBlock").style.display="none";
-renderOldInvoices();
-alert("Invoice saved");
+saveDB(); invoiceDraft=[]; renderInvoice(); alert("Invoice saved");
 }
 
 function renderOldInvoices(){
-const tbody=document.getElementById("oldInvoices");
-tbody.innerHTML="";
+const tbody=document.getElementById("oldInvoices"); tbody.innerHTML="";
 DB.invoices.forEach((inv,i)=>{
-const qty=inv.items.reduce((s,it)=>s+it.qty,0);
+let qty=inv.items.reduce((s,it)=>s+it.qty,0);
 tbody.innerHTML+=`<tr>
 <td>${i+1}</td>
 <td>${inv.id}</td>
@@ -547,23 +388,39 @@ tbody.innerHTML+=`<tr>
 <td>${qty}</td>
 <td>${inv.items.reduce((s,it)=>s+it.discount,0)}</td>
 <td>${inv.total}</td>
-<td>${inv.time||""}</td>
+<td>
+<button onclick="editInvoice('${inv.id}')">Edit</button>
+<button onclick="deleteInvoice('${inv.id}')">Delete</button>
+<button onclick="printInvoice('${inv.id}')">Print</button>
+</td>
 </tr>`;
 });
 }
 
-function printInvoice(){
-let html=`<h2>Invoice</h2>`;
-invoiceDraft.forEach(it=>{
+function editInvoice(id){
+let inv=DB.invoices.find(x=>x.id===id);
+if(!inv)return;
+invoiceDraft=inv.items.map(x=>({...x}));
+renderInvoice();
+}
+
+function deleteInvoice(id){
+if(confirm("Delete invoice?")){
+DB.invoices=DB.invoices.filter(x=>x.id!==id);
+saveDB(); renderOldInvoices();
+}
+}
+
+function printInvoice(id){
+let inv=DB.invoices.find(x=>x.id===id)||{items:invoiceDraft,total:document.getElementById("invTotal").innerText};
+let html="<h2>Invoice</h2>";
+inv.items.forEach(it=>{
 let p=DB.products.find(x=>x.id===it.productId);
-html+=`<div>${p.itemNo} | ${it.qty} x ${it.rate} = ${(it.qty*it.rate-it.discount).toFixed(2)}</div>`;
+html+=`<div>${p.itemNo} | ${it.qty} x ${it.rate} - ${it.discount} = ${(it.qty*it.rate-it.discount).toFixed(2)}</div>`;
 });
-html+=`<div>Total: ${document.getElementById("invTotal").innerText}</div>`;
+html+=`<div>Total: ${inv.total}</div>`;
 let w=window.open("","PRINT","width=600,height=600");
-w.document.write(html);
-w.document.close();
-w.focus();
-w.print();
+w.document.write(html); w.document.close(); w.focus(); w.print();
 }
 
 /* ================= CASH IN HAND ================= */
@@ -572,104 +429,79 @@ w.print();
 <section id="cash">
 <div class="card">
 <h2>Cash In Hand</h2>
-
-<label>Vendor (for payment)</label>
+<label>Vendor</label>
 <select id="cashVendor"></select>
-
-<label>Amount</label>
-<input type="number" id="cashAmount">
-
-<label>Type</label>
-<select id="cashType">
-<option value="IN">IN</option>
-<option value="OUT">OUT</option>
-</select>
-
-<label>Date</label>
-<input type="date" id="cashDate">
-
+<label>Amount</label><input type="number" id="cashAmount">
+<label>Type</label><select id="cashType"><option value="IN">IN</option><option value="OUT">OUT</option></select>
+<label>Date</label><input type="date" id="cashDate">
 <button class="green" onclick="addCashPayment()">Add Payment</button>
-
-<table>
-<thead>
-<tr><th>Date</th><th>Type</th><th>Amount</th><th>Ref</th><th>Balance</th></tr>
-</thead>
-<tbody id="cashRows"></tbody>
-</table>
+<table><thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Vendor</th><th>Actions</th><th>Balance</th></tr></thead>
+<tbody id="cashRows"></tbody></table>
 </div>
 </section>
 
 <script>
-let cashPage=1,cashPerPage=100;
-
 function renderCash(){
 cashVendor.innerHTML="";
 DB.vendors.forEach(v=>cashVendor.innerHTML+=`<option value="${v.id}">${v.name}</option>`);
-
-const tbody=document.getElementById("cashRows");
-tbody.innerHTML="";
+let tbody=document.getElementById("cashRows"); tbody.innerHTML="";
 let bal=0;
-const page=DB.cash.slice((cashPage-1)*cashPerPage,cashPage*cashPerPage);
-page.forEach(c=>{
-if(c.ref!=="INVOICE")bal += (c.type==="IN"?c.amount:-c.amount);
+DB.cash.forEach((c,i)=>{
+if(c.type==="IN") bal+=c.amount; else bal-=c.amount;
+let v=DB.vendors.find(x=>x.id===c.vendorId);
 tbody.innerHTML+=`<tr>
 <td>${c.date}</td>
 <td>${c.type}</td>
 <td>${c.amount}</td>
-<td>${c.ref}</td>
+<td>${v?v.name:"-"}</td>
+<td>
+<button onclick="editCash('${c.id}')">Edit</button>
+<button class="red" onclick="deleteCash('${c.id}')">Delete</button>
+</td>
 <td>${bal.toFixed(2)}</td>
 </tr>`;
 });
+updateCashHeader();
 }
 
 function addCashPayment(){
-let amt=+cashAmount.value;
-if(!amt)return alert("Enter amount");
+let amt=+cashAmount.value; if(!amt)return alert("Enter amount");
 let type=cashType.value;
-let vid=cashVendor.value;
-if(!vid)return alert("Select vendor");
+let vid=cashVendor.value; if(!vid)return alert("Select vendor");
+DB.cash.push({id:uid("CASH"),type,amount:amt,vendorId:vid,date:cashDate.value||new Date().toLocaleDateString()});
 let v=DB.vendors.find(x=>x.id===vid);
-let date=cashDate.value||new Date().toLocaleDateString();
-DB.cash.push({id:uid("CASH"),type,amount:amt,ref:"VENDOR",vendorId:vid,date});
-if(type==="OUT") v.ledger.push({date,type,amount:amt,ref:"PAYMENT"});
-saveDB();
-renderCash();
-alert("Payment added");
+v.ledger.push({date:cashDate.value||new Date().toLocaleDateString(),type,amount:amt,ref:"PAYMENT"});
+saveDB(); renderCash(); alert("Payment added");
 }
+
+function editCash(id){let c=DB.cash.find(x=>x.id===id); if(!c)return; let amt=prompt("Amount",c.amount); if(amt)c.amount=+amt; saveDB(); renderCash();}
+function deleteCash(id){if(confirm("Delete payment?")){DB.cash=DB.cash.filter(x=>x.id!==id); saveDB(); renderCash();}}
 </script>
 
 <!-- ================= REPORTS ================= -->
 <section id="reports">
 <div class="card">
 <h2>Reports</h2>
-
 <button class="option-btn" onclick="productCostReport()">Product Cost</button>
 <button class="option-btn" onclick="dailyReport()">Daily Report</button>
-
 <div id="reportOutput"></div>
-
 </div>
 </section>
 
 <script>
 function renderReports(){renderCash();renderVendors();renderProducts();}
-
 function productCostReport(){
 let html="<table><tr><th>S No</th><th>Item No</th><th>Stock</th><th>Cost</th></tr>";
 DB.products.forEach((p,i)=>{
 let cost=0;
 DB.purchases.forEach(pur=>{
-pur.items.forEach(it=>{
-let prod=DB.products.find(x=>x.itemNo===it.item);
-if(prod && prod.itemNo===p.itemNo) cost=it.cost;
-});
+pur.items.forEach(it=>{if(it.item===p.itemNo) cost=it.cost;});
 });
 html+=`<tr><td>${i+1}</td><td>${p.itemNo}</td><td>${p.stock}</td><td>${cost}</td></tr>`;
 });
 html+="</table>";
 document.getElementById("reportOutput").innerHTML=html;
 }
-
 function dailyReport(){
 let html="<table><tr><th>Date</th><th>Total Invoices</th><th>Total Amount</th></tr>";
 let dates={};
@@ -678,9 +510,7 @@ if(!dates[inv.date]) dates[inv.date]={count:0,total:0};
 dates[inv.date].count++;
 dates[inv.date].total+=inv.total;
 });
-for(let d in dates){
-html+=`<tr><td>${d}</td><td>${dates[d].count}</td><td>${dates[d].total}</td></tr>`;
-}
+for(let d in dates) html+=`<tr><td>${d}</td><td>${dates[d].count}</td><td>${dates[d].total}</td></tr>`;
 document.getElementById("reportOutput").innerHTML=html;
 }
 </script>
@@ -689,35 +519,23 @@ document.getElementById("reportOutput").innerHTML=html;
 <section id="settings">
 <div class="card">
 <h2>Settings</h2>
-
-<label>Software Name</label>
-<input id="softwareNameInput" placeholder="Enter software name">
+<label>Software Name</label><input id="softwareNameInput" placeholder="Enter software name">
 <button class="green" onclick="changeSoftwareName()">Change Name</button>
-
 <button onclick="alert('Factory reset is locked!')">Factory Reset (LOCKED)</button>
-
 </div>
 </section>
 
 <script>
 function changeSoftwareName(){
-let val=softwareNameInput.value;
-if(!val)return alert("Enter name");
+let val=softwareNameInput.value; if(!val)return alert("Enter name");
 document.getElementById("softwareName").innerText=val;
-DB.settings.softwareName=val;
-saveDB();
+DB.settings.softwareName=val; saveDB();
 }
 </script>
 
 <script>
-/* ===================== INITIALIZATION ===================== */
-updateCashHeader();
-renderProducts();
-renderVendors();
-renderPurchase();
-renderCash();
-renderReports();
 openTab("invoice");
+renderProducts(); renderVendors(); renderPurchase(); renderCash(); renderReports();
 </script>
 
 </body>
