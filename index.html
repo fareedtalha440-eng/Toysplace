@@ -2,14 +2,13 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Dani Professional Software</title>
+<title>Dani Software</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-
 <style>
-body{margin:0;font-family:Segoe UI;background:#f5f7fb}
-header{background:#0b2a4a;color:#fff;padding:15px;font-size:22px}
+body{margin:0;font-family:Segoe UI;background:#f4f6fb}
+header{background:#0b2a4a;color:#fff;padding:14px;font-size:22px}
 nav{display:flex;background:#143a63}
-nav div{padding:14px 20px;color:#fff;cursor:pointer}
+nav div{padding:14px 18px;color:#fff;cursor:pointer}
 nav .active{background:#fff;color:#143a63;font-weight:600}
 section{display:none;padding:20px}
 section.active{display:block}
@@ -17,7 +16,7 @@ section.active{display:block}
 table{width:100%;border-collapse:collapse}
 th,td{border:1px solid #ccc;padding:8px;text-align:center}
 th{background:#eef2f7}
-input,select,button{padding:7px;margin:3px}
+input,select,button{padding:7px;margin:4px}
 button{background:#143a63;color:#fff;border:none;border-radius:5px}
 .red{background:#c0392b}
 .green{background:#27ae60}
@@ -27,26 +26,30 @@ button{background:#143a63;color:#fff;border:none;border-radius:5px}
 <body>
 
 <header>
-Dani Professional Software
+<span id="appName">Dani Software</span>
 <span style="float:right">Cash: <b id="cashHeader">0</b></span>
 </header>
 
 <nav>
-<div onclick="openTab('products')" id="tab-products">Products</div>
-<div onclick="openTab('vendors')" id="tab-vendors">Vendors</div>
-<div onclick="openTab('purchase')" id="tab-purchase">Purchase</div>
+<div id="tab-products" onclick="openTab('products')">Products</div>
+<div id="tab-vendors" onclick="openTab('vendors')">Vendors</div>
+<div id="tab-purchase" onclick="openTab('purchase')">Purchase</div>
+<div id="tab-invoice" onclick="openTab('invoice')">Invoice</div>
+<div id="tab-cash" onclick="openTab('cash')">Cash</div>
+<div id="tab-settings" onclick="openTab('settings')">Settings</div>
 </nav>
 
 <script>
-/* ================= DATABASE ================= */
 const DB={
  products:JSON.parse(localStorage.getItem("products")||"[]"),
  vendors:JSON.parse(localStorage.getItem("vendors")||"[]"),
  purchases:JSON.parse(localStorage.getItem("purchases")||"[]"),
- cash:[]
-};
-function saveDB(){for(let k in DB)localStorage.setItem(k,JSON.stringify(DB[k]))}
-function uid(p){return p+"_"+Date.now()+"_"+Math.floor(Math.random()*9999)}
+ invoices:JSON.parse(localStorage.getItem("invoices")||"[]"),
+ cash:JSON.parse(localStorage.getItem("cash")||"[]"),
+ settings:JSON.parse(localStorage.getItem("settings")||"{}")
+}
+function saveDB(){for(let k in DB)localStorage.setItem(k,JSON.stringify(DB[k]));updateCash()}
+function uid(p){return p+"_"+Date.now()}
 function openTab(id){
  document.querySelectorAll("section").forEach(s=>s.classList.remove("active"))
  document.querySelectorAll("nav div").forEach(n=>n.classList.remove("active"))
@@ -55,6 +58,13 @@ function openTab(id){
  if(id==="products")renderProducts()
  if(id==="vendors")renderVendors()
  if(id==="purchase")renderPurchase()
+ if(id==="invoice")renderInvoiceSearch()
+ if(id==="cash")renderCash()
+}
+function updateCash(){
+ let b=0
+ DB.cash.forEach(c=>b+=c.type==="IN"?c.amount:-c.amount)
+ cashHeader.innerText=b
 }
 </script>
 
@@ -62,89 +72,59 @@ function openTab(id){
 <section id="products">
 <div class="card">
 <h2>Products</h2>
-
-<input id="p_barcode" placeholder="Barcode">
+<input id="p_bar" placeholder="Barcode">
 <input id="p_item" placeholder="Item No">
 <input id="p_desc" placeholder="Description">
-<input id="p_rate" type="number" placeholder="Retail Rate">
-<button class="green" onclick="addProduct()">Add Product</button>
-
-<hr>
-<input type="file" accept=".xlsx" onchange="uploadProductsExcel(this)">
-<button onclick="downloadProducts()">Download CSV</button>
+<input id="p_rate" type="number" placeholder="Rate">
+<button class="green" onclick="saveProduct()">Save</button>
 
 <table>
-<thead>
-<tr><th>#</th><th>Barcode</th><th>Item</th><th>Description</th><th>Rate</th><th>Stock</th><th>Action</th></tr>
-</thead>
-<tbody id="productRows"></tbody>
+<thead><tr><th>#</th><th>Barcode</th><th>Item</th><th>Description</th><th>Rate</th><th>Stock</th><th>Action</th></tr></thead>
+<tbody id="prodRows"></tbody>
 </table>
 </div>
 </section>
 
 <script>
-function addProduct(){
- if(!p_item.value)return alert("Item No required")
- if(DB.products.find(x=>x.barcode===p_barcode.value||x.itemNo===p_item.value))
-  return alert("Duplicate Barcode or Item No")
- DB.products.push({
-  id:uid("P"),
-  barcode:p_barcode.value,
-  itemNo:p_item.value,
-  desc:p_desc.value,
-  rate:+p_rate.value,
-  stock:0
- })
+let editProd=null
+function saveProduct(){
+ if(!p_item.value)return alert("Item required")
+ if(!editProd){
+  if(DB.products.find(x=>x.itemNo===p_item.value||x.barcode===p_bar.value))
+   return alert("Duplicate")
+  DB.products.push({id:uid("P"),barcode:p_bar.value,itemNo:p_item.value,desc:p_desc.value,rate:+p_rate.value,stock:0})
+ }else{
+  let p=DB.products.find(x=>x.id===editProd)
+  p.barcode=p_bar.value;p.itemNo=p_item.value;p.desc=p_desc.value;p.rate=+p_rate.value
+  editProd=null
+ }
  saveDB(); renderProducts()
- p_barcode.value=p_item.value=p_desc.value=p_rate.value=""
+ p_bar.value=p_item.value=p_desc.value=p_rate.value=""
 }
 function renderProducts(){
- let t=document.getElementById("productRows"); t.innerHTML=""
+ prodRows.innerHTML=""
  DB.products.forEach((p,i)=>{
-  t.innerHTML+=`
+  prodRows.innerHTML+=`
   <tr>
-  <td>${i+1}</td>
-  <td>${p.barcode}</td>
-  <td>${p.itemNo}</td>
-  <td>${p.desc}</td>
-  <td>${p.rate}</td>
-  <td>${p.stock}</td>
-  <td><button class="red" onclick="delProduct('${p.id}')">Delete</button></td>
+  <td>${i+1}</td><td>${p.barcode}</td><td>${p.itemNo}</td><td>${p.desc}</td>
+  <td>${p.rate}</td><td>${p.stock}</td>
+  <td>
+   <button onclick="editProduct('${p.id}')">Edit</button>
+   <button class="red" onclick="delProduct('${p.id}')">Del</button>
+  </td>
   </tr>`
  })
 }
+function editProduct(id){
+ let p=DB.products.find(x=>x.id===id)
+ editProd=id
+ p_bar.value=p.barcode;p_item.value=p.itemNo;p_desc.value=p.desc;p_rate.value=p.rate
+}
 function delProduct(id){
- if(confirm("Delete product?")){
-  DB.products=DB.products.filter(p=>p.id!==id)
+ if(confirm("Delete?")){
+  DB.products=DB.products.filter(x=>x.id!==id)
   saveDB(); renderProducts()
  }
-}
-function uploadProductsExcel(inp){
- let r=new FileReader()
- r.onload=e=>{
-  let wb=XLSX.read(e.target.result,{type:"binary"})
-  let rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]])
-  rows.forEach(r=>{
-   if(!DB.products.find(x=>x.itemNo===r["Item No"]))
-    DB.products.push({
-     id:uid("P"),
-     barcode:r.Barcode||"",
-     itemNo:r["Item No"],
-     desc:r.Description||"",
-     rate:+r["Retail Rate"]||0,
-     stock:0
-    })
-  })
-  saveDB(); renderProducts()
- }
- r.readAsBinaryString(inp.files[0])
-}
-function downloadProducts(){
- let csv="Item,Rate,Stock\n"
- DB.products.forEach(p=>csv+=`${p.itemNo},${p.rate},${p.stock}\n`)
- let a=document.createElement("a")
- a.href=URL.createObjectURL(new Blob([csv]))
- a.download="products.csv"; a.click()
 }
 </script>
 
@@ -152,42 +132,34 @@ function downloadProducts(){
 <section id="vendors">
 <div class="card">
 <h2>Vendors</h2>
-
 <input id="v_name" placeholder="Vendor Name">
-<button class="green" onclick="addVendor()">Add Vendor</button>
-
+<button class="green" onclick="addVendor()">Add</button>
 <table>
 <thead><tr><th>#</th><th>Name</th><th>Balance</th><th>Action</th></tr></thead>
-<tbody id="vendorRows"></tbody>
+<tbody id="vendRows"></tbody>
 </table>
 </div>
 </section>
 
 <script>
 function addVendor(){
- if(!v_name.value)return
  DB.vendors.push({id:uid("V"),name:v_name.value,ledger:[]})
  saveDB(); renderVendors(); v_name.value=""
 }
 function renderVendors(){
- let t=document.getElementById("vendorRows"); t.innerHTML=""
+ vendRows.innerHTML=""
  DB.vendors.forEach((v,i)=>{
-  let bal=0
-  v.ledger.forEach(l=>bal+=(l.type==="OUT"?l.amount:-l.amount))
-  t.innerHTML+=`
+  let b=0;v.ledger.forEach(l=>b+=l.type==="OUT"?l.amount:-l.amount)
+  vendRows.innerHTML+=`
   <tr>
-  <td>${i+1}</td>
-  <td>${v.name}</td>
-  <td>${bal.toFixed(2)}</td>
-  <td><button class="red" onclick="delVendor('${v.id}')">Delete</button></td>
+  <td>${i+1}</td><td>${v.name}</td><td>${b}</td>
+  <td><button class="red" onclick="delVendor('${v.id}')">Del</button></td>
   </tr>`
  })
 }
 function delVendor(id){
- if(confirm("Delete vendor?")){
-  DB.vendors=DB.vendors.filter(v=>v.id!==id)
-  saveDB(); renderVendors()
- }
+ DB.vendors=DB.vendors.filter(v=>v.id!==id)
+ saveDB(); renderVendors()
 }
 </script>
 
@@ -195,20 +167,22 @@ function delVendor(id){
 <section id="purchase">
 <div class="card">
 <h2>Purchase</h2>
-
 <select id="purVendor"></select>
 <input id="purItem" placeholder="Item No">
 <input id="purQty" type="number" placeholder="Qty">
 <input id="purCost" type="number" placeholder="Cost">
-<button class="green" onclick="addPurchaseItem()">Add Item</button>
+<button onclick="addPur()">Add</button>
 
-<table>
-<thead><tr><th>Item</th><th>Qty</th><th>Cost</th><th>Total</th><th>X</th></tr></thead>
-<tbody id="purRows"></tbody>
-</table>
+<table><thead><tr><th>Item</th><th>Qty</th><th>Cost</th><th>Total</th><th>X</th></tr></thead>
+<tbody id="purRows"></tbody></table>
 
-<input type="file" accept=".xlsx" onchange="uploadPurchaseExcel(this)">
 <button class="green" onclick="savePurchase()">Save Purchase</button>
+
+<h3>Previous</h3>
+<table>
+<thead><tr><th>#</th><th>Date</th><th>Total</th><th>Action</th></tr></thead>
+<tbody id="oldPur"></tbody>
+</table>
 </div>
 </section>
 
@@ -217,200 +191,136 @@ let purDraft=[]
 function renderPurchase(){
  purVendor.innerHTML=""
  DB.vendors.forEach(v=>purVendor.innerHTML+=`<option value="${v.id}">${v.name}</option>`)
- let t=document.getElementById("purRows"); t.innerHTML=""
+ purRows.innerHTML=""
  purDraft.forEach((r,i)=>{
-  t.innerHTML+=`
+  purRows.innerHTML+=`
   <tr>
-  <td>${r.item}</td>
-  <td>${r.qty}</td>
-  <td>${r.cost}</td>
+  <td>${r.item}</td><td>${r.qty}</td><td>${r.cost}</td>
   <td>${r.qty*r.cost}</td>
   <td><button onclick="purDraft.splice(${i},1);renderPurchase()">X</button></td>
   </tr>`
  })
+ oldPur.innerHTML=""
+ DB.purchases.forEach((p,i)=>{
+  oldPur.innerHTML+=`
+  <tr>
+  <td>${i+1}</td><td>${p.date}</td><td>${p.total}</td>
+  <td><button onclick="delPurchase(${i})">Del</button></td>
+  </tr>`
+ })
 }
-function addPurchaseItem(){
- if(!purItem.value)return
- purDraft.push({item:purItem.value,qty:+purQty.value,cost:+purCost.value})
+function addPur(){
+ let p=DB.products.find(x=>x.itemNo===purItem.value)
+ if(!p)return alert("Invalid Item")
+ purDraft.push({item:p.itemNo,qty:+purQty.value,cost:+purCost.value})
  renderPurchase()
  purItem.value=purQty.value=purCost.value=""
 }
-function uploadPurchaseExcel(inp){
- let r=new FileReader()
- r.onload=e=>{
-  let wb=XLSX.read(e.target.result,{type:"binary"})
-  let rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]])
-  rows.forEach(r=>purDraft.push({item:r["Item No"],qty:+r.Qty,cost:+r.Cost}))
-  renderPurchase()
- }
- r.readAsBinaryString(inp.files[0])
-}
 function savePurchase(){
- if(!purDraft.length)return
  let total=0
  purDraft.forEach(r=>{
-  total+=r.qty*r.cost
   let p=DB.products.find(x=>x.itemNo===r.item)
-  if(p)p.stock+=r.qty
+  p.stock+=r.qty
+  total+=r.qty*r.cost
  })
  let v=DB.vendors.find(x=>x.id===purVendor.value)
  v.ledger.push({type:"OUT",amount:total})
- DB.purchases.push({id:uid("PUR"),items:purDraft,total})
+ DB.purchases.push({date:new Date().toLocaleDateString(),items:purDraft,total})
  purDraft=[]
- saveDB(); renderPurchase(); alert("Purchase saved")
+ saveDB(); renderPurchase()
+}
+function delPurchase(i){
+ DB.purchases.splice(i,1)
+ saveDB(); renderPurchase()
 }
 </script>
 
-<script>openTab("products")</script>
-</body>
-</html>
 <!-- ================= INVOICE ================= -->
 <section id="invoice">
 <div class="card">
 <h2>Invoice</h2>
-
-<select id="invProduct"></select>
-<input type="number" id="invQty" placeholder="Qty" value="1">
-<button class="green" onclick="addInvItem()">Add Item</button>
+<input id="s_bar" placeholder="Barcode" oninput="renderInvoiceSearch()">
+<input id="s_item" placeholder="Item No" oninput="renderInvoiceSearch()">
+<input id="s_desc" placeholder="Description" oninput="renderInvoiceSearch()">
 
 <table>
-<thead>
-<tr><th>Item</th><th>Qty</th><th>Rate</th><th>Total</th><th>X</th></tr>
-</thead>
+<thead><tr><th>Item</th><th>Stock</th><th>Rate</th><th>Add</th></tr></thead>
+<tbody id="invSearch"></tbody>
+</table>
+
+<h3>Invoice</h3>
+<table>
+<thead><tr><th>Item</th><th>Qty</th><th>Total</th><th>X</th></tr></thead>
 <tbody id="invRows"></tbody>
 </table>
 
 <h3>Total: <span id="invTotal">0</span></h3>
-
-<button class="green" onclick="saveInvoice()">Save Invoice</button>
-<button onclick="printInvoice()">Print</button>
-
-<h3>Previous Invoices</h3>
-<table>
-<thead>
-<tr><th>#</th><th>ID</th><th>Date</th><th>Total</th><th>Action</th></tr>
-</thead>
-<tbody id="oldInvoices"></tbody>
-</table>
+<button class="green" onclick="saveInvoice()">Save</button>
 </div>
 </section>
 
 <script>
-DB.invoices=JSON.parse(localStorage.getItem("invoices")||"[]")
 let invDraft=[]
-
-function renderInvoice(){
- invProduct.innerHTML=""
- DB.products.forEach(p=>{
-  if(p.stock>0)
-   invProduct.innerHTML+=`<option value="${p.id}">${p.itemNo}</option>`
+function renderInvoiceSearch(){
+ invSearch.innerHTML=""
+ DB.products.filter(p=>p.stock>0).forEach(p=>{
+  if(
+   (!s_bar.value||p.barcode.includes(s_bar.value)) &&
+   (!s_item.value||p.itemNo.includes(s_item.value)) &&
+   (!s_desc.value||p.desc.includes(s_desc.value))
+  ){
+   invSearch.innerHTML+=`
+   <tr>
+   <td>${p.itemNo}</td><td>${p.stock}</td><td>${p.rate}</td>
+   <td><button onclick="addInv('${p.id}')">+</button></td>
+   </tr>`
+  }
  })
-
- let t=document.getElementById("invRows"); t.innerHTML=""
- let total=0
+}
+function addInv(id){
+ let p=DB.products.find(x=>x.id===id)
+ let r=invDraft.find(x=>x.id===id)
+ if(r)r.qty++
+ else invDraft.push({id,qty:1,rate:p.rate})
+ renderInv()
+}
+function renderInv(){
+ invRows.innerHTML=""
+ let t=0
  invDraft.forEach((r,i)=>{
-  let p=DB.products.find(x=>x.id===r.pid)
-  let amt=r.qty*r.rate
-  total+=amt
-  t.innerHTML+=`
+  let p=DB.products.find(x=>x.id===r.id)
+  let amt=r.qty*r.rate;t+=amt
+  invRows.innerHTML+=`
   <tr>
-   <td>${p.itemNo}</td>
-   <td>${r.qty}</td>
-   <td>${r.rate}</td>
-   <td>${amt}</td>
-   <td><button onclick="invDraft.splice(${i},1);renderInvoice()">X</button></td>
+  <td>${p.itemNo}</td>
+  <td><input type="number" value="${r.qty}" onchange="rQty(${i},this.value)"></td>
+  <td>${amt}</td>
+  <td><button onclick="invDraft.splice(${i},1);renderInv()">X</button></td>
   </tr>`
  })
- document.getElementById("invTotal").innerText=total
- renderOldInvoices()
+ invTotal.innerText=t
 }
-
-function addInvItem(){
- let p=DB.products.find(x=>x.id===invProduct.value)
- if(!p||p.stock<invQty.value)return alert("Stock not enough")
- invDraft.push({pid:p.id,qty:+invQty.value,rate:p.rate})
- renderInvoice()
-}
-
+function rQty(i,v){invDraft[i].qty=+v;renderInv()}
 function saveInvoice(){
- if(!invDraft.length)return
- let total=0
+ let t=0
  invDraft.forEach(r=>{
-  let p=DB.products.find(x=>x.id===r.pid)
+  let p=DB.products.find(x=>x.id===r.id)
   p.stock-=r.qty
-  total+=r.qty*r.rate
+  t+=r.qty*r.rate
  })
- DB.invoices.push({
-  id:uid("INV"),
-  date:new Date().toLocaleDateString(),
-  items:invDraft,
-  total
- })
- DB.cash.push({type:"IN",amount:total,date:new Date().toLocaleDateString()})
+ DB.invoices.push({date:new Date().toLocaleDateString(),items:invDraft,total:t})
+ DB.cash.push({type:"IN",amount:t})
  invDraft=[]
- saveDB(); renderInvoice(); alert("Invoice Saved")
-}
-
-function renderOldInvoices(){
- let t=document.getElementById("oldInvoices"); t.innerHTML=""
- DB.invoices.forEach((i,n)=>{
-  t.innerHTML+=`
-  <tr>
-   <td>${n+1}</td>
-   <td>${i.id}</td>
-   <td>${i.date}</td>
-   <td>${i.total}</td>
-   <td>
-    <button onclick="editInvoice('${i.id}')">Edit</button>
-    <button class="red" onclick="delInvoice('${i.id}')">Delete</button>
-   </td>
-  </tr>`
- })
-}
-
-function editInvoice(id){
- let inv=DB.invoices.find(x=>x.id===id)
- if(!inv)return
- invDraft=inv.items.map(x=>({...x}))
- renderInvoice()
-}
-
-function delInvoice(id){
- if(confirm("Delete invoice?")){
-  DB.invoices=DB.invoices.filter(x=>x.id!==id)
-  saveDB(); renderInvoice()
- }
-}
-
-function printInvoice(){
- let w=window.open("")
- w.document.write("<h2>Invoice</h2>")
- invDraft.forEach(r=>{
-  let p=DB.products.find(x=>x.id===r.pid)
-  w.document.write(`${p.itemNo} | ${r.qty} x ${r.rate}<br>`)
- })
- w.document.write("<h3>Total: "+document.getElementById("invTotal").innerText+"</h3>")
- w.print()
+ saveDB(); renderInvoiceSearch(); renderInv()
 }
 </script>
 
-<!-- ================= CASH IN HAND ================= -->
+<!-- ================= CASH ================= -->
 <section id="cash">
 <div class="card">
-<h2>Cash In Hand</h2>
-
-<select id="cashVendor"></select>
-<input type="number" id="cashAmt" placeholder="Amount">
-<select id="cashType">
-<option value="IN">IN</option>
-<option value="OUT">OUT</option>
-</select>
-<button class="green" onclick="addCash()">Save</button>
-
+<h2>Cash</h2>
 <table>
-<thead>
-<tr><th>Date</th><th>Type</th><th>Amount</th><th>Vendor</th><th>Balance</th><th>X</th></tr>
-</thead>
+<thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Balance</th></tr></thead>
 <tbody id="cashRows"></tbody>
 </table>
 </div>
@@ -418,84 +328,33 @@ function printInvoice(){
 
 <script>
 function renderCash(){
- cashVendor.innerHTML="<option value=''>---</option>"
- DB.vendors.forEach(v=>cashVendor.innerHTML+=`<option value="${v.id}">${v.name}</option>`)
-
- let t=document.getElementById("cashRows"); t.innerHTML=""
- let bal=0
- DB.cash.forEach((c,i)=>{
-  bal+=c.type==="IN"?c.amount:-c.amount
-  let v=DB.vendors.find(x=>x.id===c.vendor)
-  t.innerHTML+=`
-  <tr>
-   <td>${c.date}</td>
-   <td>${c.type}</td>
-   <td>${c.amount}</td>
-   <td>${v?v.name:"-"}</td>
-   <td>${bal}</td>
-   <td><button onclick="delCash(${i})">X</button></td>
-  </tr>`
+ let b=0;cashRows.innerHTML=""
+ DB.cash.forEach(c=>{
+  b+=c.type==="IN"?c.amount:-c.amount
+  cashRows.innerHTML+=`<tr><td>${new Date().toLocaleDateString()}</td><td>${c.type}</td><td>${c.amount}</td><td>${b}</td></tr>`
  })
- document.getElementById("cashHeader").innerText=bal
-}
-
-function addCash(){
- if(!cashAmt.value)return
- let v=DB.vendors.find(x=>x.id===cashVendor.value)
- if(v)v.ledger.push({type:cashType.value,amount:+cashAmt.value})
- DB.cash.push({
-  type:cashType.value,
-  amount:+cashAmt.value,
-  vendor:cashVendor.value,
-  date:new Date().toLocaleDateString()
- })
- saveDB(); renderCash()
- cashAmt.value=""
-}
-
-function delCash(i){
- DB.cash.splice(i,1)
- saveDB(); renderCash()
+ updateCash()
 }
 </script>
 
-<!-- ================= REPORTS ================= -->
-<section id="reports">
+<!-- ================= SETTINGS ================= -->
+<section id="settings">
 <div class="card">
-<h2>Reports</h2>
-<button onclick="dailyReport()">Daily Sales</button>
-<button onclick="productReport()">Product Stock</button>
-<div id="repOut"></div>
+<h2>Settings</h2>
+<input id="setName" placeholder="Software Name">
+<button class="green" onclick="saveSettings()">Save</button>
 </div>
 </section>
 
 <script>
-function dailyReport(){
- let d={}
- DB.invoices.forEach(i=>{
-  if(!d[i.date])d[i.date]=0
-  d[i.date]+=i.total
- })
- let h="<table><tr><th>Date</th><th>Total</th></tr>"
- for(let x in d)h+=`<tr><td>${x}</td><td>${d[x]}</td></tr>`
- h+="</table>"
- repOut.innerHTML=h
+function saveSettings(){
+ DB.settings.name=setName.value
+ saveDB()
+ appName.innerText=setName.value
 }
-
-function productReport(){
- let h="<table><tr><th>Item</th><th>Stock</th></tr>"
- DB.products.forEach(p=>h+=`<tr><td>${p.itemNo}</td><td>${p.stock}</td></tr>`)
- h+="</table>"
- repOut.innerHTML=h
-}
+if(DB.settings.name)appName.innerText=DB.settings.name
+openTab("products")
 </script>
 
-<script>
-/* TAB BINDINGS */
-document.querySelector("nav").innerHTML+=`
-<div onclick="openTab('invoice')" id="tab-invoice">Invoice</div>
-<div onclick="openTab('cash')" id="tab-cash">Cash</div>
-<div onclick="openTab('reports')" id="tab-reports">Reports</div>
-`
-renderInvoice(); renderCash()
-  </script>
+</body>
+</html>
