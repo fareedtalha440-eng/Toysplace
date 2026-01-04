@@ -365,7 +365,43 @@ function renderReports(){document.getElementById("repProducts").innerText=DB.pro
 <script>
 function saveSettings(){const name=document.getElementById("companyName").value; document.querySelector("header").innerText=name; localStorage.setItem("companyName",name);}
 const storedName=localStorage.getItem("companyName"); if(storedName) document.querySelector("header").innerText=storedName;
+<script>
+function saveSettings(){
+  const name=document.getElementById("companyName").value;
+  localStorage.setItem("softwareName",name);
+  document.getElementById("softwareName").innerText=name;
+  document.title=name; // TAB TITLE
+}
+
+function uploadLogo(input){
+  const file=input.files[0];
+  const reader=new FileReader();
+  reader.onload=e=>{
+    localStorage.setItem("logo",e.target.result);
+    const img=document.getElementById("header-logo");
+    img.src=e.target.result;
+    img.style.display="block";
+  };
+  reader.readAsDataURL(file);
+}
+
+(function(){
+  const name=localStorage.getItem("softwareName");
+  if(name){
+    document.getElementById("softwareName").innerText=name;
+    document.title=name;
+    document.getElementById("companyName").value=name;
+  }
+
+  const logo=localStorage.getItem("logo");
+  if(logo){
+    const img=document.getElementById("header-logo");
+    img.src=logo;
+    img.style.display="block";
+  }
+})();
 </script>
+
 
 <!-- ================= TAB CONTROL ================= -->
 <script>
