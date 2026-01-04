@@ -204,11 +204,11 @@ function uid(prefix){ return prefix + "_" + Date.now() + Math.floor(Math.random(
 
   <!-- ===== MAIN DISCOUNT ===== -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
-    <input type="number" id="mainDiscAmt" placeholder="Main Discount ₹" oninput="syncMainDiscAmt()">
+    <input type="number" id="mainDiscAmt" placeholder="Main Discount Rs." oninput="syncMainDiscAmt()">
     <input type="number" id="mainDiscPct" placeholder="Main Discount %" oninput="syncMainDiscPct()">
   </div>
 
-  <h3>Grand Total: ₹ <span id="invTotal">0</span></h3>
+  <h3>Grand Total: Rs. <span id="invTotal">0</span></h3>
 
   <button class="green" onclick="saveInvoice()">Save Invoice</button>
 </div>
@@ -357,16 +357,18 @@ function delInvRow(i){invoiceDraft.splice(i,1);renderInvoice();}
 
 /* ===== MAIN DISCOUNT ===== */
 function syncMainDiscAmt(){
-  const amt=+mainDiscAmt.value;
+  const amt=+document.getElementById("mainDiscAmt").value;
   const sub=getSubTotal();
-  mainDiscPct.value=sub?((amt/sub)*100).toFixed(2):0;
+  document.getElementById("mainDiscPct").value =
+    sub ? ((amt/sub)*100).toFixed(2) : 0;
   applyMainDiscount(sub);
 }
 
 function syncMainDiscPct(){
-  const pct=+mainDiscPct.value;
+  const pct=+document.getElementById("mainDiscPct").value;
   const sub=getSubTotal();
-  mainDiscAmt.value=(sub*pct/100).toFixed(2);
+  document.getElementById("mainDiscAmt").value =
+    (sub*pct/100).toFixed(2);
   applyMainDiscount(sub);
 }
 
@@ -378,7 +380,7 @@ function getSubTotal(){
 }
 
 function applyMainDiscount(sub){
-  const disc=+mainDiscAmt.value||0;
+  const disc=+document.getElementById("mainDiscAmt").value||0;
   document.getElementById("invTotal").innerText=(sub-disc).toFixed(2);
 }
 
