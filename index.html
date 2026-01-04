@@ -525,7 +525,113 @@ function nextPage(){prodPage++; renderProducts();}
 function prevPage(){if(prodPage>1){prodPage--; renderProducts();}}
 function uploadProductExcel(input){const file=input.files[0];const reader=new FileReader();reader.onload=e=>{const wb=XLSX.read(e.target.result,{type:"binary"});const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);rows.forEach(r=>{DB.products.push({id:uid("P"),barcode:r.Barcode||"",itemNo:r["Item No"]||"",desc:r.Description||"",rate:+r["Retail Rate"]||0,stock:0});}); saveDB(); prodFiltered=DB.products; renderProducts();}; reader.readAsBinaryString(file);}
 function exportProductsCSV(){let csv="Barcode,Item No,Description,Rate,Stock\n";DB.products.forEach(p=>{csv+=`${p.barcode},${p.itemNo},${p.desc},${p.rate},${p.stock}\n`;}); const blob=new Blob([csv]); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="products.csv"; a.click();}
-</script>
+let cashPage=1, cashPerPage=100, cashFiltered=DB.cash;
+let editingCashId=null;
+
+// Populate Vendor Dropdown
+function renderCashVendors(){
+  const sel=document.getElementById("newPayVendor");
+  sel.innerHTML='<option value="">Select Vendor</option>';
+  DB.vendors.forEach(v=>sel.innerHTML+=`<option value="${v.id}">${v.name}</option>`);
+}
+
+// Render Balance Sticky Bar
+function renderCashBalance(){
+  const bal=DB.cash.reduce((s,t)=>t.type==="IN"?s+t.amount:s-t.amount,0);
+  document.getElementById("cashBal").innerText="₨ "+bal.toFixed(2);
+}
+
+// Render Payments Table
+function renderCash(){
+  renderCashBalance();
+  renderCashVendors();
+
+  const from=document.getElementById("cashFrom").value;
+  const to=document.getElementById("cashTo").value;
+
+  cashFiltered=DB.cash.filter(c=>{
+    if(from && c.date<from) return false;
+    if(to && c.date>to) return false;
+    return true;
+  });
+
+  const tbody=document.getElementById("cashRows"); tbody.innerHTML="";
+  let start=(cashPage-1)*cashPerPage;
+  let page=cashFiltered.slice(start,start+cashPerPage);
+  let bal=0;
+
+  page.forEach((c,i)=>{
+    bal=c.type==="IN"? bal+c.amount : bal-c.amount;
+    let vendorName=c.vendor ? (DB.vendors.find(v=>v.id===c.vendor)?.name||"") : "";
+    tbody.innerHTML+=`
+      <tr>
+        <td>${start+i+1}</td>
+        <td>${c.date}</td>
+        <td>${vendorName}</td>
+        <td>${c.type}</td>
+        <td>₨ ${c.amount.toFixed(2)}</td>
+        <td><button class="blue" onclick="editCash('${c.id}')">Edit</button></td>
+        <td><button class="red" onclick="deleteCash('${c.id}')">Delete</button></td>
+      </tr>
+    `;
+  });
+}
+
+// Apply Filter Button
+function applyCashFilter(){
+  cashPage=1;
+  renderCash();
+}
+
+// Pagination
+function nextCashPage(){cashPage++; renderCash();}
+function prevCashPage(){if(cashPage>1){cashPage--; renderCash();}}
+
+// New Payment
+function saveNewPayment(){
+  const vendor=document.getElementById("newPayVendor").value;
+  const type=document.getElementById("newPayType").value;
+  const amount=+document.getElementById("newPayAmount").value;
+  const date=document.getElementById("newPayDate").value || new Date().toISOString().slice(0,10);
+
+  if(amount<=0) return alert("Amount must be >0");
+
+  if(editingCashId){
+    // Editing: replace existing
+    const c=DB.cash.find(c=>c.id===editingCashId);
+    c.vendor=vendor; c.type=type; c.amount=amount; c.date=date;
+    editingCashId=null;
+  } else {
+    DB.cash.push({id:uid("CASH"),vendor,type,amount,date});
+  }
+
+  saveDB();
+  renderCash();
+}
+
+// Edit Payment
+function editCash(id){
+  const c=DB.cash.find(c=>c.id===id);
+  editingCashId=id;
+  document.getElementById("newPayVendor").value=c.vendor||"";
+  document.getElementById("newPayType").value=c.type;
+  document.getElementById("newPayAmount").value=c.amount;
+  document.getElementById("newPayDate").value=c.date;
+}
+
+// Delete Payment
+function deleteCash(id){
+  if(!confirm("Delete payment?")) return;
+  const c=DB.cash.find(c=>c.id===id);
+  DB.cash=DB.cash.filter(x=>x.id!==id);
+  DB.deleted.push({type:"PAYMENT",data:c});
+  saveDB();
+  renderCash();
+}
+
+// Initialize
+renderCash();
+
 
 <!-- ================= PURCHASE ================= -->
 <section id="purchase">
