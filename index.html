@@ -8,84 +8,137 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <style>
-/* ================== GENERAL BODY ================== */
-body {
+:root{
+  --primary:#0b1c2d;     /* Deep Dark Blue */
+  --secondary:#ffffff;  /* White */
+  --accent:#1f6feb;
+  --border:#d0d7de;
+}
+
+/* ===== BODY ===== */
+body{
   margin:0;
-  font-family:Segoe UI,Arial;
-  background:#0b1522;
-  color:white;
+  font-family:Segoe UI, Arial;
+  background:white;
+  color:#0b1c2d;
 }
-header {
-  background:#001f3f;
-  color:white;
-  padding:16px 24px;
-  font-size:26px;
-  font-weight:700;
-  text-shadow:1px 1px 2px #000;
-}
-nav {
+
+/* ===== HEADER ===== */
+header{
   display:flex;
-  background:#001732;
-}
-nav div {
-  padding:16px 22px;
+  align-items:center;
+  justify-content:space-between;
+  background:var(--primary);
   color:white;
-  cursor:pointer;
-  border-right:1px solid #0a2a4b;
-  transition:0.2s;
-}
-nav div:hover {
-  background:#00234d;
-}
-nav div.active {
-  background:#003366;
+  padding:14px 22px;
+  font-size:22px;
   font-weight:600;
 }
-section {
+
+#header-left{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+#header-logo{
+  height:36px;
+  width:auto;
+  display:none;
+}
+
+#dateTime{
+  font-size:14px;
+  opacity:0.85;
+}
+
+/* ===== NAV ===== */
+nav{
+  display:flex;
+  background:#f6f8fa;
+  border-bottom:1px solid var(--border);
+}
+
+nav div{
+  padding:14px 20px;
+  cursor:pointer;
+  transition:0.25s;
+  border-bottom:3px solid transparent;
+  font-weight:500;
+}
+
+nav div:hover{
+  background:#eef2f7;
+}
+
+nav div.active{
+  border-bottom:3px solid var(--accent);
+  color:var(--accent);
+  font-weight:600;
+  transform:translateY(-1px);
+}
+
+/* ===== SECTION ===== */
+section{
   display:none;
   padding:20px;
 }
-section.active {
+
+section.active{
   display:block;
+  animation:fadeIn 0.25s ease-in;
 }
-.card {
-  background:#0a1a33;
-  padding:20px;
+
+@keyframes fadeIn{
+  from{opacity:0; transform:translateY(4px);}
+  to{opacity:1; transform:none;}
+}
+
+/* ===== CARD ===== */
+.card{
+  background:white;
+  border:1px solid var(--border);
+  padding:18px;
   margin-bottom:20px;
   border-radius:10px;
-  box-shadow:0 2px 6px rgba(0,0,0,0.5);
 }
-table {
+
+/* ===== TABLE ===== */
+table{
   width:100%;
   border-collapse:collapse;
 }
-th, td {
-  border:1px solid #0d2a50;
-  padding:10px;
+
+th,td{
+  border:1px solid var(--border);
+  padding:8px;
   text-align:center;
-  color:white;
 }
-th {
-  background:#001f3f;
-}
-button {
-  padding:8px 16px;
-  cursor:pointer;
-  border:none;
-  border-radius:6px;
+
+th{
+  background:#f6f8fa;
   font-weight:600;
 }
-input, select {
-  padding:8px;
+
+/* ===== INPUT ===== */
+input,select{
+  padding:7px;
+  border-radius:6px;
+  border:1px solid var(--border);
   width:100%;
-  box-sizing:border-box;
-  border-radius:5px;
-  border:none;
-  background:#001732;
-  color:white;
 }
-.red {background:#dc3545;color:white;}
-.green {background:#28a745;color:white;}
+
+button{
+  padding:8px 14px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  font-weight:600;
+}
+
+.green{background:#2da44e;color:white;}
+.red{background:#cf222e;color:white;}
+.blue{background:var(--accent);color:white;}
 </style>
 </head>
 <body>
