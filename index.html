@@ -14,15 +14,7 @@
   --accent:#1f6feb;
   --border:#d0d7de;
 }
-<script>
-function updateDateTime(){
-  const d=new Date();
-  document.getElementById("dateTime").innerText=
-    d.toLocaleDateString()+" "+d.toLocaleTimeString();
-}
-setInterval(updateDateTime,1000);
-updateDateTime();
-</script>
+
 /* ===== BODY ===== */
 body{
   margin:0;
@@ -360,14 +352,11 @@ function renderReports(){document.getElementById("repProducts").innerText=DB.pro
 <section id="settings">
   <div class="card">
     <h2>Settings</h2>
+    <label>Company Name</label>
     <label>Software Name</label>
 <input id="companyName">
-
-<label>Upload Logo</label>
-<input type="file" accept="image/*" onchange="uploadLogo(this)">
-
-<button onclick="saveSettings()" class="green">Save</button>
-
+    <label>Upload Logo</label>
+    <input type="file" accept="image/*" onchange="uploadLogo(this)">
     <button onclick="saveSettings()" class="green">Save</button>
     <hr>
     <button onclick="if(confirm('Reset all data?')){localStorage.clear();location.reload();}" class="red">Factory Reset</button>
