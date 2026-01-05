@@ -446,62 +446,84 @@ function renderCash(){
 <section id="products">
   <div class="card">
     <h2>Products</h2>
-    <input type="file" accept=".xlsx,.xls" onchange="uploadProductExcel(this)">
-    <button onclick="exportProductsCSV()">Download CSV</button>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px;">
-      <input placeholder="Search Barcode" oninput="searchProducts()" id="s_barcode">
-      <input placeholder="Search Item No" oninput="searchProducts()" id="s_item">
-      <input placeholder="Search Description" oninput="searchProducts()" id="s_desc">
+
+    <!-- Upload / Download / Add New -->
+    <div style="display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+      <input type="file" accept=".xlsx,.xls" onchange="uploadProductExcel(this)">
+      <button class="blue" onclick="exportProductsCSV()">Download CSV</button>
+      <button class="green" onclick="showAddProductForm()">Add New Product</button>
+    </div>
+
+    <!-- Add New Product Form -->
+    <div id="newProductForm" style="display:none; margin-bottom:10px; gap:10px; display:flex; flex-wrap:wrap;">
+      <input placeholder="Barcode" id="newProdBarcode" style="flex:1 1 150px;">
+      <input placeholder="Item No" id="newProdItemNo" style="flex:1 1 150px;">
+      <input placeholder="Description" id="newProdDesc" style="flex:2 1 200px;">
+      <input type="number" placeholder="Rate" id="newProdRate" style="flex:1 1 100px;">
+      <button class="green" onclick="addNewProduct()">Add Product</button>
+      <button class="red" onclick="hideAddProductForm()">Cancel</button>
+    </div>
+
+    <!-- Search -->
+    <div style="display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+      <input placeholder="Search Barcode" oninput="searchProducts()" id="s_barcode" style="flex:1 1 150px;">
+      <input placeholder="Search Item No" oninput="searchProducts()" id="s_item" style="flex:1 1 150px;">
+      <input placeholder="Search Description" oninput="searchProducts()" id="s_desc" style="flex:2 1 200px;">
     </div>
   </div>
+
+  <!-- Products Table -->
   <div class="card">
     <table>
-      <thead><tr><th>#</th><th>Barcode</th><th>Item No</th><th>Description</th><th>Rate</th><th>Stock</th></tr></thead>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Barcode</th>
+          <th>Item No</th>
+          <th>Description</th>
+          <th>Rate</th>
+          <th>Stock</th>
+          <th>Edit</th>
+          <th>Delete</th>
+        </tr>
+      </thead>
       <tbody id="productRows"></tbody>
     </table>
-    <button onclick="prevPage()">Prev</button>
-    <button onclick="nextPage()">Next</button>
+
+    <!-- Pagination -->
+    <div style="margin-top:10px;">
+      <button onclick="prevProdPage()">Prev</button>
+      <button onclick="nextProdPage()">Next</button>
+    </div>
   </div>
 </section>
-
 <script>
-let prodPage = 1, prodPerPage = 100, prodFiltered = [];
+let prodPage = 1;
+let prodPerPage = 100;
+let prodFiltered = DB.products;
 
-/* ===== INITIAL LOAD ===== */
-function loadProducts(){
-  // Ensure every product has all necessary keys
-  DB.products.forEach(p=>{
-    if(!p.id) p.id = uid("P");
-    if(!p.barcode) p.barcode = "";
-    if(!p.itemNo) p.itemNo = "";
-    if(!p.desc) p.desc = "";
-    if(!p.rate) p.rate = 0;
-    if(!p.stock) p.stock = 0;
-  });
-  prodFiltered = [...DB.products];
-  renderProducts();
-}
+/* ===== SHOW/HIDE NEW PRODUCT FORM ===== */
+function showAddProductForm(){ document.getElementById("newProductForm").style.display="flex"; }
+function hideAddProductForm(){ document.getElementById("newProductForm").style.display="none"; }
 
 /* ===== RENDER PRODUCTS ===== */
 function renderProducts(){
   const tbody = document.getElementById("productRows");
   tbody.innerHTML = "";
   const start = (prodPage-1)*prodPerPage;
-  const page = prodFiltered.slice(start, start+prodPerPage);
+  const page = prodFiltered.slice(start,start+prodPerPage);
 
-  page.forEach((p, i)=>{
+  page.forEach((p,i)=>{
     tbody.innerHTML += `
       <tr>
         <td>${start+i+1}</td>
-        <td>${p.barcode}</td>
+        <td>${p.barcode||""}</td>
         <td>${p.itemNo}</td>
         <td>${p.desc}</td>
         <td>${p.rate}</td>
-        <td>${p.stock}</td>
-        <td>
-          <button onclick="editProduct('${p.id}')">Edit</button>
-          <button onclick="deleteProduct('${p.id}')">Delete</button>
-        </td>
+        <td>${p.stock||0}</td>
+        <td><button class="blue" onclick="editProduct('${p.id}')">Edit</button></td>
+        <td><button class="red" onclick="deleteProduct('${p.id}')">Delete</button></td>
       </tr>
     `;
   });
@@ -509,30 +531,18 @@ function renderProducts(){
 
 /* ===== SEARCH PRODUCTS ===== */
 function searchProducts(){
-  const b = document.getElementById("s_barcode").value.trim().toLowerCase();
-  const i = document.getElementById("s_item").value.trim().toLowerCase();
-  const d = document.getElementById("s_desc").value.trim().toLowerCase();
+  const b = document.getElementById("s_barcode").value.toLowerCase();
+  const i = document.getElementById("s_item").value.toLowerCase();
+  const d = document.getElementById("s_desc").value.toLowerCase();
 
-  prodFiltered = DB.products.filter(p=>{
-    return (!b || p.barcode.toLowerCase().includes(b)) &&
-           (!i || p.itemNo.toLowerCase().includes(i)) &&
-           (!d || p.desc.toLowerCase().includes(d));
-  });
-
-  // Sort
-  prodFiltered.sort((a,b)=>{
-    if(a.barcode !== b.barcode) return a.barcode.localeCompare(b.barcode);
-    if(a.itemNo !== b.itemNo) return a.itemNo.localeCompare(b.itemNo);
-    return a.desc.localeCompare(b.desc);
-  });
-
+  prodFiltered = DB.products.filter(p=>
+    (!b || p.barcode?.toLowerCase().includes(b)) &&
+    (!i || p.itemNo.toLowerCase().includes(i)) &&
+    (!d || p.desc.toLowerCase().includes(d))
+  );
   prodPage = 1;
   renderProducts();
 }
-
-/* ===== PAGINATION ===== */
-function nextPage(){ prodPage++; renderProducts(); }
-function prevPage(){ if(prodPage>1){ prodPage--; renderProducts(); } }
 
 /* ===== ADD NEW PRODUCT ===== */
 function addNewProduct(){
@@ -549,56 +559,61 @@ function addNewProduct(){
     itemNo,
     desc,
     rate,
-    stock: 0
+    stock:0
   });
-
   saveDB();
+  renderProducts();
+  hideAddProductForm();
+
   document.getElementById("newProdBarcode").value = "";
   document.getElementById("newProdItemNo").value = "";
   document.getElementById("newProdDesc").value = "";
   document.getElementById("newProdRate").value = "";
-
-  loadProducts();
 }
 
 /* ===== EDIT PRODUCT ===== */
 function editProduct(id){
   const p = DB.products.find(x=>x.id===id);
-  if(!p) return alert("Product not found!");
+  if(!p) return alert("Product not found");
 
-  const newBarcode = prompt("Edit Barcode", p.barcode);
-  const newItemNo = prompt("Edit Item No", p.itemNo);
-  const newDesc = prompt("Edit Description", p.desc);
-  const newRate = prompt("Edit Rate", p.rate);
+  const barcode = prompt("Edit Barcode", p.barcode);
+  const itemNo = prompt("Edit Item No", p.itemNo);
+  const desc = prompt("Edit Description", p.desc);
+  const rate = prompt("Edit Rate", p.rate);
 
-  if(newItemNo && newDesc && !isNaN(newRate)){
-    p.barcode = newBarcode || "";
-    p.itemNo = newItemNo;
-    p.desc = newDesc;
-    p.rate = +newRate;
-
+  if(itemNo && desc && rate){
+    p.barcode = barcode || "";
+    p.itemNo = itemNo;
+    p.desc = desc;
+    p.rate = +rate;
     saveDB();
-    loadProducts();
+    renderProducts();
   }
 }
 
 /* ===== DELETE PRODUCT ===== */
 function deleteProduct(id){
   const p = DB.products.find(x=>x.id===id);
-  if(!p) return alert("Product not found!");
-  if(p.stock !== 0) return alert("Cannot delete product! Stock is not zero.");
-  if(confirm("Are you sure to delete this product?")){
+  if(!p) return alert("Product not found");
+
+  if(p.stock !== 0) return alert("Cannot delete product with stock");
+
+  if(confirm("Delete this product?")){
     DB.products = DB.products.filter(x=>x.id!==id);
     saveDB();
-    loadProducts();
+    renderProducts();
   }
 }
 
-/* ===== EXCEL UPLOAD ===== */
+/* ===== PAGINATION ===== */
+function nextProdPage(){ prodPage++; renderProducts(); }
+function prevProdPage(){ if(prodPage>1){ prodPage--; renderProducts(); } }
+
+/* ===== UPLOAD XLSX ===== */
 function uploadProductExcel(input){
   const file = input.files[0];
   const reader = new FileReader();
-  reader.onload = e=>{
+  reader.onload = e => {
     const wb = XLSX.read(e.target.result, {type:"binary"});
     const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
     rows.forEach(r=>{
@@ -608,11 +623,12 @@ function uploadProductExcel(input){
         itemNo: r["Item No"] || "",
         desc: r.Description || "",
         rate: +r["Retail Rate"] || 0,
-        stock: 0
+        stock:0
       });
     });
     saveDB();
-    loadProducts();
+    prodFiltered = DB.products;
+    renderProducts();
     alert("Products imported!");
   };
   reader.readAsBinaryString(file);
@@ -630,8 +646,8 @@ function exportProductsCSV(){
   a.click();
 }
 
-// INITIAL LOAD
-loadProducts();
+/* ===== INITIAL RENDER ===== */
+renderProducts();
 </script>
 
 
