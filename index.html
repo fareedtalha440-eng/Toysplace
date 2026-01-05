@@ -446,8 +446,25 @@ function renderCash(){
 <section id="products">
   <div class="card">
     <h2>Products</h2>
-    
-    <script>
+    <input type="file" accept=".xlsx,.xls" onchange="uploadProductExcel(this)">
+    <button onclick="exportProductsCSV()">Download CSV</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px;">
+      <input placeholder="Search Barcode" oninput="searchProducts()" id="s_barcode">
+      <input placeholder="Search Item No" oninput="searchProducts()" id="s_item">
+      <input placeholder="Search Description" oninput="searchProducts()" id="s_desc">
+    </div>
+  </div>
+  <div class="card">
+    <table>
+      <thead><tr><th>#</th><th>Barcode</th><th>Item No</th><th>Description</th><th>Rate</th><th>Stock</th></tr></thead>
+      <tbody id="productRows"></tbody>
+    </table>
+    <button onclick="prevPage()">Prev</button>
+    <button onclick="nextPage()">Next</button>
+  </div>
+</section>
+
+<script>
 let prodPage = 1, prodPerPage = 100, prodFiltered = [];
 
 /* ===== INITIAL LOAD ===== */
