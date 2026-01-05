@@ -277,7 +277,6 @@ function searchInv(i,val){
 }
 </script>
 
-
 /* ===== SETTERS ===== */
 function setInvQty(i,v){invoiceDraft[i].qty=+v;renderInvoice();}
 function setInvRate(i,v){invoiceDraft[i].rate=+v;renderInvoice();}
@@ -433,7 +432,6 @@ function prevInvPage(){if(invPage>1){invPage--;renderInvoiceList();}}
 renderInvoiceList();
 </script>
 
-
 <!-- ================= CASH ================= -->
 <section id="cash">
   <div class="card">
@@ -491,478 +489,189 @@ function renderProducts(){const tbody=document.getElementById("productRows");tbo
 function searchProducts(){const b=document.getElementById("s_barcode").value.toLowerCase();const i=document.getElementById("s_item").value.toLowerCase();const d=document.getElementById("s_desc").value.toLowerCase();prodFiltered=DB.products.filter(p=>(!b||p.barcode?.toLowerCase().includes(b))&&(!i||p.itemNo.toLowerCase().includes(i))&&(!d||p.desc.toLowerCase().includes(d)));prodPage=1;renderProducts();}
 function nextPage(){prodPage++; renderProducts();}
 function prevPage(){if(prodPage>1){prodPage--; renderProducts();}}
-function uploadProductExcel(input){const file=input.files[0];const reader=new FileReader();reader.onload=e=>{const wb=XLSX.read(e.target.result,{type:"binary"});const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);rows.forEach(r=>{DB.products.push({id:uid("P"),barcode:r.Barcode||"",itemNo:r["Item No"]||"",desc:r.Description||"",rate:+r["Retail Rate"]||0,stock:0});}); saveDB(); prodFiltered=DB.products; renderProducts();}; reader.readAsBinaryString(file);}
-function exportProductsCSV(){let csv="Barcode,Item No,Description,Rate,Stock\n";DB.products.forEach(p=>{csv+=`${p.barcode},${p.itemNo},${p.desc},${p.rate},${p.stock}\n`;}); const blob=new Blob([csv]); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="products.csv"; a.click();}
-let cashPage=1, cashPerPage=100, cashFiltered=DB.cash;
-let editingCashId=null;
-
-// Populate Vendor Dropdown
-function renderCashVendors(){
-  const sel=document.getElementById("newPayVendor");
-  sel.innerHTML='<option value="">Select Vendor</option>';
-  DB.vendors.forEach(v=>sel.innerHTML+=`<option value="${v.id}">${v.name}</option>`);
-}
-
-// Render Balance Sticky Bar
-function renderCashBalance(){
-  const bal=DB.cash.reduce((s,t)=>t.type==="IN"?s+t.amount:s-t.amount,0);
-  document.getElementById("cashBal").innerText="₨ "+bal.toFixed(2);
-}
-
-// Render Payments Table
-function renderCash(){
-  renderCashBalance();
-  renderCashVendors();
-
-  const from=document.getElementById("cashFrom").value;
-  const to=document.getElementById("cashTo").value;
-
-  cashFiltered=DB.cash.filter(c=>{
-    if(from && c.date<from) return false;
-    if(to && c.date>to) return false;
-    return true;
-  });
-
-  const tbody=document.getElementById("cashRows"); tbody.innerHTML="";
-  let start=(cashPage-1)*cashPerPage;
-  let page=cashFiltered.slice(start,start+cashPerPage);
-  let bal=0;
-
-  page.forEach((c,i)=>{
-    bal=c.type==="IN"? bal+c.amount : bal-c.amount;
-    let vendorName=c.vendor ? (DB.vendors.find(v=>v.id===c.vendor)?.name||"") : "";
-    tbody.innerHTML+=`
-      <tr>
-        <td>${start+i+1}</td>
-        <td>${c.date}</td>
-        <td>${vendorName}</td>
-        <td>${c.type}</td>
-        <td>₨ ${c.amount.toFixed(2)}</td>
-        <td><button class="blue" onclick="editCash('${c.id}')">Edit</button></td>
-        <td><button class="red" onclick="deleteCash('${c.id}')">Delete</button></td>
-      </tr>
-    `;
-  });
-}
-
-// Apply Filter Button
-function applyCashFilter(){
-  cashPage=1;
-  renderCash();
-}
-
-// Pagination
-function nextCashPage(){cashPage++; renderCash();}
-function prevCashPage(){if(cashPage>1){cashPage--; renderCash();}}
-
-// New Payment
-function saveNewPayment(){
-  const vendor=document.getElementById("newPayVendor").value;
-  const type=document.getElementById("newPayType").value;
-  const amount=+document.getElementById("newPayAmount").value;
-  const date=document.getElementById("newPayDate").value || new Date().toISOString().slice(0,10);
-
-  if(amount<=0) return alert("Amount must be >0");
-
-  if(editingCashId){
-    // Editing: replace existing
-    const c=DB.cash.find(c=>c.id===editingCashId);
-    c.vendor=vendor; c.type=type; c.amount=amount; c.date=date;
-    editingCashId=null;
-  } else {
-    DB.cash.push({id:uid("CASH"),vendor,type,amount,date});
-  }
-
-  saveDB();
-  renderCash();
-}
-
-// Edit Payment
-function editCash(id){
-  const c=DB.cash.find(c=>c.id===id);
-  editingCashId=id;
-  document.getElementById("newPayVendor").value=c.vendor||"";
-  document.getElementById("newPayType").value=c.type;
-  document.getElementById("newPayAmount").value=c.amount;
-  document.getElementById("newPayDate").value=c.date;
-}
-
-// Delete Payment
-function deleteCash(id){
-  if(!confirm("Delete payment?")) return;
-  const c=DB.cash.find(c=>c.id===id);
-  DB.cash=DB.cash.filter(x=>x.id!==id);
-  DB.deleted.push({type:"PAYMENT",data:c});
-  saveDB();
-  renderCash();
-}
-
-// Initialize
-renderCash();
+function uploadProductExcel(input){const file=input.files[0];const reader=new FileReader();reader.onload=e=>{const wb=XLSX.read(e.target.result,{type:"binary"});const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);rows.forEach(r=>{DB.products.push({id:uid("P"),barcode:r.Barcode||"",itemNo:r["Item No"]||"",desc:r.Description||"",rate:+r["Retail Rate"]||0,stock:0});});saveDB();prodFiltered=DB.products;renderProducts();alert("Products imported!");};reader.readAsBinaryString(file);}
+function exportProductsCSV(){let csv="Barcode,Item No,Description,Rate,Stock\n";DB.products.forEach(p=>{csv+=`"${p.barcode}","${p.itemNo}","${p.desc}",${p.rate},${p.stock}\n`;});const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="products.csv";a.click();}
+renderProducts();
 </script>
 
+<!-- ================= VENDORS ================= -->
+<section id="vendors">
+  <div class="card">
+    <h2>Vendors</h2>
+    <input placeholder="Vendor Name" id="vendorName">
+    <button onclick="addVendor()">Add Vendor</button>
+    <table>
+      <thead><tr><th>#</th><th>Name</th><th>Actions</th></tr></thead>
+      <tbody id="vendorRows"></tbody>
+    </table>
+  </div>
+</section>
+<script>
+function renderVendors(){
+  const tbody=document.getElementById("vendorRows");
+  tbody.innerHTML="";
+  DB.vendors.forEach((v,i)=>{
+    tbody.innerHTML+=`<tr><td>${i+1}</td><td>${v.name}</td><td><button class="red" onclick="deleteVendor(${i})">Delete</button></td></tr>`;
+  });
+}
+function addVendor(){
+  const name=document.getElementById("vendorName").value.trim();
+  if(!name) return alert("Enter vendor name");
+  DB.vendors.push({id:uid("V"),name});
+  saveDB();
+  document.getElementById("vendorName").value="";
+  renderVendors();
+}
+function deleteVendor(i){
+  if(!confirm("Delete vendor?"))return;
+  DB.vendors.splice(i,1);
+  saveDB();
+  renderVendors();
+}
+renderVendors();
+</script>
 
 <!-- ================= PURCHASE ================= -->
 <section id="purchase">
   <div class="card">
     <h2>Purchase</h2>
-
-    <label>Vendor</label>
-    <select id="purVendor"></select>
-
-    <button class="blue" onclick="addPurchaseRow()">Add Item</button>
-
+    <input placeholder="Barcode" id="purBarcode">
+    <input placeholder="Item No" id="purItemNo">
+    <input placeholder="Description" id="purDesc">
+    <input type="number" placeholder="Quantity" id="purQty">
+    <input type="number" placeholder="Rate" id="purRate">
+    <button onclick="addPurchase()">Add Purchase</button>
     <table>
-      <thead>
-        <tr>
-          <th>Product (Search)</th>
-          <th>Qty</th>
-          <th>Cost</th>
-          <th>Total</th>
-        </tr>
-      </thead>
+      <thead><tr><th>#</th><th>Barcode</th><th>Item No</th><th>Description</th><th>Qty</th><th>Rate</th><th>Actions</th></tr></thead>
       <tbody id="purchaseRows"></tbody>
     </table>
-
-    <h3>Total: ₨ <span id="purTotal">0</span></h3>
-    <button class="green" onclick="savePurchase()">Save Purchase</button>
   </div>
 </section>
-  
-let purchaseDraft=[];
-
-function renderPurchaseVendors(){
-  const sel=document.getElementById("purVendor");
-  sel.innerHTML='<option value="">Select Vendor</option>';
-  DB.vendors.forEach(v=>{
-    sel.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
-  });
-}
-
-function addPurchaseRow(){
-  purchaseDraft.push({productId:"",qty:1,price:0});
-  renderPurchase();
-}
-
-function renderPurchase(){
-  let total=0;
+<script>
+function renderPurchases(){
   const tbody=document.getElementById("purchaseRows");
   tbody.innerHTML="";
-
-  purchaseDraft.forEach((r,i)=>{
-    const rowTotal=r.qty*r.price;
-    total+=rowTotal;
-
-    tbody.innerHTML+=`
-    <tr>
-      <td>
-        <input placeholder="Barcode / Item / Description"
-          oninput="searchPurchase(${i},this.value)">
-      </td>
-      <td>
-        <input type="number" value="${r.qty}" min="1"
-          onchange="setPurQty(${i},this.value)">
-      </td>
-      <td>
-        <input type="number" value="${r.price}"
-          onchange="setPurPrice(${i},this.value)">
-      </td>
-      <td>${rowTotal.toFixed(2)}</td>
-    </tr>`;
+  DB.purchases.forEach((p,i)=>{
+    tbody.innerHTML+=`<tr><td>${i+1}</td><td>${p.barcode}</td><td>${p.itemNo}</td><td>${p.desc}</td><td>${p.qty}</td><td>${p.rate}</td><td><button class="red" onclick="deletePurchase(${i})">Delete</button></td></tr>`;
   });
-
-  document.getElementById("purTotal").innerText=total.toFixed(2);
 }
-
-function searchPurchase(i,val){
-  const p=DB.products.find(x=>
-    x.barcode?.toLowerCase().includes(val.toLowerCase()) ||
-    x.itemNo?.toLowerCase().includes(val.toLowerCase()) ||
-    x.desc?.toLowerCase().includes(val.toLowerCase())
-  );
-
-  if(p){
-    purchaseDraft[i].productId=p.id;
-    purchaseDraft[i].price=p.rate;
-    renderPurchase();
-  }
-}
-
-function setPurQty(i,v){purchaseDraft[i].qty=+v; renderPurchase();}
-function setPurPrice(i,v){purchaseDraft[i].price=+v; renderPurchase();}
-
-function savePurchase(){
-  const vendor=document.getElementById("purVendor").value;
-  if(!vendor) return alert("Select Vendor");
-  if(!purchaseDraft.length) return alert("No items");
-
-  let total=0;
-
-  purchaseDraft.forEach(r=>{
-    const p=DB.products.find(x=>x.id===r.productId);
-    if(p){
-      p.stock+=r.qty;
-      total+=r.qty*r.price;
-    }
-  });
-
-  const pid=uid("PUR");
-
-  DB.purchases.push({
-    id:pid,
-    vendor,
-    items:JSON.parse(JSON.stringify(purchaseDraft)),
-    total,
-    date:new Date().toISOString().slice(0,10)
-  });
-
-  DB.cash.push({
-    id:uid("CASH"),
-    vendor,
-    type:"OUT",
-    amount:total,
-    ref:pid,
-    date:new Date().toISOString().slice(0,10)
-  });
-
-  saveDB();
-  purchaseDraft=[];
-  renderPurchase();
-  alert("Purchase Saved");
-}
-
-renderPurchaseVendors();
 </script>
 
-<!-- ================= VENDORS ================= -->
-<section id="vendors">
+function addPurchase(){
+  const barcode=document.getElementById("purBarcode").value.trim();
+  const itemNo=document.getElementById("purItemNo").value.trim();
+  const desc=document.getElementById("purDesc").value.trim();
+  const qty=+document.getElementById("purQty").value;
+  const rate=+document.getElementById("purRate").value;
 
-<div class="card">
-  <h2>Vendors</h2>
+  if(!itemNo || !desc || !qty || !rate) return alert("Fill all fields");
 
-  <div style="display:flex;gap:10px;margin-bottom:10px;">
-    <input id="v_name" placeholder="Vendor Name">
-    <button class="green" onclick="addVendor()">Add Vendor</button>
-  </div>
+  DB.purchases.push({
+    id:uid("PUR"),
+    barcode,
+    itemNo,
+    desc,
+    qty,
+    rate
+  });
 
-  <table>
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Vendor Name</th>
-        <th>Balance (₨)</th>
-        <th>Edit</th>
-        <th>Delete</th>
-      </tr>
-    </thead>
-    <tbody id="vendorRows"></tbody>
-  </table>
-</div>
+  saveDB();
 
-<!-- ===== VENDOR LEDGER ===== -->
-<div class="card" id="vendorLedger" style="display:none;">
-  <h3 id="ledgerTitle"></h3>
-  <button onclick="closeLedger()">⬅ Back</button>
-
-  <table>
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>Type</th>
-        <th>Amount (₨)</th>
-        <th>Ref</th>
-      </tr>
-    </thead>
-    <tbody id="ledgerRows"></tbody>
-  </table>
-</div>
-
-</section>
-
-let editingVendorId=null;
-<script>
-
-/* ===== ADD / EDIT ===== */
-function addVendor(){
-  const name=document.getElementById("v_name").value.trim();
-  if(!name) return alert("Enter vendor name");
-
-  if(editingVendorId){
-    const v=DB.vendors.find(v=>v.id===editingVendorId);
-    v.name=name;
-    editingVendorId=null;
+  // Update product stock and rate or add new product
+  let prod=DB.products.find(p=>p.itemNo===itemNo);
+  if(prod){
+    prod.stock=(prod.stock||0)+qty;
+    prod.rate=rate;
   }else{
-    DB.vendors.push({id:uid("V"),name});
+    DB.products.push({
+      id:uid("P"),
+      barcode,
+      itemNo,
+      desc,
+      rate,
+      stock:qty
+    });
   }
 
-  document.getElementById("v_name").value="";
   saveDB();
-  renderVendors();
+  renderPurchases();
+  document.getElementById("purBarcode").value="";
+  document.getElementById("purItemNo").value="";
+  document.getElementById("purDesc").value="";
+  document.getElementById("purQty").value="";
+  document.getElementById("purRate").value="";
+  renderProducts();
 }
-
-/* ===== BALANCE ===== */
-function vendorBalance(id){
-  return DB.cash.reduce((s,c)=>{
-    if(c.vendor!==id) return s;
-    return c.type==="IN"? s+c.amount : s-c.amount;
-  },0);
-}
-
-/* ===== LIST ===== */
-function renderVendors(){
-  const tbody=document.getElementById("vendorRows");
-  tbody.innerHTML="";
-
-  DB.vendors.forEach((v,i)=>{
-    const bal=vendorBalance(v.id);
-
-    tbody.innerHTML+=`
-      <tr>
-        <td>${i+1}</td>
-        <td style="color:#1f6feb;cursor:pointer"
-            onclick="openLedger('${v.id}')">${v.name}</td>
-        <td>${bal.toFixed(2)}</td>
-        <td><button onclick="editVendor('${v.id}')">Edit</button></td>
-        <td>
-          <button class="red"
-            ${bal!==0?'disabled':''}
-            onclick="deleteVendor('${v.id}')">
-            Delete
-          </button>
-        </td>
-      </tr>`;
-  });
-}
-
-/* ===== EDIT ===== */
-function editVendor(id){
-  const v=DB.vendors.find(v=>v.id===id);
-  document.getElementById("v_name").value=v.name;
-  editingVendorId=id;
-}
-
-/* ===== DELETE ===== */
-function deleteVendor(id){
-  if(vendorBalance(id)!==0)
-    return alert("Vendor balance must be zero");
-
-  if(!confirm("Delete vendor?")) return;
-
-  DB.vendors=DB.vendors.filter(v=>v.id!==id);
+function deletePurchase(i){
+  if(!confirm("Delete purchase?"))return;
+  const pur=DB.purchases[i];
+  let prod=DB.products.find(p=>p.itemNo===pur.itemNo);
+  if(prod){
+    prod.stock=(prod.stock||0)-pur.qty;
+  }
+  DB.purchases.splice(i,1);
   saveDB();
-  renderVendors();
+  renderPurchases();
+  renderProducts();
 }
-
-/* ===== LEDGER ===== */
-function openLedger(id){
-  const v=DB.vendors.find(v=>v.id===id);
-  document.getElementById("ledgerTitle").innerText=
-    "Ledger – "+v.name;
-
-  const tbody=document.getElementById("ledgerRows");
-  tbody.innerHTML="";
-
-  DB.cash.filter(c=>c.vendor===id).forEach(c=>{
-    tbody.innerHTML+=`
-      <tr>
-        <td>${c.date}</td>
-        <td>${c.type}</td>
-        <td>${c.amount.toFixed(2)}</td>
-        <td>${c.ref||""}</td>
-      </tr>`;
-  });
-
-  document.getElementById("vendorLedger").style.display="block";
-}
-
-/* ===== CLOSE LEDGER ===== */
-function closeLedger(){
-  document.getElementById("vendorLedger").style.display="none";
-}
-
-renderVendors();
+renderPurchases();
 </script>
 
 <!-- ================= REPORTS ================= -->
 <section id="reports">
   <div class="card">
     <h2>Reports</h2>
-    <p>Products: <span id="repProducts"></span></p>
-    <p>Invoices: <span id="repInvoices"></span></p>
-    <p>Cash Balance: <span id="repCash"></span></p>
-    <h3>Deleted Records</h3>
-    <pre id="deletedLog"></pre>
+    <button onclick="exportInvoicesCSV()">Export Invoices CSV</button>
   </div>
 </section>
 <script>
-function renderReports(){document.getElementById("repProducts").innerText=DB.products.length; document.getElementById("repInvoices").innerText=DB.invoices.length; document.getElementById("repCash").innerText=cashBalance().toFixed(2); document.getElementById("deletedLog").innerText=JSON.stringify(DB.deleted,null,2);}
+function exportInvoicesCSV(){
+  let csv="Date,Total\n";
+  DB.invoices.forEach(i=>{
+    csv+=`${i.date},${i.total}\n`;
+  });
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.download="invoices.csv";
+  a.click();
+}
 </script>
 
 <!-- ================= SETTINGS ================= -->
 <section id="settings">
   <div class="card">
     <h2>Settings</h2>
-    <label>Company Name</label>
-    <label>Software Name</label>
-<input id="companyName">
-    <label>Upload Logo</label>
-    <input type="file" accept="image/*" onchange="uploadLogo(this)">
-    <button onclick="saveSettings()" class="green">Save</button>
-    <hr>
-    <button onclick="if(confirm('Reset all data?')){localStorage.clear();location.reload();}" class="red">Factory Reset</button>
+    <button onclick="clearDatabase()">Clear All Data</button>
   </div>
 </section>
-  
-function saveSettings(){
-  const name=document.getElementById("companyName").value;
-  localStorage.setItem("softwareName",name);
-  document.getElementById("softwareName").innerText=name;
-  document.title=name; // TAB TITLE
+<script>
+function clearDatabase(){
+  if(!confirm("Are you sure? All data will be lost.")) return;
+  localStorage.clear();
+  location.reload();
 }
-
-function uploadLogo(input){
-  const file=input.files[0];
-  const reader=new FileReader();
-  reader.onload=e=>{
-    localStorage.setItem("logo",e.target.result);
-    const img=document.getElementById("header-logo");
-    img.src=e.target.result;
-    img.style.display="block";
-  };
-  reader.readAsDataURL(file);
-}
-
-(function(){
-  const name=localStorage.getItem("softwareName");
-  if(name){
-    document.getElementById("softwareName").innerText=name;
-    document.title=name;
-    document.getElementById("companyName").value=name;
-  }
-
-  const logo=localStorage.getItem("logo");
-  if(logo){
-    const img=document.getElementById("header-logo");
-    img.src=logo;
-    img.style.display="block";
-  }
-})();
 </script>
 
-
-<!-- ================= TAB CONTROL ================= -->
+<!-- ================= GLOBAL SCRIPT ================= -->
 <script>
-function openTab(id){
+function openTab(tab){
   document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
   document.querySelectorAll("nav div").forEach(d=>d.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
-  document.getElementById("tab-"+id).classList.add("active");
-  if(id==="cash") renderCash();
-  if(id==="reports") renderReports();
-  if(id==="products") renderProducts();
-  if(id==="purchase") renderPurchase();
+  document.getElementById(tab).classList.add("active");
+  document.getElementById("tab-"+tab).classList.add("active");
 }
+
+// Set initial tab
 openTab("invoice");
+
+// Date time updater
+function updateDateTime(){
+  const now=new Date();
+  const dt=now.toLocaleDateString()+" "+now.toLocaleTimeString();
+  document.getElementById("dateTime").innerText=dt;
+}
+setInterval(updateDateTime,1000);
+updateDateTime();
 </script>
 
 </body>
