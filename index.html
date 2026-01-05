@@ -544,11 +544,103 @@ function exportProductsCSV(){
 
 <script>
 function renderVendors(){
-  const tbody=document.getElementById("vendorRows"); tbody.innerHTML="";
+  const tbody=document.getElementById("vendorRows"); 
+  tbody.innerHTML="";
   DB.vendors.forEach((v,idx)=>{
-    tbody.innerHTML+=`<tr><td>${idx+1}</td><td>${v.name}</td></tr>`;
+    // calculate balance for this vendor
+    const vendorBalance = DB.purchases
+      .filter(p => p.vendorId === v.id)
+      .reduce((s, p) => s + p.total, 0) 
+      - (DB.cash.filter(c => c.vendorId === v.id && c.type === "OUT")
+               .reduce((s,c)=>s+c.amount,0));
+    
+    tbody.innerHTML+=`
+      <tr>
+        <td>${idx+1}</td>
+        <td>
+          <span onclick="showVendorLedger('${v.id}')" style="cursor:pointer; text-decoration:underline;">${v.name}</span>
+          <br>
+          <small>Balance: ₨ ${vendorBalance.toFixed(2)}</small>
+        </td>
+        <td>
+          <button onclick="editVendor('${v.id}')">Edit</button>
+          <button onclick="deleteVendor('${v.id}')">Delete</button>
+        </td>
+      </tr>
+    `;
   });
 }
+function editVendor(vendorId){
+  const vendor = DB.vendors.find(v => v.id === vendorId);
+  const newName = prompt("Edit vendor name:", vendor.name);
+  if(newName && newName.trim() !== ""){
+    vendor.name = newName.trim();
+    saveDB();
+    renderVendors();
+  }
+}
+function deleteVendor(vendorId){
+  const vendor = DB.vendors.find(v => v.id === vendorId);
+
+  // calculate balance for this vendor
+  const balance = DB.purchases
+    .filter(p => p.vendorId === vendorId)
+    .reduce((s, p) => s + p.total, 0) 
+    - (DB.cash.filter(c => c.vendorId === vendorId && c.type === "OUT")
+             .reduce((s,c)=>s+c.amount,0));
+
+  if(balance !== 0){
+    return alert("Cannot delete vendor! Balance is not zero.");
+  }
+
+  if(confirm("Are you sure you want to delete this vendor?")){
+    DB.vendors = DB.vendors.filter(v => v.id !== vendorId);
+    saveDB();
+    renderVendors();
+  }
+}
+function showVendorLedger(vendorId){
+  const vendor = DB.vendors.find(v=>v.id===vendorId);
+  const ledgerWindow = window.open("", "_blank", "width=600,height=600");
+  ledgerWindow.document.write(`<h2>Ledger for ${vendor.name}</h2>`);
+
+  let balance = 0;
+  ledgerWindow.document.write(`<table border="1" style="width:100%;border-collapse:collapse;">
+    <tr><th>Date</th><th>Type</th><th>Amount</th><th>Balance</th></tr>`);
+
+  // Get all related purchases
+  const entries = [];
+  DB.purchases.filter(p=>p.vendorId===vendorId).forEach(p=>{
+    entries.push({date:p.date, type:"Purchase", amount:p.total});
+  });
+  DB.cash.filter(c=>c.vendorId===vendorId && c.type==="OUT").forEach(c=>{
+    entries.push({date:c.date, type:"Payment", amount:c.amount});
+  });
+
+  // Sort by date
+  entries.sort((a,b)=> new Date(a.date) - new Date(b.date));
+
+  entries.forEach(e=>{
+    balance += e.type==="Purchase"? e.amount : -e.amount;
+    ledgerWindow.document.write(`<tr>
+      <td>${e.date}</td>
+      <td>${e.type}</td>
+      <td>${e.amount.toFixed(2)}</td>
+      <td>${balance.toFixed(2)}</td>
+    </tr>`);
+  });
+
+  ledgerWindow.document.write(`</table>
+    <h3>Total Balance: ₨ ${balance.toFixed(2)}</h3>`);
+}
+DB.cash.push({
+  id: uid("CASH"),
+  type: "OUT",
+  amount: paymentAmount,
+  vendorId: vendorId,
+  ref: paymentRef,
+  date: new Date().toISOString().slice(0,10)
+});
 
 function addVendor(){
   const name=document.getElementById("vendorName").value.trim();
