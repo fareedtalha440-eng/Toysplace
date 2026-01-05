@@ -177,7 +177,7 @@ function uid(prefix){ return prefix + "_" + Date.now() + Math.floor(Math.random(
 </script>
 
 <!-- ================= INVOICE ================= -->
-<<section id="invoice">
+<section id="invoice">
   <div class="card" id="newInvoiceCard">
     <h2>New Invoice</h2>
 
@@ -207,10 +207,6 @@ function uid(prefix){ return prefix + "_" + Date.now() + Math.floor(Math.random(
     <button onclick="saveInvoice()">Save Invoice</button>
   </div>
 </section>
-
-
-<script>
-
 <script>
 let invoiceDraft=[];
 let invPage=1, invPerPage=100;
@@ -279,7 +275,7 @@ function searchInv(i,val){
     renderInvoice();
   }
 }
-<script>
+</script>
 
 
 /* ===== SETTERS ===== */
@@ -632,22 +628,7 @@ renderCash();
     <button class="green" onclick="savePurchase()">Save Purchase</button>
   </div>
 </section>
-<script>
-let purchaseDraft=[];
-function addPurchaseRow(){purchaseDraft.push({productId:"",qty:1,price:0}); renderPurchase();}
-function renderPurchase(){const tbody=document.getElementById("purchaseRows"); tbody.innerHTML=""; let t=0; purchaseDraft.forEach((r,i)=>{const total=r.qty*r.price; t+=total; tbody.innerHTML+=`<tr><td><select onchange="purSetProd(${i},this.value)"><option></option>${DB.products.map(p=>`<option value="${p.id}" ${p.id===r.productId?'selected':''}>${p.itemNo}</option>`).join("")}</select></td><td><input type="number" value="${r.qty}" min="1" onchange="purSetQty(${i},this.value)"></td><td><input type="number" value="${r.price}" min="0" onchange="purSetPrice(${i},this.value)"></td><td>${total.toFixed(2)}</td></tr>`;}); document.getElementById("purTotal").innerText=t.toFixed(2);}
-function purSetProd(i,v){purchaseDraft[i].productId=v;}
-function purSetQty(i,v){purchaseDraft[i].qty=+v; renderPurchase();}
-function purSetPrice(i,v){purchaseDraft[i].price=+v; renderPurchase();}
-function savePurchase(){
-  const total=purchaseDraft.reduce((s,r)=>s+r.qty*r.price,0);
-  DB.purchases.push({id:uid("PUR"),items:purchaseDraft,total});
-  DB.cash.push({id:uid("CASH"),type:"OUT",amount:total,ref:"PURCHASE",date:new Date().toLocaleDateString()});
-  purchaseDraft.forEach(r=>{const p=DB.products.find(x=>x.id===r.productId); if(p)p.stock+=r.qty;});
-  saveDB(); purchaseDraft=[]; renderPurchase(); alert("Purchase saved");
-}
-function uploadPurchaseExcel(input){const reader=new FileReader();reader.onload=e=>{const wb=XLSX.read(e.target.result,{type:"binary"});const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);rows.forEach(r=>{const p=DB.products.find(x=>x.itemNo==r["Item No"]); if(p) purchaseDraft.push({productId:p.id,qty:+r.Qty,price:+r.Price});}); renderPurchase();}; reader.readAsBinaryString(input.files[0]);}
-<script>
+  
 let purchaseDraft=[];
 
 function renderPurchaseVendors(){
@@ -799,6 +780,7 @@ renderPurchaseVendors();
 </section>
 
 let editingVendorId=null;
+<script>
 
 /* ===== ADD / EDIT ===== */
 function addVendor(){
@@ -930,10 +912,7 @@ function renderReports(){document.getElementById("repProducts").innerText=DB.pro
     <button onclick="if(confirm('Reset all data?')){localStorage.clear();location.reload();}" class="red">Factory Reset</button>
   </div>
 </section>
-<script>
-function saveSettings(){const name=document.getElementById("companyName").value; document.querySelector("header").innerText=name; localStorage.setItem("companyName",name);}
-const storedName=localStorage.getItem("companyName"); if(storedName) document.querySelector("header").innerText=storedName;
-<script>
+  
 function saveSettings(){
   const name=document.getElementById("companyName").value;
   localStorage.setItem("softwareName",name);
