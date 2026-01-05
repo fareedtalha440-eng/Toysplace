@@ -708,11 +708,7 @@ function uploadPurchaseExcel(input){const reader=new FileReader();reader.onload=
 </div>
 
 </section>
-<script>
-function addVendor(){const name=document.getElementById("v_name").value.trim(); if(!name) return; DB.vendors.push({id:uid("V"),name}); document.getElementById("v_name").value=""; saveDB(); renderVendors();}
-function renderVendors(){const ul=document.getElementById("vendorList"); ul.innerHTML=""; DB.vendors.forEach(v=>{ul.innerHTML+=`<li>${v.name}</li>`;});}
-renderVendors();
-<script>
+
 let editingVendorId=null;
 
 /* ===== ADD / EDIT ===== */
