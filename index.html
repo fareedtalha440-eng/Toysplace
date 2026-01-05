@@ -301,14 +301,23 @@ function renderInvoice(){
 }
 
 /* ===== SEARCH PRODUCT ===== */
-function searchInv(i,val,key){
-  const p=DB.products.find(x=>x[key]?.toLowerCase().includes(val.toLowerCase()));
+<script>
+function searchInv(i,val){
+  const p=DB.products.find(x=>
+    x.stock>0 && (
+      x.barcode?.toLowerCase().includes(val.toLowerCase()) ||
+      x.itemNo?.toLowerCase().includes(val.toLowerCase()) ||
+      x.desc?.toLowerCase().includes(val.toLowerCase())
+    )
+  );
+
   if(p){
     invoiceDraft[i].productId=p.id;
     invoiceDraft[i].rate=p.rate;
     renderInvoice();
   }
 }
+</script>
 
 /* ===== SETTERS ===== */
 function setInvQty(i,v){invoiceDraft[i].qty=+v;renderInvoice();}
@@ -675,6 +684,110 @@ function savePurchase(){
   saveDB(); purchaseDraft=[]; renderPurchase(); alert("Purchase saved");
 }
 function uploadPurchaseExcel(input){const reader=new FileReader();reader.onload=e=>{const wb=XLSX.read(e.target.result,{type:"binary"});const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);rows.forEach(r=>{const p=DB.products.find(x=>x.itemNo==r["Item No"]); if(p) purchaseDraft.push({productId:p.id,qty:+r.Qty,price:+r.Price});}); renderPurchase();}; reader.readAsBinaryString(input.files[0]);}
+<script>
+let purchaseDraft=[];
+
+function renderPurchaseVendors(){
+  const sel=document.getElementById("purVendor");
+  sel.innerHTML='<option value="">Select Vendor</option>';
+  DB.vendors.forEach(v=>{
+    sel.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
+  });
+}
+
+function addPurchaseRow(){
+  purchaseDraft.push({productId:"",qty:1,price:0});
+  renderPurchase();
+}
+
+function renderPurchase(){
+  let total=0;
+  const tbody=document.getElementById("purchaseRows");
+  tbody.innerHTML="";
+
+  purchaseDraft.forEach((r,i)=>{
+    const rowTotal=r.qty*r.price;
+    total+=rowTotal;
+
+    tbody.innerHTML+=`
+    <tr>
+      <td>
+        <input placeholder="Barcode / Item / Description"
+          oninput="searchPurchase(${i},this.value)">
+      </td>
+      <td>
+        <input type="number" value="${r.qty}" min="1"
+          onchange="setPurQty(${i},this.value)">
+      </td>
+      <td>
+        <input type="number" value="${r.price}"
+          onchange="setPurPrice(${i},this.value)">
+      </td>
+      <td>${rowTotal.toFixed(2)}</td>
+    </tr>`;
+  });
+
+  document.getElementById("purTotal").innerText=total.toFixed(2);
+}
+
+function searchPurchase(i,val){
+  const p=DB.products.find(x=>
+    x.barcode?.toLowerCase().includes(val.toLowerCase()) ||
+    x.itemNo?.toLowerCase().includes(val.toLowerCase()) ||
+    x.desc?.toLowerCase().includes(val.toLowerCase())
+  );
+
+  if(p){
+    purchaseDraft[i].productId=p.id;
+    purchaseDraft[i].price=p.rate;
+    renderPurchase();
+  }
+}
+
+function setPurQty(i,v){purchaseDraft[i].qty=+v; renderPurchase();}
+function setPurPrice(i,v){purchaseDraft[i].price=+v; renderPurchase();}
+
+function savePurchase(){
+  const vendor=document.getElementById("purVendor").value;
+  if(!vendor) return alert("Select Vendor");
+  if(!purchaseDraft.length) return alert("No items");
+
+  let total=0;
+
+  purchaseDraft.forEach(r=>{
+    const p=DB.products.find(x=>x.id===r.productId);
+    if(p){
+      p.stock+=r.qty;
+      total+=r.qty*r.price;
+    }
+  });
+
+  const pid=uid("PUR");
+
+  DB.purchases.push({
+    id:pid,
+    vendor,
+    items:JSON.parse(JSON.stringify(purchaseDraft)),
+    total,
+    date:new Date().toISOString().slice(0,10)
+  });
+
+  DB.cash.push({
+    id:uid("CASH"),
+    vendor,
+    type:"OUT",
+    amount:total,
+    ref:pid,
+    date:new Date().toISOString().slice(0,10)
+  });
+
+  saveDB();
+  purchaseDraft=[];
+  renderPurchase();
+  alert("Purchase Saved");
+}
+
+renderPurchaseVendors();
 </script>
 
 <!-- ================= VENDORS ================= -->
