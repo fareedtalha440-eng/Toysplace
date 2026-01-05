@@ -666,16 +666,153 @@ function uploadPurchaseExcel(input){const reader=new FileReader();reader.onload=
 
 <!-- ================= VENDORS ================= -->
 <section id="vendors">
-  <div class="card">
-    <h2>Vendors</h2>
+
+<div class="card">
+  <h2>Vendors</h2>
+
+  <div style="display:flex;gap:10px;margin-bottom:10px;">
     <input id="v_name" placeholder="Vendor Name">
-    <button onclick="addVendor()">Add</button>
-    <ul id="vendorList"></ul>
+    <button class="green" onclick="addVendor()">Add Vendor</button>
   </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Vendor Name</th>
+        <th>Balance (₨)</th>
+        <th>Edit</th>
+        <th>Delete</th>
+      </tr>
+    </thead>
+    <tbody id="vendorRows"></tbody>
+  </table>
+</div>
+
+<!-- ===== VENDOR LEDGER ===== -->
+<div class="card" id="vendorLedger" style="display:none;">
+  <h3 id="ledgerTitle"></h3>
+  <button onclick="closeLedger()">⬅ Back</button>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Type</th>
+        <th>Amount (₨)</th>
+        <th>Ref</th>
+      </tr>
+    </thead>
+    <tbody id="ledgerRows"></tbody>
+  </table>
+</div>
+
 </section>
 <script>
 function addVendor(){const name=document.getElementById("v_name").value.trim(); if(!name) return; DB.vendors.push({id:uid("V"),name}); document.getElementById("v_name").value=""; saveDB(); renderVendors();}
 function renderVendors(){const ul=document.getElementById("vendorList"); ul.innerHTML=""; DB.vendors.forEach(v=>{ul.innerHTML+=`<li>${v.name}</li>`;});}
+renderVendors();
+<script>
+let editingVendorId=null;
+
+/* ===== ADD / EDIT ===== */
+function addVendor(){
+  const name=document.getElementById("v_name").value.trim();
+  if(!name) return alert("Enter vendor name");
+
+  if(editingVendorId){
+    const v=DB.vendors.find(v=>v.id===editingVendorId);
+    v.name=name;
+    editingVendorId=null;
+  }else{
+    DB.vendors.push({id:uid("V"),name});
+  }
+
+  document.getElementById("v_name").value="";
+  saveDB();
+  renderVendors();
+}
+
+/* ===== BALANCE ===== */
+function vendorBalance(id){
+  return DB.cash.reduce((s,c)=>{
+    if(c.vendor!==id) return s;
+    return c.type==="IN"? s+c.amount : s-c.amount;
+  },0);
+}
+
+/* ===== LIST ===== */
+function renderVendors(){
+  const tbody=document.getElementById("vendorRows");
+  tbody.innerHTML="";
+
+  DB.vendors.forEach((v,i)=>{
+    const bal=vendorBalance(v.id);
+
+    tbody.innerHTML+=`
+      <tr>
+        <td>${i+1}</td>
+        <td style="color:#1f6feb;cursor:pointer"
+            onclick="openLedger('${v.id}')">${v.name}</td>
+        <td>${bal.toFixed(2)}</td>
+        <td><button onclick="editVendor('${v.id}')">Edit</button></td>
+        <td>
+          <button class="red"
+            ${bal!==0?'disabled':''}
+            onclick="deleteVendor('${v.id}')">
+            Delete
+          </button>
+        </td>
+      </tr>`;
+  });
+}
+
+/* ===== EDIT ===== */
+function editVendor(id){
+  const v=DB.vendors.find(v=>v.id===id);
+  document.getElementById("v_name").value=v.name;
+  editingVendorId=id;
+}
+
+/* ===== DELETE ===== */
+function deleteVendor(id){
+  if(vendorBalance(id)!==0)
+    return alert("Vendor balance must be zero");
+
+  if(!confirm("Delete vendor?")) return;
+
+  DB.vendors=DB.vendors.filter(v=>v.id!==id);
+  saveDB();
+  renderVendors();
+}
+
+/* ===== LEDGER ===== */
+function openLedger(id){
+  const v=DB.vendors.find(v=>v.id===id);
+  document.getElementById("ledgerTitle").innerText=
+    "Ledger – "+v.name;
+
+  const tbody=document.getElementById("ledgerRows");
+  tbody.innerHTML="";
+
+  DB.cash.filter(c=>c.vendor===id).forEach(c=>{
+    tbody.innerHTML+=`
+      <tr>
+        <td>${c.date}</td>
+        <td>${c.type}</td>
+        <td>${c.amount.toFixed(2)}</td>
+        <td>${c.ref||""}</td>
+      </tr>`;
+  });
+
+  document.getElementById("vendorLedger").style.display="block";
+}
+
+/* ===== CLOSE LEDGER ===== */
+function closeLedger(){
+  document.getElementById("vendorLedger").style.display="none";
+}
+
 renderVendors();
 </script>
 
