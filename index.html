@@ -447,67 +447,40 @@ function renderCash(){
   <div class="card">
     <h2>Products</h2>
     
-    <!-- Add New Product -->
-    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
-      <input type="text" id="newProdBarcode" placeholder="Barcode" style="width:120px;">
-      <input type="text" id="newProdItemNo" placeholder="Item No" style="width:120px;">
-      <input type="text" id="newProdDesc" placeholder="Description" style="flex:1;">
-      <input type="number" id="newProdRate" placeholder="Rate" style="width:80px;">
-      <button onclick="addNewProduct()">Add Product</button>
-    </div>
+    <script>
+let prodPage = 1, prodPerPage = 100, prodFiltered = [];
 
-    <!-- Excel Upload & CSV Download -->
-    <input type="file" accept=".xlsx,.xls" onchange="uploadProductExcel(this)">
-    <button onclick="exportProductsCSV()">Download CSV</button>
-
-    <!-- Search -->
-    <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
-      <input placeholder="Search Barcode" oninput="searchProducts()" id="s_barcode" style="width:120px;">
-      <input placeholder="Search Item No" oninput="searchProducts()" id="s_item" style="width:120px;">
-      <input placeholder="Search Description" oninput="searchProducts()" id="s_desc" style="flex:1;">
-    </div>
-  </div>
-
-  <div class="card">
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Barcode</th>
-          <th>Item No</th>
-          <th>Description</th>
-          <th>Rate</th>
-          <th>Stock</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="productRows"></tbody>
-    </table>
-
-    <button onclick="prevPage()">Prev</button>
-    <button onclick="nextPage()">Next</button>
-  </div>
-</section>
-
-<script>
-let prodPage = 1, prodPerPage = 100, prodFiltered = DB.products;
+/* ===== INITIAL LOAD ===== */
+function loadProducts(){
+  // Ensure every product has all necessary keys
+  DB.products.forEach(p=>{
+    if(!p.id) p.id = uid("P");
+    if(!p.barcode) p.barcode = "";
+    if(!p.itemNo) p.itemNo = "";
+    if(!p.desc) p.desc = "";
+    if(!p.rate) p.rate = 0;
+    if(!p.stock) p.stock = 0;
+  });
+  prodFiltered = [...DB.products];
+  renderProducts();
+}
 
 /* ===== RENDER PRODUCTS ===== */
 function renderProducts(){
   const tbody = document.getElementById("productRows");
   tbody.innerHTML = "";
-  const start = (prodPage-1) * prodPerPage;
+  const start = (prodPage-1)*prodPerPage;
   const page = prodFiltered.slice(start, start+prodPerPage);
 
-  page.forEach((p, i) => {
+  page.forEach((p, i)=>{
     tbody.innerHTML += `
       <tr>
         <td>${start+i+1}</td>
-        <td>${p.barcode || ""}</td>
+        <td>${p.barcode}</td>
         <td>${p.itemNo}</td>
         <td>${p.desc}</td>
         <td>${p.rate}</td>
-        <td>${p.stock || 0}</td>
+        <td>${p.stock}</td>
         <td>
           <button onclick="editProduct('${p.id}')">Edit</button>
           <button onclick="deleteProduct('${p.id}')">Delete</button>
@@ -519,19 +492,19 @@ function renderProducts(){
 
 /* ===== SEARCH PRODUCTS ===== */
 function searchProducts(){
-  const b = document.getElementById("s_barcode").value.toLowerCase();
-  const i = document.getElementById("s_item").value.toLowerCase();
-  const d = document.getElementById("s_desc").value.toLowerCase();
+  const b = document.getElementById("s_barcode").value.trim().toLowerCase();
+  const i = document.getElementById("s_item").value.trim().toLowerCase();
+  const d = document.getElementById("s_desc").value.trim().toLowerCase();
 
-  prodFiltered = DB.products.filter(p =>
-    (!b || (p.barcode && p.barcode.toLowerCase().includes(b))) &&
-    (!i || (p.itemNo && p.itemNo.toLowerCase().includes(i))) &&
-    (!d || (p.desc && p.desc.toLowerCase().includes(d)))
-  );
+  prodFiltered = DB.products.filter(p=>{
+    return (!b || p.barcode.toLowerCase().includes(b)) &&
+           (!i || p.itemNo.toLowerCase().includes(i)) &&
+           (!d || p.desc.toLowerCase().includes(d));
+  });
 
-  // Sort by Barcode, then Item No, then Description
-  prodFiltered.sort((a,b) => {
-    if(a.barcode !== b.barcode) return (a.barcode||"").localeCompare(b.barcode||"");
+  // Sort
+  prodFiltered.sort((a,b)=>{
+    if(a.barcode !== b.barcode) return a.barcode.localeCompare(b.barcode);
     if(a.itemNo !== b.itemNo) return a.itemNo.localeCompare(b.itemNo);
     return a.desc.localeCompare(b.desc);
   });
@@ -567,14 +540,16 @@ function addNewProduct(){
   document.getElementById("newProdItemNo").value = "";
   document.getElementById("newProdDesc").value = "";
   document.getElementById("newProdRate").value = "";
-  prodFiltered = DB.products;
-  renderProducts();
+
+  loadProducts();
 }
 
 /* ===== EDIT PRODUCT ===== */
-function editProduct(productId){
-  const p = DB.products.find(x => x.id === productId);
-  const newBarcode = prompt("Edit Barcode", p.barcode || "");
+function editProduct(id){
+  const p = DB.products.find(x=>x.id===id);
+  if(!p) return alert("Product not found!");
+
+  const newBarcode = prompt("Edit Barcode", p.barcode);
   const newItemNo = prompt("Edit Item No", p.itemNo);
   const newDesc = prompt("Edit Description", p.desc);
   const newRate = prompt("Edit Rate", p.rate);
@@ -584,19 +559,21 @@ function editProduct(productId){
     p.itemNo = newItemNo;
     p.desc = newDesc;
     p.rate = +newRate;
+
     saveDB();
-    renderProducts();
+    loadProducts();
   }
 }
 
-/* ===== DELETE PRODUCT ONLY IF STOCK ZERO ===== */
-function deleteProduct(productId){
-  const p = DB.products.find(x => x.id === productId);
+/* ===== DELETE PRODUCT ===== */
+function deleteProduct(id){
+  const p = DB.products.find(x=>x.id===id);
+  if(!p) return alert("Product not found!");
   if(p.stock !== 0) return alert("Cannot delete product! Stock is not zero.");
-  if(confirm("Are you sure you want to delete this product?")){
-    DB.products = DB.products.filter(x => x.id !== productId);
+  if(confirm("Are you sure to delete this product?")){
+    DB.products = DB.products.filter(x=>x.id!==id);
     saveDB();
-    renderProducts();
+    loadProducts();
   }
 }
 
@@ -604,7 +581,7 @@ function deleteProduct(productId){
 function uploadProductExcel(input){
   const file = input.files[0];
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = e=>{
     const wb = XLSX.read(e.target.result, {type:"binary"});
     const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
     rows.forEach(r=>{
@@ -618,8 +595,7 @@ function uploadProductExcel(input){
       });
     });
     saveDB();
-    prodFiltered = DB.products;
-    renderProducts();
+    loadProducts();
     alert("Products imported!");
   };
   reader.readAsBinaryString(file);
@@ -637,9 +613,10 @@ function exportProductsCSV(){
   a.click();
 }
 
-// Initial render
-renderProducts();
+// INITIAL LOAD
+loadProducts();
 </script>
+
 
 <!-- ================= VENDORS ================= -->
 <section id="vendors">
