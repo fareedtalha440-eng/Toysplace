@@ -177,73 +177,35 @@ function uid(prefix){ return prefix + "_" + Date.now() + Math.floor(Math.random(
 </script>
 
 <!-- ================= INVOICE ================= -->
-<section id="invoice">
+<<section id="invoice">
+  <div class="card" id="newInvoiceCard">
+    <h2>New Invoice</h2>
 
-<!-- ===== NEW INVOICE ===== -->
-<div class="card" id="newInvoiceCard">
-  <h2>New Invoice</h2>
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
-  <input id="inv_s_barcode" placeholder="Search Barcode" oninput="renderInvoice()">
-  <input id="inv_s_item" placeholder="Search Item No" oninput="renderInvoice()">
-  <input id="inv_s_desc" placeholder="Search Description" oninput="renderInvoice()">
-</div>
+    <!-- SEARCH -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
+      <input id="inv_s_barcode" placeholder="Search Barcode">
+      <input id="inv_s_item" placeholder="Search Item No">
+      <input id="inv_s_desc" placeholder="Search Description">
+    </div>
 
-  <button class="blue" onclick="addInvoiceRow()">Add Item</button>
+    <button onclick="addInvoiceRow()">New Item</button>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Barcode</th>
-        <th>Item No</th>
-        <th>Description</th>
-        <th>Qty</th>
-        <th>Rate</th>
-        <th>Disc ₹</th>
-        <th>Disc %</th>
-        <th>Total</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody id="invoiceRows"></tbody>
-  </table>
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Qty</th>
+          <th>Rate</th>
+          <th>Total</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="invoiceRows"></tbody>
+    </table>
 
-  <!-- ===== MAIN DISCOUNT ===== -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
-    <input type="number" id="mainDiscAmt" placeholder="Main Discount Rs." oninput="syncMainDiscAmt()">
-    <input type="number" id="mainDiscPct" placeholder="Main Discount %" oninput="syncMainDiscPct()">
+    <h3>Total: ₨ <span id="invTotal">0</span></h3>
+    <button onclick="saveInvoice()">Save Invoice</button>
   </div>
-
-  <h3>Grand Total: Rs. <span id="invTotal">0</span></h3>
-
-  <button class="green" onclick="saveInvoice()">Save Invoice</button>
-</div>
-
-<!-- ===== INVOICE FILTER ===== -->
-<div class="card">
-  <h3>Invoice History</h3>
-  <input type="date" id="invDateFilter">
-  <button onclick="applyInvoiceFilter()">Apply Filter</button>
-</div>
-
-<!-- ===== PREVIOUS INVOICES ===== -->
-<div class="card">
-  <table>
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Date</th>
-        <th>Total</th>
-        <th>Edit</th>
-        <th>Delete</th>
-      </tr>
-    </thead>
-    <tbody id="invoiceList"></tbody>
-  </table>
-
-  <button onclick="prevInvPage()">Prev</button>
-  <button onclick="nextInvPage()">Next</button>
-</div>
-
 </section>
 
 
