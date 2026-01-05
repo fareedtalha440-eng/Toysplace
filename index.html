@@ -638,13 +638,25 @@ renderCash();
 <section id="purchase">
   <div class="card">
     <h2>Purchase</h2>
-    <input type="file" accept=".xlsx,.xls" onchange="uploadPurchaseExcel(this)">
-    <button onclick="addPurchaseRow()">Add Item</button>
+
+    <label>Vendor</label>
+    <select id="purVendor"></select>
+
+    <button class="blue" onclick="addPurchaseRow()">Add Item</button>
+
     <table>
-      <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
+      <thead>
+        <tr>
+          <th>Product (Search)</th>
+          <th>Qty</th>
+          <th>Cost</th>
+          <th>Total</th>
+        </tr>
+      </thead>
       <tbody id="purchaseRows"></tbody>
     </table>
-    <h3>Total: <span id="purTotal">0</span></h3>
+
+    <h3>Total: ₨ <span id="purTotal">0</span></h3>
     <button class="green" onclick="savePurchase()">Save Purchase</button>
   </div>
 </section>
