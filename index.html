@@ -805,147 +805,204 @@ renderVendors();
 <section id="purchase">
 <h3>Purchase</h3>
 
-<select id="purchaseVendor"></select>
-<select id="purchaseProduct"></select>
-<input id="purchaseQty" type="number" placeholder="Qty">
-<input id="purchaseRate" type="number" placeholder="Rate">
+<!-- Vendor -->
+<div class="block">
+  <label>Vendor</label>
+  <select id="purchaseVendor"></select>
+</div>
+
+<!-- Add Row -->
+<button onclick="addPurchaseRow()">+ Add Item</button>
+
+<!-- Purchase Table -->
+<table>
+<thead>
+<tr>
+<th>Search (Barcode / Item No / Desc)</th>
+<th>Description</th>
+<th>Stock</th>
+<th>Qty</th>
+<th>Cost</th>
+<th>Total</th>
+<th>X</th>
+</tr>
+</thead>
+<tbody id="purchaseRows"></tbody>
+</table>
+
+<h3>Total: <span id="purchaseTotal">0</span></h3>
+
 <button onclick="savePurchase()">Save Purchase</button>
 
-<h3>Purchase List</h3>
+<hr>
+
+<h3>Previous Purchases</h3>
 <table>
 <thead>
 <tr>
 <th>Date</th>
 <th>Vendor</th>
-<th>Product</th>
-<th>Qty</th>
 <th>Total</th>
 <th>Delete</th>
 </tr>
 </thead>
-<tbody id="purchaseTable"></tbody>
+<tbody id="purchaseHistory"></tbody>
 </table>
-</section>
 
+<hr>
+
+<h3>Excel Upload</h3>
+<input type="file" accept=".xlsx,.xls" onchange="uploadPurchaseExcel(this)">
+</section>
 <script>
 let purchaseDraft=[];
-function populatePurchaseVendors(){
-  const sel=document.getElementById("purchaseVendor");
-  sel.innerHTML=`<option value="">Select Vendor</option>`;
-  DB.vendors.forEach(v=>sel.innerHTML+=`<option value="${v.id}">${v.name}</option>`);
-}
-populatePurchaseVendors();
 
-function addPurchaseRow(){
-  purchaseDraft.push({productId:"",qty:1,rate:0});
-  renderPurchase();
-}
-
-function renderPurchase(){
-  const tbody=document.getElementById("purchaseRows"); tbody.innerHTML="";
-  let total=0;
-  purchaseDraft.forEach((r,i)=>{
-    const p=DB.products.find(x=>x.id===r.productId)||{};
-    const rowTotal=r.qty*r.rate; total+=rowTotal;
-    tbody.innerHTML+=`<tr>
-      <td>
-        <select onchange="setPurchaseProduct(${i}, this.value)">
-          <option value="">Select Product</option>
-          ${DB.products.map(x=>`<option value="${x.id}" ${x.id===r.productId?'selected':''}>${x.itemNo} - ${x.desc}</option>`).join("")}
-        </select>
-      </td>
-      <td><input type="number" value="${r.qty}" min="1" onchange="setPurchaseQty(${i},this.value)"></td>
-      <td><input type="number" value="${r.rate}" onchange="setPurchaseRate(${i},this.value)"></td>
-      <td>${rowTotal.toFixed(2)}</td>
-      <td><button class="red" onclick="delPurchaseRow(${i})">X</button></td>
-    </tr>`;
-  });
-  document.getElementById("purchaseTotal").innerText=total.toFixed(2);
-}
-
-function setPurchaseProduct(i,v){purchaseDraft[i].productId=v; renderPurchase();}
-function setPurchaseQty(i,v){purchaseDraft[i].qty=+v; renderPurchase();}
-function setPurchaseRate(i,v){purchaseDraft[i].rate=+v; renderPurchase();}
-function delPurchaseRow(i){purchaseDraft.splice(i,1); renderPurchase();}
-
-function savePurchase(){
-  const vendorId=document.getElementById("purchaseVendor").value;
-  if(!vendorId) return alert("Select vendor");
-  purchaseDraft.forEach(r=>{
-    const p=DB.products.find(x=>x.id===r.productId);
-    if(p) p.stock+=r.qty;
-  });
-  const total=+document.getElementById("purchaseTotal").innerText;
-  DB.purchases.push({id:uid("PUR"),vendorId,date:new Date().toISOString().slice(0,10),items:JSON.parse(JSON.stringify(purchaseDraft)),total});
-  saveDB();
-  purchaseDraft=[];
-  renderPurchase();
-  alert("Purchase saved");
-}
-function loadPurchaseDropdowns(){
-  purchaseVendor.innerHTML="";
+/* ---------- LOAD VENDORS ---------- */
+function loadPurchaseVendors(){
+  purchaseVendor.innerHTML='<option value="">Select Vendor</option>';
   DB.vendors.forEach(v=>{
     purchaseVendor.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
   });
-
-  purchaseProduct.innerHTML="";
-  DB.products.forEach(p=>{
-    purchaseProduct.innerHTML+=`<option value="${p.id}">${p.name}</option>`;
-  });
 }
 
+/* ---------- ADD ROW ---------- */
+function addPurchaseRow(){
+  purchaseDraft.push({productId:null,qty:1,cost:0});
+  renderPurchaseRows();
+}
+
+/* ---------- SEARCH PRODUCT ---------- */
+function searchProduct(val){
+  val=val.toLowerCase();
+  return DB.products.find(p=>
+    p.barcode?.toLowerCase()===val ||
+    p.itemNo?.toLowerCase()===val ||
+    p.desc?.toLowerCase()===val
+  );
+}
+
+/* ---------- RENDER ROWS ---------- */
+function renderPurchaseRows(){
+  const tbody=document.getElementById("purchaseRows");
+  tbody.innerHTML="";
+  let grand=0;
+
+  purchaseDraft.forEach((r,i)=>{
+    const p=DB.products.find(x=>x.id===r.productId);
+    const rowTotal=r.qty*r.cost;
+    grand+=rowTotal;
+
+    tbody.innerHTML+=`
+    <tr>
+      <td>
+        <input placeholder="Search..." 
+          onblur="selectPurchaseProduct(${i},this.value)">
+      </td>
+      <td>${p?p.desc:'-'}</td>
+      <td>${p?p.stock:0}</td>
+      <td><input type="number" min="1" value="${r.qty}"
+          onchange="setPurchaseQty(${i},this.value)"></td>
+      <td><input type="number" value="${r.cost}"
+          onchange="setPurchaseCost(${i},this.value)"></td>
+      <td>${rowTotal.toFixed(2)}</td>
+      <td><button onclick="removePurchaseRow(${i})">X</button></td>
+    </tr>`;
+  });
+
+  purchaseTotal.innerText=grand.toFixed(2);
+}
+
+/* ---------- SETTERS ---------- */
+function selectPurchaseProduct(i,val){
+  const p=searchProduct(val);
+  if(!p){ alert("Product not found"); return; }
+  purchaseDraft[i].productId=p.id;
+  purchaseDraft[i].cost=p.cost||0;
+  renderPurchaseRows();
+}
+function setPurchaseQty(i,v){purchaseDraft[i].qty=+v; renderPurchaseRows();}
+function setPurchaseCost(i,v){purchaseDraft[i].cost=+v; renderPurchaseRows();}
+function removePurchaseRow(i){purchaseDraft.splice(i,1); renderPurchaseRows();}
+
+/* ---------- SAVE PURCHASE ---------- */
 function savePurchase(){
   const vendorId=purchaseVendor.value;
-  const productId=purchaseProduct.value;
-  const qty=+purchaseQty.value;
-  const rate=+purchaseRate.value;
-  const total=qty*rate;
+  if(!vendorId) return alert("Select vendor");
+  if(!purchaseDraft.length) return alert("No items");
 
-  DB.purchases.push({
-    id:Date.now(),
-    vendorId,
-    productId,
-    qty,
-    rate,
-    total,
-    date:new Date().toLocaleDateString()
+  let total=0;
+  purchaseDraft.forEach(r=>{
+    const p=DB.products.find(x=>x.id===r.productId);
+    if(!p) return;
+    p.stock+=r.qty;
+    total+=r.qty*r.cost;
   });
 
-  const product=DB.products.find(p=>p.id==productId);
-  product.stock+=qty;
+  DB.purchases.push({
+    id:uid("PUR"),
+    vendorId,
+    date:new Date().toISOString().slice(0,10),
+    items:JSON.parse(JSON.stringify(purchaseDraft)),
+    total
+  });
 
   saveDB();
-  renderPurchase();
+  purchaseDraft=[];
+  renderPurchaseRows();
+  renderPurchaseHistory();
 }
 
-function renderPurchase(){
-  purchaseTable.innerHTML="";
+/* ---------- HISTORY ---------- */
+function renderPurchaseHistory(){
+  purchaseHistory.innerHTML="";
   DB.purchases.forEach(p=>{
-    const v=DB.vendors.find(x=>x.id==p.vendorId);
-    const pr=DB.products.find(x=>x.id==p.productId);
-    purchaseTable.innerHTML+=`
+    const v=DB.vendors.find(x=>x.id===p.vendorId);
+    purchaseHistory.innerHTML+=`
       <tr>
         <td>${p.date}</td>
-        <td>${v.name}</td>
-        <td>${pr.name}</td>
-        <td>${p.qty}</td>
+        <td>${v?v.name:''}</td>
         <td>${p.total}</td>
-        <td><button onclick="deletePurchase(${p.id})">X</button></td>
+        <td><button onclick="deletePurchase('${p.id}')">X</button></td>
       </tr>`;
   });
 }
-
 function deletePurchase(id){
-  const p=DB.purchases.find(x=>x.id==id);
-  const product=DB.products.find(x=>x.id==p.productId);
-  product.stock-=p.qty;
-  DB.purchases=DB.purchases.filter(x=>x.id!=id);
+  const p=DB.purchases.find(x=>x.id===id);
+  if(!p) return;
+  p.items.forEach(r=>{
+    const pr=DB.products.find(x=>x.id===r.productId);
+    if(pr) pr.stock-=r.qty;
+  });
+  DB.purchases=DB.purchases.filter(x=>x.id!==id);
   saveDB();
-  renderPurchase();
+  renderPurchaseHistory();
 }
 
-</script>
+/* ---------- EXCEL UPLOAD ---------- */
+function uploadPurchaseExcel(input){
+  const file=input.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const wb=XLSX.read(e.target.result,{type:'binary'});
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+    rows.forEach(r=>{
+      const p=searchProduct(String(r.Barcode||r.ItemNo||r.Description||""));
+      if(!p) return;
+      purchaseDraft.push({
+        productId:p.id,
+        qty:+r.Qty||0,
+        cost:+r.Cost||0
+      });
+    });
+    renderPurchaseRows();
+  };
+  reader.readAsBinaryString(file);
+}
 
+loadPurchaseVendors();
+renderPurchaseHistory();
+</script>
 <!-- ================= REPORTS ================= -->
 <section id="reports">
   <div class="card">
@@ -954,11 +1011,6 @@ function deletePurchase(id){
     <pre id="reportOutput"></pre>
   </div>
 </section>
-
-window.onload = function(){
-  loadPurchaseDropdowns();
-  renderPurchase();
-};
 
 <script>
 function generateReport(){ document.getElementById("reportOutput").innerText=JSON.stringify(DB,null,2);}
