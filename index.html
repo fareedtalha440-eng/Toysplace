@@ -801,379 +801,298 @@ function showVendorLedger(vendorId){
 renderVendors();
 </script>
 
-<!-- ================= PURCHASE ================= -->
-<section id="purchase" style="padding:20px; max-width:1000px; margin:auto; font-family:sans-serif;">
+<!-- ================= PURCHASE (REPLACE FULL SECTION ONLY) ================= -->
 
-  <h2 style="margin-bottom:20px; color:#007bff;">Purchase</h2>
+<style>
+/* ===== PURCHASE UI (PRIMARY COLOR ONLY) ===== */
+#purchase{
+  width:100%;
+  padding:20px;
+}
+#purchase h3{
+  color:var(--primary);
+  margin:20px 0 10px;
+}
+.p-block{
+  border:1px solid var(--border);
+  padding:15px;
+  margin-bottom:15px;
+  border-radius:10px;
+}
+.p-row-gap{margin-top:10px;}
+.p-table th{
+  background:#f6f8fa;
+  color:var(--primary);
+}
+.suggest-box{
+  position:absolute;
+  background:white;
+  border:1px solid var(--border);
+  z-index:99;
+  max-height:160px;
+  overflow:auto;
+}
+.suggest-box div{
+  padding:6px;
+  cursor:pointer;
+}
+.suggest-box div.active,
+.suggest-box div:hover{
+  background:#eef2f7;
+}
+.full{width:100%;}
+</style>
 
-  <!-- Excel Upload -->
-  <div style="padding:15px; border:1px solid #ddd; border-radius:8px; margin-bottom:20px;">
-    <label style="font-weight:bold;">Upload Purchase Excel</label>
-    <input type="file" accept=".xlsx,.xls" onchange="uploadPurchaseExcel(this)" style="margin-top:10px;">
-    <p style="font-size:12px; color:#555;">Columns: Barcode | ItemNo | Description | Qty | Cost</p>
-  </div>
+<section id="purchase">
 
-  <!-- Vendor Selection -->
-  <div style="padding:15px; border:1px solid #ddd; border-radius:8px; margin-bottom:15px;">
-    <label style="font-weight:bold;">Select Vendor</label>
-    <select id="purchaseVendor" style="width:100%; padding:8px; margin-top:5px;"></select>
-  </div>
+<h3>Purchase</h3>
 
-  <!-- Purchase Table -->
-  <table style="width:100%; border-collapse:collapse; margin-bottom:15px;">
-    <thead style="background:#007bff; color:white;">
-      <tr>
-        <th style="padding:8px;">Barcode</th>
-        <th style="padding:8px;">Item No</th>
-        <th style="padding:8px;">Description</th>
-        <th style="padding:8px;">Stock</th>
-        <th style="padding:8px;">Qty</th>
-        <th style="padding:8px;">Cost</th>
-        <th style="padding:8px;">Total</th>
-        <th style="padding:8px;">X</th>
-      </tr>
-    </thead>
-    <tbody id="purchaseRows"></tbody>
-  </table>
+<div class="p-block">
+  <label>Vendor</label>
+  <select id="purchaseVendor" class="full"></select>
+</div>
 
-  <h3>Total: <span id="purchaseTotal">0.00</span></h3>
+<div class="p-block">
+  <label>Upload Excel (Barcode, Item No, Description, Qty, Cost)</label>
+  <input type="file" accept=".xlsx,.xls" onchange="uploadPurchaseExcel(this)">
+</div>
 
-  <button onclick="savePurchase()" style="margin-top:10px; padding:10px 15px; background:#007bff; color:white; border:none; border-radius:5px;">Save Purchase</button>
+<div class="p-block">
+<table class="p-table full">
+<thead>
+<tr>
+<th>Barcode</th>
+<th>Item No</th>
+<th>Description</th>
+<th>Stock</th>
+<th>Qty</th>
+<th>Cost</th>
+<th>Total</th>
+<th>X</th>
+</tr>
+</thead>
+<tbody id="purchaseRows"></tbody>
+</table>
 
-  <hr style="margin:25px 0; border:1px solid #ddd;">
+<h3>Total: ₨ <span id="purchaseTotal">0.00</span></h3>
+<button onclick="savePurchase()">Save Purchase</button>
+</div>
 
-  <!-- Filters for Previous Purchases -->
-  <div style="display:flex; gap:15px; margin-bottom:10px;">
-    <select id="purchaseVendorFilter" onchange="renderPurchaseHistory()" style="padding:5px;">
-      <option value="">All Vendors</option>
-    </select>
-    <select id="purchaseTimeFilter" onchange="renderPurchaseHistory()" style="padding:5px;">
-      <option value="all">All Time</option>
-      <option value="day">Today</option>
-      <option value="week">This Week</option>
-      <option value="month">This Month</option>
-      <option value="year">This Year</option>
-    </select>
-  </div>
+<div class="p-block">
+<h3>Previous Purchases</h3>
 
-  <!-- Previous Purchases Table -->
-  <table style="width:100%; border-collapse:collapse;">
-    <thead style="background:#007bff; color:white;">
-      <tr>
-        <th style="padding:8px;">Date</th>
-        <th style="padding:8px;">Vendor</th>
-        <th style="padding:8px;">Total</th>
-        <th style="padding:8px;">Action</th>
-      </tr>
-    </thead>
-    <tbody id="purchaseHistory"></tbody>
-  </table>
+<div class="p-row-gap">
+<select id="filterVendor"></select>
+<select id="filterPeriod">
+<option value="">All</option>
+<option value="day">Today</option>
+<option value="week">This Week</option>
+<option value="month">This Month</option>
+<option value="year">This Year</option>
+</select>
+<button onclick="renderPurchaseHistory()">Filter</button>
+</div>
 
-  <!-- Pagination -->
-  <div id="purchaseHistoryPagination" style="margin-top:10px; display:flex; gap:5px;"></div>
+<table class="p-table full">
+<thead>
+<tr>
+<th>Date</th>
+<th>Vendor</th>
+<th>Total</th>
+<th>Edit</th>
+<th>Delete</th>
+</tr>
+</thead>
+<tbody id="purchaseHistory"></tbody>
+</table>
+
+<button onclick="prevPurchasePage()">Prev</button>
+<button onclick="nextPurchasePage()">Next</button>
+</div>
 
 </section>
 
 <script>
-let purchaseDraft = [];
-let purchaseHistoryPage = 1;
-const purchaseHistoryPerPage = 20;
-let currentSuggestionIndex = -1;
-let currentSuggestionField = null;
-let currentSuggestionList = [];
-let currentRowIndex = null;
+let purchaseDraft=[], purchasePage=1, purchasePerPage=20;
 
-/* ---------- LOAD VENDORS ---------- */
+/* ===== LOAD DROPDOWNS ===== */
 function loadPurchaseVendors(){
-  const sel = document.getElementById("purchaseVendor");
-  const filterSel = document.getElementById("purchaseVendorFilter");
-  sel.innerHTML = '<option value="">Select Vendor</option>';
-  filterSel.innerHTML = '<option value="">All Vendors</option>';
+  purchaseVendor.innerHTML='<option value="">Select Vendor</option>';
+  filterVendor.innerHTML='<option value="">All Vendors</option>';
   DB.vendors.forEach(v=>{
-    sel.innerHTML += `<option value="${v.id}">${v.name}</option>`;
-    filterSel.innerHTML += `<option value="${v.id}">${v.name}</option>`;
+    purchaseVendor.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
+    filterVendor.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
   });
 }
 
-/* ---------- ADD ROW ---------- */
-function addPurchaseRow(autoFocus=true){
-  purchaseDraft.push({productId:null, barcode:'', itemNo:'', desc:'', qty:1, cost:0});
+/* ===== ADD ROW AUTO ===== */
+function addPurchaseRow(){
+  purchaseDraft.push({productId:null,qty:1,cost:0});
   renderPurchaseRows();
-  if(autoFocus){
-    setTimeout(()=>{ focusField(purchaseDraft.length-1,'barcode'); },50);
-  }
 }
 
-/* ---------- FOCUS FIELD ---------- */
-function focusField(index,field){
-  const row = document.querySelectorAll('#purchaseRows tr')[index];
-  if(!row) return;
-  const inputs = row.querySelectorAll('input');
-  if(field==='barcode') inputs[0].focus();
-  if(field==='itemNo') inputs[1].focus();
-  if(field==='qty') inputs[4].focus();
-  if(field==='cost') inputs[5].focus();
-}
-
-/* ---------- SEARCH PRODUCT ---------- */
-function searchProducts(val){
-  val = val.toLowerCase();
+/* ===== SEARCH LOGIC ===== */
+function productMatches(val){
+  val=val.toLowerCase();
   return DB.products.filter(p=>
-    (p.barcode?.toLowerCase().includes(val) ||
-     p.itemNo?.toLowerCase().includes(val) ||
-     p.desc?.toLowerCase().includes(val))
+    p.barcode?.toLowerCase().includes(val) ||
+    p.itemNo?.toLowerCase().includes(val) ||
+    p.desc?.toLowerCase().includes(val)
   ).slice(0,5);
 }
 
-/* ---------- SUGGESTION & NAVIGATION ---------- */
-function handleInputKey(e, rowIndex, field){
-  const val = e.target.value;
-  currentRowIndex = rowIndex;
-  currentSuggestionList = searchProducts(val);
-  currentSuggestionField = field;
-  currentSuggestionIndex = -1;
-
-  if(e.key==='ArrowDown'){
-    currentSuggestionIndex++;
-    if(currentSuggestionIndex>=currentSuggestionList.length) currentSuggestionIndex=0;
-    highlightSuggestion(rowIndex);
-    e.preventDefault();
-  }
-  if(e.key==='ArrowUp'){
-    currentSuggestionIndex--;
-    if(currentSuggestionIndex<0) currentSuggestionIndex=currentSuggestionList.length-1;
-    highlightSuggestion(rowIndex);
-    e.preventDefault();
-  }
-  if(e.key==='Enter'){
-    if(currentSuggestionIndex>=0 && currentSuggestionList[currentSuggestionIndex]){
-      selectProduct(rowIndex,currentSuggestionList[currentSuggestionIndex]);
-      e.preventDefault();
-    }
-  }
-  if(e.key==='Tab'){
-    if(currentSuggestionIndex>=0 && currentSuggestionList[currentSuggestionIndex]){
-      selectProduct(rowIndex,currentSuggestionList[currentSuggestionIndex]);
-      e.preventDefault();
-    } else {
-      moveToNextField(rowIndex,field);
-      e.preventDefault();
-    }
-  }
-}
-
-/* ---------- HIGHLIGHT SUGGESTION ---------- */
-function highlightSuggestion(rowIndex){
-  // for now, just auto select top match
-  if(currentSuggestionList[currentSuggestionIndex]){
-    selectProduct(rowIndex,currentSuggestionList[currentSuggestionIndex]);
-  }
-}
-
-/* ---------- SELECT PRODUCT ---------- */
-function selectProduct(index, product){
-  purchaseDraft[index].productId = product.id;
-  purchaseDraft[index].barcode = product.barcode;
-  purchaseDraft[index].itemNo = product.itemNo;
-  purchaseDraft[index].desc = product.desc;
-  purchaseDraft[index].cost = product.cost||0;
-  renderPurchaseRows();
-  setTimeout(()=>{ focusField(index,'qty'); },50);
-}
-
-/* ---------- RENDER ROWS ---------- */
+/* ===== RENDER ROWS ===== */
 function renderPurchaseRows(){
-  const tbody = document.getElementById("purchaseRows");
-  tbody.innerHTML = "";
-  let grand = 0;
+  purchaseRows.innerHTML="";
+  let total=0;
 
   purchaseDraft.forEach((r,i)=>{
-    const p = DB.products.find(x => x.id === r.productId);
-    const rowTotal = r.qty*r.cost;
-    grand += rowTotal;
+    const p=DB.products.find(x=>x.id===r.productId);
+    const rowTotal=r.qty*r.cost;
+    total+=rowTotal;
 
-    tbody.innerHTML += `
-      <tr>
-        <td><input value="${r.barcode}" placeholder="Barcode" 
-          onkeydown="handleInputKey(event,${i},'barcode')" 
-          oninput="currentRowIndex=${i}; currentSuggestionList=searchProducts(this.value); currentSuggestionField='barcode'; currentSuggestionIndex=-1;">
-        </td>
-        <td><input value="${r.itemNo}" placeholder="Item No" 
-          onkeydown="handleInputKey(event,${i},'itemNo')" 
-          oninput="currentRowIndex=${i}; currentSuggestionList=searchProducts(this.value); currentSuggestionField='itemNo'; currentSuggestionIndex=-1;">
-        </td>
-        <td>${p?p.desc:'-'}</td>
-        <td>${p?p.stock:0}</td>
-        <td><input type="number" min="1" value="${r.qty}" onchange="setPurchaseQty(${i},this.value)">
-        </td>
-        <td><input type="number" value="${r.cost}" onchange="setPurchaseCost(${i},this.value)">
-        </td>
-        <td>${formatNumber(rowTotal)}</td>
-        <td><button onclick="removePurchaseRow(${i})">X</button></td>
-      </tr>`;
+    purchaseRows.innerHTML+=`
+    <tr>
+      <td>
+        <input oninput="showSuggest(this,${i},'barcode')" placeholder="Barcode">
+      </td>
+      <td>
+        <input oninput="showSuggest(this,${i},'itemNo')" placeholder="Item No">
+      </td>
+      <td>
+        <input oninput="showSuggest(this,${i},'desc')" placeholder="Description">
+      </td>
+      <td>${p?p.stock:0}</td>
+      <td><input type="number" value="${r.qty}" onchange="setQty(${i},this.value)"></td>
+      <td><input type="number" value="${r.cost}" onchange="setCost(${i},this.value)"></td>
+      <td>${rowTotal.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
+      <td><button onclick="removeRow(${i})">X</button></td>
+    </tr>`;
   });
 
-  document.getElementById("purchaseTotal").innerText = formatNumber(grand);
+  purchaseTotal.innerText=total.toLocaleString(undefined,{minimumFractionDigits:2});
 }
 
-/* ---------- SETTERS ---------- */
-function setPurchaseQty(i,v){
-  purchaseDraft[i].qty = +v; 
-  renderPurchaseRows(); 
-  if(i===purchaseDraft.length-1) addPurchaseRow();
+/* ===== SUGGEST ===== */
+function showSuggest(inp,i){
+  closeSuggest();
+  if(!inp.value) return;
+  const list=productMatches(inp.value);
+  if(!list.length) return;
+
+  const box=document.createElement("div");
+  box.className="suggest-box";
+  inp.parentNode.appendChild(box);
+
+  list.forEach(p=>{
+    const d=document.createElement("div");
+    d.innerText=`${p.barcode} | ${p.itemNo} | ${p.desc}`;
+    d.onclick=()=>selectProduct(i,p);
+    box.appendChild(d);
+  });
 }
-function setPurchaseCost(i,v){
-  purchaseDraft[i].cost = +v; 
-  renderPurchaseRows(); 
+function closeSuggest(){document.querySelectorAll(".suggest-box").forEach(b=>b.remove());}
+document.addEventListener("click",closeSuggest);
+
+function selectProduct(i,p){
+  purchaseDraft[i].productId=p.id;
+  purchaseDraft[i].cost=p.rate||0;
   if(i===purchaseDraft.length-1) addPurchaseRow();
-}
-function removePurchaseRow(i){
-  purchaseDraft.splice(i,1); 
   renderPurchaseRows();
 }
 
-/* ---------- SAVE PURCHASE ---------- */
-function savePurchase(){
-  const vendorId = document.getElementById("purchaseVendor").value;
-  if(!vendorId) return alert("Select vendor");
-  if(!purchaseDraft.length) return alert("No items");
+/* ===== SETTERS ===== */
+function setQty(i,v){purchaseDraft[i].qty=+v; renderPurchaseRows();}
+function setCost(i,v){purchaseDraft[i].cost=+v; renderPurchaseRows();}
+function removeRow(i){purchaseDraft.splice(i,1); renderPurchaseRows();}
 
-  let total = 0;
+/* ===== SAVE PURCHASE ===== */
+function savePurchase(){
+  if(!purchaseVendor.value) return alert("Select vendor");
+  let total=0;
+
   purchaseDraft.forEach(r=>{
-    const p = DB.products.find(x=>x.id===r.productId);
+    const p=DB.products.find(x=>x.id===r.productId);
     if(!p) return;
-    p.stock += r.qty;
-    total += r.qty*r.cost;
+    p.stock+=r.qty;
+    total+=r.qty*r.cost;
   });
 
   DB.purchases.push({
-    id: uid("PUR"),
-    vendorId,
-    date: new Date().toISOString().slice(0,10),
-    items: JSON.parse(JSON.stringify(purchaseDraft)),
+    id:uid("PUR"),
+    vendorId:purchaseVendor.value,
+    date:new Date().toISOString().slice(0,10),
+    items:JSON.parse(JSON.stringify(purchaseDraft)),
     total
   });
 
   saveDB();
-  purchaseDraft = [];
-  renderPurchaseRows();
+  purchaseDraft=[];
+  addPurchaseRow();
   renderPurchaseHistory();
 }
 
-/* ---------- HISTORY ---------- */
+/* ===== HISTORY ===== */
 function renderPurchaseHistory(){
-  const tbody = document.getElementById("purchaseHistory");
-  tbody.innerHTML = "";
+  purchaseHistory.innerHTML="";
+  let list=[...DB.purchases];
 
-  // Filter
-  const vendorFilter = document.getElementById("purchaseVendorFilter").value;
-  const timeFilter = document.getElementById("purchaseTimeFilter").value;
+  const v=filterVendor.value;
+  if(v) list=list.filter(p=>p.vendorId===v);
 
-  let filtered = DB.purchases;
-  if(vendorFilter) filtered = filtered.filter(p=>p.vendorId===vendorFilter);
-
-  const now = new Date();
-  filtered = filtered.filter(p=>{
-    const d = new Date(p.date);
-    switch(timeFilter){
-      case 'day': return d.toDateString()===now.toDateString();
-      case 'week': 
-        const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
-        const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate()+6);
-        return d>=weekStart && d<=weekEnd;
-      case 'month': return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
-      case 'year': return d.getFullYear()===now.getFullYear();
-      default: return true;
-    }
+  const start=(purchasePage-1)*purchasePerPage;
+  list.slice(start,start+purchasePerPage).forEach(p=>{
+    const ven=DB.vendors.find(x=>x.id===p.vendorId);
+    purchaseHistory.innerHTML+=`
+    <tr>
+      <td>${p.date}</td>
+      <td>${ven?ven.name:""}</td>
+      <td>${p.total.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
+      <td><button onclick="editPurchase('${p.id}')">Edit</button></td>
+      <td><button onclick="deletePurchase('${p.id}')">Delete</button></td>
+    </tr>`;
   });
-
-  const start = (purchaseHistoryPage-1)*purchaseHistoryPerPage;
-  const end = start + purchaseHistoryPerPage;
-  const pageData = filtered.slice(start,end);
-
-  pageData.forEach(p=>{
-    const v = DB.vendors.find(x=>x.id===p.vendorId);
-    tbody.innerHTML += `
-      <tr>
-        <td>${p.date}</td>
-        <td>${v?v.name:''}</td>
-        <td>${formatNumber(p.total)}</td>
-        <td><button onclick="deletePurchaseIfInvalid('${p.id}')">Delete</button></td>
-      </tr>`;
-  });
-
-  renderPurchasePagination(Math.ceil(filtered.length/purchaseHistoryPerPage));
 }
-
-function deletePurchaseIfInvalid(id){
-  const p = DB.purchases.find(x=>x.id===id);
-  if(!p) return;
-  if(!p.total || isNaN(p.total) || p.total===0){
-    p.items.forEach(r=>{
-      const pr = DB.products.find(x=>x.id===r.productId);
-      if(pr) pr.stock -= r.qty;
-    });
-    DB.purchases = DB.purchases.filter(x=>x.id!==id);
+function deletePurchase(id){
+  const p=DB.purchases.find(x=>x.id===id);
+  if(!p || !p.total || isNaN(p.total)){
+    DB.purchases=DB.purchases.filter(x=>x.id!==id);
     saveDB();
     renderPurchaseHistory();
-  } else {
-    alert("Cannot delete proper purchase");
-  }
+  }else alert("Cannot delete valid purchase");
+}
+function editPurchase(id){
+  const p=DB.purchases.find(x=>x.id===id);
+  purchaseDraft=JSON.parse(JSON.stringify(p.items));
+  renderPurchaseRows();
 }
 
-/* ---------- EXCEL UPLOAD ---------- */
+/* ===== PAGINATION ===== */
+function nextPurchasePage(){purchasePage++; renderPurchaseHistory();}
+function prevPurchasePage(){if(purchasePage>1){purchasePage--; renderPurchaseHistory();}}
+
+/* ===== EXCEL ===== */
 function uploadPurchaseExcel(input){
-  const file=input.files[0];
-  if(!file) return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    const wb=XLSX.read(e.target.result,{type:'binary'});
+  const r=new FileReader();
+  r.onload=e=>{
+    const wb=XLSX.read(e.target.result,{type:"binary"});
     const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-    rows.forEach(r=>{
-      const p = DB.products.find(x=>
-        (x.barcode===r.Barcode && x.itemNo===r.ItemNo && x.desc===r.Description)
-      );
+    rows.forEach(row=>{
+      const p=productMatches(String(row.Barcode||row["Item No"]||row.Description||""))[0];
       if(!p) return;
-      purchaseDraft.push({
-        productId: p.id,
-        barcode: p.barcode,
-        itemNo: p.itemNo,
-        desc: p.desc,
-        qty: +r.Qty || 0,
-        cost: +r.Cost || 0
-      });
+      purchaseDraft.push({productId:p.id,qty:+row.Qty||0,cost:+row.Cost||0});
     });
     renderPurchaseRows();
   };
-  reader.readAsBinaryString(file);
+  r.readAsBinaryString(input.files[0]);
 }
 
-/* ---------- PAGINATION ---------- */
-function renderPurchasePagination(totalPages){
-  const container = document.getElementById("purchaseHistoryPagination");
-  container.innerHTML = "";
-  for(let i=1;i<=totalPages;i++){
-    const btn = document.createElement("button");
-    btn.textContent = i;
-    btn.style.padding="5px 8px";
-    btn.style.marginRight="5px";
-    btn.style.background=i===purchaseHistoryPage?'#007bff':'#f0f0f0';
-    btn.style.color=i===purchaseHistoryPage?'white':'black';
-    btn.onclick = ()=>{ purchaseHistoryPage=i; renderPurchaseHistory(); };
-    container.appendChild(btn);
-  }
-}
-
-/* ---------- HELPER ---------- */
-function formatNumber(num){
-  return num.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-}
-
-/* ---------- INITIALIZE ---------- */
+/* ===== INIT ===== */
 loadPurchaseVendors();
+addPurchaseRow();
 renderPurchaseHistory();
-addPurchaseRow(false);
 </script>
+
 
 
 <!-- ================= REPORTS ================= -->
