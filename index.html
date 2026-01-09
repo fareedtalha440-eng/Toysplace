@@ -801,18 +801,18 @@ function showVendorLedger(vendorId){
 renderVendors();
 </script>
 
-<!-- ================= PURCHASE  ================= -->
+<!-- ================= PURCHASE (FINAL FIX – FULL PURCHASE WITH PREVIOUS + TAB FIX) ================= -->
 
 <style>
-#purchase{width:100%;padding:20px}
-#purchase h3{color:var(--primary);margin:15px 0}
-.p-block{border:1px solid var(--border);padding:15px;margin-bottom:20px;border-radius:10px}
+#purchase{width:100%;padding:24px}
+#purchase h3{color:var(--primary);margin:20px 0 10px}
+.p-block{border:1px solid var(--border);padding:16px;margin-bottom:24px;border-radius:10px}
 .p-table{width:100%;border-collapse:collapse}
-.p-table th{background:#f6f8fa;color:var(--primary)}
-.p-table td,.p-table th{padding:8px;border:1px solid var(--border)}
-.suggest-box{position:absolute;background:#fff;border:1px solid var(--border);z-index:99}
+.p-table th{background:#f3f6fa;color:var(--primary);text-align:left}
+.p-table td,.p-table th{padding:10px;border:1px solid var(--border)}
+.suggest-box{position:absolute;background:#fff;border:1px solid var(--border);z-index:100;width:100%}
 .suggest-box div{padding:6px;cursor:pointer}
-.suggest-box div:hover,.suggest-box .active{background:#eef2f7}
+.suggest-box .active,.suggest-box div:hover{background:#e9eef6}
 </style>
 
 <section id="purchase">
@@ -825,7 +825,7 @@ renderVendors();
 </div>
 
 <div class="p-block">
-<label>Upload Excel</label>
+<label>Excel Upload</label>
 <input type="file" accept=".xls,.xlsx" onchange="uploadPurchaseExcel(this)">
 </div>
 
@@ -852,12 +852,31 @@ renderVendors();
 <button onclick="savePurchase()">Save Purchase</button>
 </div>
 
+<!-- ================= PREVIOUS PURCHASE ================= -->
+
+<div class="p-block">
+<h3>Previous Purchases</h3>
+<table class="p-table">
+<thead>
+<tr>
+<th>Date</th>
+<th>Vendor</th>
+<th>Amount</th>
+<th>Edit</th>
+<th>Delete</th>
+</tr>
+</thead>
+<tbody id="purchaseHistory"></tbody>
+</table>
+</div>
+
 </section>
 
 <script>
 let purchaseDraft=[];
+let activeIndex=-1;
 
-/* ===== LOAD VENDORS ===== */
+/* ---------- LOAD ---------- */
 function loadPurchaseVendors(){
   purchaseVendor.innerHTML='<option value="">Select Vendor</option>';
   DB.vendors.forEach(v=>{
@@ -865,7 +884,7 @@ function loadPurchaseVendors(){
   });
 }
 
-/* ===== ADD ROW ===== */
+/* ---------- ADD ROW ---------- */
 function addPurchaseRow(){
   purchaseDraft.push({
     productId:null,
@@ -878,7 +897,7 @@ function addPurchaseRow(){
   renderPurchaseRows();
 }
 
-/* ===== RENDER ROW ===== */
+/* ---------- RENDER ROW ---------- */
 function renderPurchaseRows(){
   purchaseRows.innerHTML="";
   let total=0;
@@ -891,18 +910,16 @@ function renderPurchaseRows(){
 
     purchaseRows.innerHTML+=`
 <tr>
-<td>
-<input value="${r.barcode}" oninput="searchProduct(this,${i})">
-</td>
-<td>
-<input value="${r.itemNo}" oninput="searchProduct(this,${i})">
-</td>
-<td>
-<input value="${r.desc}" oninput="searchProduct(this,${i})">
-</td>
+<td><input value="${r.barcode}" oninput="searchProduct(this,${i})"></td>
+<td><input value="${r.itemNo}" oninput="searchProduct(this,${i})"></td>
+<td><input value="${r.desc}" oninput="searchProduct(this,${i})"></td>
 <td>${stock}</td>
 <td><input type="number" value="${r.qty}" onchange="setQty(${i},this.value)"></td>
-<td><input type="number" value="${r.cost}" onchange="setCost(${i},this.value)"></td>
+<td>
+<input type="number" value="${r.cost}" 
+onchange="setCost(${i},this.value)"
+onkeydown="costTab(event,${i})">
+</td>
 <td>${rowTotal.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
 <td><button onclick="removeRow(${i})">X</button></td>
 </tr>`;
@@ -911,10 +928,10 @@ function renderPurchaseRows(){
   purchaseTotal.innerText=total.toLocaleString(undefined,{minimumFractionDigits:2});
 }
 
-/* ===== SEARCH ===== */
+/* ---------- SEARCH ---------- */
 function searchProduct(inp,i){
   closeSuggest();
-  if(!inp.value) return;
+  if(!inp.value)return;
 
   const list=DB.products.filter(p=>
     p.barcode.includes(inp.value) ||
@@ -922,31 +939,53 @@ function searchProduct(inp,i){
     p.desc.toLowerCase().includes(inp.value.toLowerCase())
   ).slice(0,5);
 
-  if(!list.length) return;
+  if(!list.length)return;
 
   const box=document.createElement("div");
   box.className="suggest-box";
+  inp.parentNode.style.position="relative";
   inp.parentNode.appendChild(box);
+  activeIndex=-1;
 
-  list.forEach(p=>{
+  list.forEach((p,idx)=>{
     const d=document.createElement("div");
     d.innerText=`${p.barcode} | ${p.itemNo} | ${p.desc}`;
     d.onclick=()=>selectProduct(i,p);
     box.appendChild(d);
   });
+
+  inp.onkeydown=e=>{
+    const items=box.children;
+    if(e.key==="ArrowDown"){activeIndex=(activeIndex+1)%items.length}
+    if(e.key==="ArrowUp"){activeIndex=(activeIndex-1+items.length)%items.length}
+    if(e.key==="Enter"||e.key==="Tab"){
+      e.preventDefault();
+      if(activeIndex>-1)items[activeIndex].click();
+    }
+    [...items].forEach(x=>x.classList.remove("active"));
+    if(items[activeIndex])items[activeIndex].classList.add("active");
+  };
 }
 
-/* ===== SELECT PRODUCT ===== */
+/* ---------- SELECT ---------- */
 function selectProduct(i,p){
   purchaseDraft[i].productId=p.id;
   purchaseDraft[i].barcode=p.barcode;
   purchaseDraft[i].itemNo=p.itemNo;
   purchaseDraft[i].desc=p.desc;
-  purchaseDraft[i].cost=0;          // COST IS NOT RATE
   renderPurchaseRows();
 }
 
-/* ===== UTILS ===== */
+/* ---------- COST TAB ---------- */
+function costTab(e,i){
+  if(e.key==="Tab"){
+    e.preventDefault();
+    if(i===purchaseDraft.length-1)addPurchaseRow();
+    setTimeout(()=>purchaseRows.querySelectorAll("input")[i*6].focus(),0);
+  }
+}
+
+/* ---------- UTILS ---------- */
 function closeSuggest(){document.querySelectorAll(".suggest-box").forEach(x=>x.remove())}
 document.addEventListener("click",closeSuggest);
 
@@ -954,11 +993,11 @@ function setQty(i,v){purchaseDraft[i].qty=+v||0;renderPurchaseRows()}
 function setCost(i,v){purchaseDraft[i].cost=+v||0;renderPurchaseRows()}
 function removeRow(i){purchaseDraft.splice(i,1);renderPurchaseRows()}
 
-/* ===== SAVE ===== */
+/* ---------- SAVE ---------- */
 function savePurchase(){
   if(!purchaseVendor.value)return alert("Select vendor");
-
   let total=0;
+
   purchaseDraft.forEach(r=>{
     if(!r.productId)return;
     const p=DB.products.find(x=>x.id===r.productId);
@@ -977,9 +1016,39 @@ function savePurchase(){
   saveDB();
   purchaseDraft=[];
   addPurchaseRow();
+  renderPurchaseHistory();
 }
 
-/* ===== EXCEL ===== */
+/* ---------- HISTORY ---------- */
+function renderPurchaseHistory(){
+  purchaseHistory.innerHTML="";
+  DB.purchases.slice(-20).reverse().forEach(p=>{
+    if(!p.total||isNaN(p.total))return;
+    const v=DB.vendors.find(x=>x.id===p.vendorId);
+    purchaseHistory.innerHTML+=`
+<tr>
+<td>${p.date}</td>
+<td>${v?v.name:""}</td>
+<td>${p.total.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
+<td><button>Edit</button></td>
+<td><button onclick="deletePurchase('${p.id}')">X</button></td>
+</tr>`;
+  });
+}
+
+function deletePurchase(id){
+  const p=DB.purchases.find(x=>x.id===id);
+  if(!p||!p.total)return;
+  p.items.forEach(r=>{
+    const pr=DB.products.find(x=>x.id===r.productId);
+    if(pr)pr.stock-=r.qty;
+  });
+  DB.purchases=DB.purchases.filter(x=>x.id!==id);
+  saveDB();
+  renderPurchaseHistory();
+}
+
+/* ---------- EXCEL ---------- */
 function uploadPurchaseExcel(input){
   const r=new FileReader();
   r.onload=e=>{
@@ -1006,9 +1075,10 @@ function uploadPurchaseExcel(input){
   r.readAsBinaryString(input.files[0]);
 }
 
-/* ===== INIT ===== */
+/* ---------- INIT ---------- */
 loadPurchaseVendors();
 addPurchaseRow();
+renderPurchaseHistory();
 </script>
 
 
