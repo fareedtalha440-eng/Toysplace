@@ -803,19 +803,28 @@ renderVendors();
 
 <!-- ================= PURCHASE ================= -->
 <section id="purchase">
-  <div class="card">
-    <h2>New Purchase</h2>
-    <select id="purchaseVendor">
-      <option value="">Select Vendor</option>
-    </select>
-    <button onclick="addPurchaseRow()">Add Item</button>
-    <table>
-      <thead><tr><th>Product</th><th>Qty</th><th>Rate</th><th>Total</th><th></th></tr></thead>
-      <tbody id="purchaseRows"></tbody>
-    </table>
-    <h3>Total: ₨ <span id="purchaseTotal">0</span></h3>
-    <button onclick="savePurchase()">Save Purchase</button>
-  </div>
+<h3>Purchase</h3>
+
+<select id="purchaseVendor"></select>
+<select id="purchaseProduct"></select>
+<input id="purchaseQty" type="number" placeholder="Qty">
+<input id="purchaseRate" type="number" placeholder="Rate">
+<button onclick="savePurchase()">Save Purchase</button>
+
+<h3>Purchase List</h3>
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Vendor</th>
+<th>Product</th>
+<th>Qty</th>
+<th>Total</th>
+<th>Delete</th>
+</tr>
+</thead>
+<tbody id="purchaseTable"></tbody>
+</table>
 </section>
 
 <script>
@@ -873,6 +882,68 @@ function savePurchase(){
   renderPurchase();
   alert("Purchase saved");
 }
+function loadPurchaseDropdowns(){
+  purchaseVendor.innerHTML="";
+  DB.vendors.forEach(v=>{
+    purchaseVendor.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
+  });
+
+  purchaseProduct.innerHTML="";
+  DB.products.forEach(p=>{
+    purchaseProduct.innerHTML+=`<option value="${p.id}">${p.name}</option>`;
+  });
+}
+
+function savePurchase(){
+  const vendorId=purchaseVendor.value;
+  const productId=purchaseProduct.value;
+  const qty=+purchaseQty.value;
+  const rate=+purchaseRate.value;
+  const total=qty*rate;
+
+  DB.purchases.push({
+    id:Date.now(),
+    vendorId,
+    productId,
+    qty,
+    rate,
+    total,
+    date:new Date().toLocaleDateString()
+  });
+
+  const product=DB.products.find(p=>p.id==productId);
+  product.stock+=qty;
+
+  saveDB();
+  renderPurchase();
+}
+
+function renderPurchase(){
+  purchaseTable.innerHTML="";
+  DB.purchases.forEach(p=>{
+    const v=DB.vendors.find(x=>x.id==p.vendorId);
+    const pr=DB.products.find(x=>x.id==p.productId);
+    purchaseTable.innerHTML+=`
+      <tr>
+        <td>${p.date}</td>
+        <td>${v.name}</td>
+        <td>${pr.name}</td>
+        <td>${p.qty}</td>
+        <td>${p.total}</td>
+        <td><button onclick="deletePurchase(${p.id})">X</button></td>
+      </tr>`;
+  });
+}
+
+function deletePurchase(id){
+  const p=DB.purchases.find(x=>x.id==id);
+  const product=DB.products.find(x=>x.id==p.productId);
+  product.stock-=p.qty;
+  DB.purchases=DB.purchases.filter(x=>x.id!=id);
+  saveDB();
+  renderPurchase();
+}
+
 </script>
 
 <!-- ================= REPORTS ================= -->
@@ -883,6 +954,11 @@ function savePurchase(){
     <pre id="reportOutput"></pre>
   </div>
 </section>
+
+window.onload = function(){
+  loadPurchaseDropdowns();
+  renderPurchase();
+};
 
 <script>
 function generateReport(){ document.getElementById("reportOutput").innerText=JSON.stringify(DB,null,2);}
