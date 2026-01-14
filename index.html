@@ -1119,7 +1119,8 @@ function generateReport(){ document.getElementById("reportOutput").innerText=JSO
 </section>
 
 <script>
-/* ===== APPLY SETTINGS ===== */
+/* ================= SETTINGS LOGIC ================= */
+
 function applySettings(){
   if(!DB.settings) DB.settings = {};
 
@@ -1134,9 +1135,9 @@ function applySettings(){
     img.style.display = "block";
   }
 }
+
 document.addEventListener("DOMContentLoaded", applySettings);
 
-/* ===== SAVE SOFTWARE NAME ===== */
 function saveSoftwareName(){
   if(!DB.settings) DB.settings = {};
   DB.settings.softwareName =
@@ -1146,7 +1147,6 @@ function saveSoftwareName(){
   alert("Software name updated");
 }
 
-/* ===== UPLOAD LOGO ===== */
 function uploadLogo(input){
   const file = input.files[0];
   if(!file) return;
@@ -1161,17 +1161,14 @@ function uploadLogo(input){
   reader.readAsDataURL(file);
 }
 
-/* ===== DOWNLOAD BACKUP ===== */
 function downloadBackup(){
-  const data = JSON.stringify(DB, null, 2);
-  const blob = new Blob([data], {type:"application/json"});
+  const blob = new Blob([JSON.stringify(DB,null,2)], {type:"application/json"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "dani_software_backup_" + Date.now() + ".json";
+  a.download = "dani_backup_"+Date.now()+".json";
   a.click();
 }
 
-/* ===== RESTORE BACKUP ===== */
 function restoreBackup(input){
   const file = input.files[0];
   if(!file) return;
@@ -1181,7 +1178,7 @@ function restoreBackup(input){
     try{
       DB = JSON.parse(e.target.result);
       saveDB();
-      location.reload();   // IMPORTANT
+      location.reload();
     }catch{
       alert("Invalid backup file");
     }
@@ -1189,7 +1186,6 @@ function restoreBackup(input){
   reader.readAsText(file);
 }
 
-/* ===== RESET SYSTEM (AUTO BACKUP) ===== */
 function resetSystem(){
   if(!confirm("Backup will be downloaded automatically. Continue reset?")) return;
 
@@ -1211,4 +1207,34 @@ function resetSystem(){
   saveDB();
   location.reload();
 }
+
+/* ================= MENU ================= */
+
+function openTab(id){
+  document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
+  const sec = document.getElementById(id);
+  if(sec) sec.classList.add("active");
+
+  document.querySelectorAll("nav div").forEach(d=>d.classList.remove("active"));
+  const tab = document.getElementById("tab-"+id);
+  if(tab) tab.classList.add("active");
+}
+
+/* DEFAULT OPEN */
+document.addEventListener("DOMContentLoaded", () => {
+  openTab("invoice");
+});
+
+/* ================= DATE & TIME ================= */
+
+function updateTime(){
+  const now = new Date();
+  const el = document.getElementById("dateTime");
+  if(el) el.innerText = now.toLocaleString();
+}
+setInterval(updateTime,1000);
+updateTime();
 </script>
+
+</body>
+</html>
