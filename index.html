@@ -177,9 +177,9 @@ const firebaseConfig = {
   appId: "1:966395425566:web:9aaa5766e96635673a8f0f"
 };
 
-try{
+try {
   firebase.initializeApp(firebaseConfig);
-}catch(e){}
+} catch (e) {}
 
 const dbRef = firebase.database().ref("DANI_TEST_SOFTWARE");
 
@@ -200,44 +200,41 @@ const DEFAULT_DB = {
 let DB = JSON.parse(JSON.stringify(DEFAULT_DB));
 
 /* ===== INITIAL LOAD / AUTO CREATE ===== */
-dbRef.once("value").then(snap=>{
-  if(!snap.exists()){
+dbRef.once("value").then(snap => {
+  if (!snap.exists()) {
     dbRef.set(DEFAULT_DB);
   }
 });
 
 /* ===== LIVE SYNC ===== */
-dbRef.on("value", snap=>{
-  if(snap.exists()){
+dbRef.on("value", snap => {
+  if (snap.exists()) {
     DB = snap.val();
 
-    if(window.renderProducts) renderProducts();
-    if(window.renderVendors) renderVendors();
-    if(window.renderPurchaseHistory) renderPurchaseHistory();
-    if(window.renderInvoiceList) renderInvoiceList();
-    if(window.renderCash) renderCash();
-    if(window.applySettings) applySettings();
+    if (window.renderProducts) renderProducts();
+    if (window.renderVendors) renderVendors();
+    if (window.renderPurchaseHistory) renderPurchaseHistory();
+    if (window.renderInvoiceList) renderInvoiceList();
+    if (window.renderCash) renderCash();
+    if (window.applySettings) applySettings();
   }
 });
 
 /* ===== SAVE ===== */
-<script>
-function saveDB(){
+function saveDB() {
   dbRef.set(DB)
-    .then(()=>{
+    .then(() => {
       console.log("✅ Data saved to Firebase");
     })
-    .catch(err=>{
+    .catch(err => {
       console.error("❌ Firebase save failed:", err);
       alert("Firebase write blocked:\n\n" + err.message);
     });
 }
-</script>
 
-<script>
 /* ===== UID ===== */
-function uid(prefix){
-  return prefix+"_"+Date.now()+"_"+Math.floor(Math.random()*1000);
+function uid(prefix) {
+  return prefix + "_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
 }
 </script>
 
