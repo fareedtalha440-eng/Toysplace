@@ -199,26 +199,34 @@ const DEFAULT_DB = {
 
 let DB = JSON.parse(JSON.stringify(DEFAULT_DB));
 
-/* ===== INITIAL LOAD / AUTO CREATE ===== */
-dbRef.once("value").then(snap => {
-  if (!snap.exists()) {
-    dbRef.set(DEFAULT_DB);
-  }
-});
+<script>
+const DB_KEY = "DANI_TEST_SOFTWARE_LOCAL";
 
-/* ===== LIVE SYNC ===== */
-dbRef.on("value", snap => {
-  if (snap.exists()) {
-    DB = snap.val();
-
-    if (window.renderProducts) renderProducts();
-    if (window.renderVendors) renderVendors();
-    if (window.renderPurchaseHistory) renderPurchaseHistory();
-    if (window.renderInvoiceList) renderInvoiceList();
-    if (window.renderCash) renderCash();
-    if (window.applySettings) applySettings();
+/* ===== DEFAULT STRUCTURE ===== */
+const DEFAULT_DB = {
+  products: [],
+  vendors: [],
+  purchases: [],
+  invoices: [],
+  cash: [],
+  deleted: [],
+  settings: {
+    softwareName: "Dani Test Software",
+    logo: ""
   }
-});
+};
+
+let DB = JSON.parse(localStorage.getItem(DB_KEY));
+if(!DB){
+  DB = JSON.parse(JSON.stringify(DEFAULT_DB));
+  localStorage.setItem(DB_KEY, JSON.stringify(DB));
+}
+
+function saveDB(){
+  localStorage.setItem(DB_KEY, JSON.stringify(DB));
+  console.log("Saved locally");
+}
+</script>
 
 /* ===== SAVE ===== */
 function saveDB() {
