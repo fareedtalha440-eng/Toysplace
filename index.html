@@ -649,113 +649,115 @@ function exportProductsCSV(){
 /* ===== INITIAL RENDER ===== */
 renderProducts();
 </script>
-
-
-
-/* ================= VENDOR LEDGER (FULL PAGE) ================= */
 <script>
+/* ================= SAFE VENDOR LEDGER ================= */
+
 function showVendorLedger(vendorId){
   const vendor = DB.vendors.find(v => v.id === vendorId);
   if(!vendor) return;
 
+  const entries = [];
+
+  DB.purchases
+    .filter(p => p.vendorId === vendorId)
+    .forEach(p => {
+      entries.push({
+        date: p.date,
+        type: "Purchase",
+        ref: p.id,
+        debit: p.total,
+        credit: 0
+      });
+    });
+
+  DB.cash
+    .filter(c => c.vendorId === vendorId && c.type === "OUT")
+    .forEach(c => {
+      entries.push({
+        date: c.date,
+        type: "Payment",
+        ref: c.ref || c.id,
+        debit: 0,
+        credit: c.amount
+      });
+    });
+
+  entries.sort((a,b)=>new Date(a.date)-new Date(b.date));
+
+  let balance = 0;
+
   const win = window.open("", "_blank");
   win.document.write(`
-    <html>
-    <head>
-      <title>Vendor Ledger - ${vendor.name}</title>
-      <style>
-        body{font-family:Segoe UI,Arial;padding:30px;color:#0b1c2d}
-        h2{margin-bottom:5px}
-        button{padding:6px 12px;margin-right:10px;cursor:pointer}
-        table{width:100%;border-collapse:collapse;margin-top:20px}
-        th,td{border:1px solid #d0d7de;padding:8px;text-align:center}
-        th{background:#f6f8fa}
-        .right{text-align:right}
-        .link{color:#1f6feb;cursor:pointer;text-decoration:underline}
-      </style>
-    </head>
-    <body>
-      <h2>Vendor Ledger</h2>
-      <h3>${vendor.name}</h3>
+<!DOCTYPE html>
+<html>
+<head>
+<title>Vendor Ledger - ${vendor.name}</title>
+<style>
+body{font-family:Segoe UI,Arial;padding:30px}
+table{width:100%;border-collapse:collapse;margin-top:20px}
+th,td{border:1px solid #d0d7de;padding:8px;text-align:center}
+th{background:#f6f8fa}
+.right{text-align:right}
+.link{color:#1f6feb;cursor:pointer;text-decoration:underline}
+button{margin-right:10px;padding:6px 12px}
+</style>
+</head>
+<body>
 
-      <button onclick="downloadCSV()">Download CSV</button>
-      <button onclick="window.print()">Print</button>
+<h2>Vendor Ledger</h2>
+<h3>${vendor.name}</h3>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Type</th>
-            <th>Reference</th>
-            <th class="right">Debit</th>
-            <th class="right">Credit</th>
-            <th class="right">Balance</th>
-          </tr>
-        </thead>
-        <tbody id="rows"></tbody>
-      </table>
+<button onclick="window.print()">Print</button>
+<button onclick="downloadCSV()">Download CSV</button>
 
-      <script>
-        const DB = ${JSON.stringify(DB)};
-        let balance = 0;
-        let csv = "Date,Type,Reference,Debit,Credit,Balance\\n";
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Type</th>
+<th>Reference</th>
+<th>Debit</th>
+<th>Credit</th>
+<th>Balance</th>
+</tr>
+</thead>
+<tbody id="rows"></tbody>
+</table>
 
-        function openRef(type,id){
-          const url = location.origin + location.pathname + "?open=" + type + "&id=" + id;
-          window.open(url,"_blank");
-        }
+<script>
+let csv = "Date,Type,Reference,Debit,Credit,Balance\\n";
+let balance = 0;
+const rows = document.getElementById("rows");
 
-        const entries = [];
+const data = ${JSON.stringify(entries)};
 
-        DB.purchases
-          .filter(p => p.vendorId === "${vendorId}")
-          .forEach(p => entries.push({
-            date:p.date,
-            type:"Purchase",
-            ref:p.id,
-            debit:p.total,
-            credit:0
-          }));
+data.forEach(e=>{
+  balance += e.debit - e.credit;
+  csv += e.date+","+e.type+","+e.ref+","+e.debit+","+e.credit+","+balance+"\\n";
 
-        DB.cash
-          .filter(c => c.vendorId === "${vendorId}" && c.type === "OUT")
-          .forEach(c => entries.push({
-            date:c.date,
-            type:"Payment",
-            ref:c.ref || c.id,
-            debit:0,
-            credit:c.amount
-          }));
+  const tr = document.createElement("tr");
+  tr.innerHTML = \`
+    <td>\${e.date}</td>
+    <td>\${e.type}</td>
+    <td class="link" onclick="window.open(location.pathname+'?ref='+ '\${e.ref}','_blank')">\${e.ref}</td>
+    <td class="right">\${e.debit.toFixed(2)}</td>
+    <td class="right">\${e.credit.toFixed(2)}</td>
+    <td class="right">\${balance.toFixed(2)}</td>
+  \`;
+  rows.appendChild(tr);
+});
 
-        entries.sort((a,b)=>new Date(a.date)-new Date(b.date));
+function downloadCSV(){
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.download="vendor_ledger_${vendor.name.replace(/\s+/g,"_")}.csv";
+  a.click();
+}
+<\/script>
 
-        const tbody = document.getElementById("rows");
-
-        entries.forEach(e=>{
-          balance += e.debit - e.credit;
-          csv += \`\${e.date},\${e.type},\${e.ref},\${e.debit},\${e.credit},\${balance}\\n\`;
-
-          tbody.innerHTML += \`
-            <tr>
-              <td>\${e.date}</td>
-              <td>\${e.type}</td>
-              <td class="link" onclick="openRef('\${e.type}','\${e.ref}')">\${e.ref}</td>
-              <td class="right">\${e.debit.toFixed(2)}</td>
-              <td class="right">\${e.credit.toFixed(2)}</td>
-              <td class="right">\${balance.toFixed(2)}</td>
-            </tr>\`;
-        });
-
-        function downloadCSV(){
-          const a=document.createElement("a");
-          a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
-          a.download="vendor_ledger_${vendor.name.replace(/\\s+/g,'_')}.csv";
-          a.click();
-        }
-      </script>
-    </body>
-    </html>
-  `);
+</body>
+</html>
+`);
 }
 </script>
 
