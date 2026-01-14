@@ -649,42 +649,134 @@ function exportProductsCSV(){
 /* ===== INITIAL RENDER ===== */
 renderProducts();
 </script>
+<!-- ================= VENDORS ================= -->
+<section id="vendors">
+  <div class="card">
+    <h2>Vendors</h2>
+    <input placeholder="Vendor Name" id="vendorName">
+    <button onclick="addVendor()">Add Vendor</button>
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Name & Balance</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="vendorRows"></tbody>
+    </table>
+  </div>
+</section>
+
 <script>
-/* ================= SAFE VENDOR LEDGER ================= */
+/* ================= VENDOR LOGIC ================= */
+
+function renderVendors(){
+  const tbody = document.getElementById("vendorRows");
+  tbody.innerHTML = "";
+
+  DB.vendors.forEach((v, idx) => {
+
+    const purchaseTotal = DB.purchases
+      .filter(p => p.vendorId === v.id)
+      .reduce((s, p) => s + (p.total || 0), 0);
+
+    const paymentTotal = DB.cash
+      .filter(c => c.vendorId === v.id && c.type === "OUT")
+      .reduce((s, c) => s + c.amount, 0);
+
+    const balance = purchaseTotal - paymentTotal;
+
+    tbody.innerHTML += `
+      <tr>
+        <td>${idx + 1}</td>
+        <td>
+          <span style="cursor:pointer;color:#1f6feb;text-decoration:underline"
+                onclick="showVendorLedger('${v.id}')">
+            ${v.name}
+          </span>
+          <br>
+          <small>Balance: ₨ ${balance.toFixed(2)}</small>
+        </td>
+        <td>
+          <button onclick="editVendor('${v.id}')">Edit</button>
+          <button onclick="deleteVendor('${v.id}')">Delete</button>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+function addVendor(){
+  const name = vendorName.value.trim();
+  if(!name) return alert("Enter vendor name");
+
+  DB.vendors.push({ id: uid("V"), name });
+  saveDB();
+  vendorName.value = "";
+  renderVendors();
+}
+
+function editVendor(id){
+  const v = DB.vendors.find(x => x.id === id);
+  const n = prompt("Edit vendor name", v.name);
+  if(n){
+    v.name = n.trim();
+    saveDB();
+    renderVendors();
+  }
+}
+
+function deleteVendor(id){
+  const purchaseTotal = DB.purchases
+    .filter(p => p.vendorId === id)
+    .reduce((s,p)=>s+(p.total||0),0);
+
+  const paymentTotal = DB.cash
+    .filter(c => c.vendorId === id && c.type === "OUT")
+    .reduce((s,c)=>s+c.amount,0);
+
+  if(purchaseTotal - paymentTotal !== 0)
+    return alert("Cannot delete vendor with balance");
+
+  if(confirm("Delete this vendor?")){
+    DB.vendors = DB.vendors.filter(v => v.id !== id);
+    saveDB();
+    renderVendors();
+  }
+}
+
+/* ================= LEDGER PAGE ================= */
 
 function showVendorLedger(vendorId){
   const vendor = DB.vendors.find(v => v.id === vendorId);
   if(!vendor) return;
 
-  const entries = [];
+  const rows = [];
+  let balance = 0;
 
   DB.purchases
     .filter(p => p.vendorId === vendorId)
-    .forEach(p => {
-      entries.push({
-        date: p.date,
-        type: "Purchase",
-        ref: p.id,
-        debit: p.total,
-        credit: 0
-      });
-    });
+    .forEach(p => rows.push({
+      date: p.date,
+      type: "Purchase",
+      ref: p.id,
+      debit: p.total,
+      credit: 0
+    }));
 
   DB.cash
     .filter(c => c.vendorId === vendorId && c.type === "OUT")
-    .forEach(c => {
-      entries.push({
-        date: c.date,
-        type: "Payment",
-        ref: c.ref || c.id,
-        debit: 0,
-        credit: c.amount
-      });
-    });
+    .forEach(c => rows.push({
+      date: c.date,
+      type: "Payment",
+      ref: c.ref || c.id,
+      debit: 0,
+      credit: c.amount
+    }));
 
-  entries.sort((a,b)=>new Date(a.date)-new Date(b.date));
-
-  let balance = 0;
+  rows.sort((a,b)=>new Date(a.date)-new Date(b.date));
 
   const win = window.open("", "_blank");
   win.document.write(`
@@ -698,8 +790,8 @@ table{width:100%;border-collapse:collapse;margin-top:20px}
 th,td{border:1px solid #d0d7de;padding:8px;text-align:center}
 th{background:#f6f8fa}
 .right{text-align:right}
-.link{color:#1f6feb;cursor:pointer;text-decoration:underline}
 button{margin-right:10px;padding:6px 12px}
+.link{color:#1f6feb;cursor:pointer;text-decoration:underline}
 </style>
 </head>
 <body>
@@ -721,30 +813,29 @@ button{margin-right:10px;padding:6px 12px}
 <th>Balance</th>
 </tr>
 </thead>
-<tbody id="rows"></tbody>
+<tbody id="ledgerRows"></tbody>
 </table>
 
 <script>
-let csv = "Date,Type,Reference,Debit,Credit,Balance\\n";
+const data = ${JSON.stringify(rows)};
 let balance = 0;
-const rows = document.getElementById("rows");
+let csv = "Date,Type,Reference,Debit,Credit,Balance\\n";
+const tbody = document.getElementById("ledgerRows");
 
-const data = ${JSON.stringify(entries)};
-
-data.forEach(e=>{
-  balance += e.debit - e.credit;
-  csv += e.date+","+e.type+","+e.ref+","+e.debit+","+e.credit+","+balance+"\\n";
+data.forEach(r=>{
+  balance += r.debit - r.credit;
+  csv += r.date+","+r.type+","+r.ref+","+r.debit+","+r.credit+","+balance+"\\n";
 
   const tr = document.createElement("tr");
   tr.innerHTML = \`
-    <td>\${e.date}</td>
-    <td>\${e.type}</td>
-    <td class="link" onclick="window.open(location.pathname+'?ref='+ '\${e.ref}','_blank')">\${e.ref}</td>
-    <td class="right">\${e.debit.toFixed(2)}</td>
-    <td class="right">\${e.credit.toFixed(2)}</td>
+    <td>\${r.date}</td>
+    <td>\${r.type}</td>
+    <td class="link" onclick="window.open(location.pathname+'?ref='+ '\${r.ref}','_blank')">\${r.ref}</td>
+    <td class="right">\${r.debit.toFixed(2)}</td>
+    <td class="right">\${r.credit.toFixed(2)}</td>
     <td class="right">\${balance.toFixed(2)}</td>
   \`;
-  rows.appendChild(tr);
+  tbody.appendChild(tr);
 });
 
 function downloadCSV(){
@@ -759,6 +850,8 @@ function downloadCSV(){
 </html>
 `);
 }
+
+renderVendors();
 </script>
 
 <!-- ================= PURCHASE ================= -->
