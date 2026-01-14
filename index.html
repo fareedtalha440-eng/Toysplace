@@ -161,28 +161,56 @@ button{
   <div onclick="openTab('settings')" id="tab-settings">Settings</div>
 </nav>
 
-<!-- ================= DATABASE ================= -->
+<!-- ================= CLOUD DATABASE (SYNCED) ================= -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
 <script>
-const DB = {
-  products: JSON.parse(localStorage.getItem("products")||"[]"),
-  vendors: JSON.parse(localStorage.getItem("vendors")||"[]"),
-  purchases: JSON.parse(localStorage.getItem("purchases")||"[]"),
-  invoices: JSON.parse(localStorage.getItem("invoices")||"[]"),
-  cash: JSON.parse(localStorage.getItem("cash")||"[]"),
-  deleted: JSON.parse(localStorage.getItem("deleted")||"[]")
+/* ===== FIREBASE CONFIG ===== */
+const firebaseConfig = {
+  // 🔴 PASTE YOUR COPIED CONFIG HERE
 };
 
-function saveDB() { 
-  for(let k in DB){ 
-    localStorage.setItem(k, JSON.stringify(DB[k])); 
-  } 
+firebase.initializeApp(firebaseConfig);
+const dbRef = firebase.database().ref("DANI_TEST_SOFTWARE");
+
+/* ===== MAIN DATABASE ===== */
+let DB = {
+  products: [],
+  vendors: [],
+  purchases: [],
+  invoices: [],
+  cash: [],
+  deleted: [],
+  settings: {
+    softwareName: "Dani Test Software",
+    logo: ""
+  }
+};
+
+/* ===== LIVE SYNC ===== */
+dbRef.on("value", snapshot => {
+  if(snapshot.exists()){
+    DB = snapshot.val();
+    applySettings?.();
+    renderProducts?.();
+    renderVendors?.();
+    renderPurchaseHistory?.();
+    renderInvoiceList?.();
+    renderCash?.();
+  }
+});
+
+/* ===== SAVE ===== */
+function saveDB(){
+  dbRef.set(DB);
 }
 
-function uid(prefix){ 
-  return prefix + "_" + Date.now() + Math.floor(Math.random()*1000); 
+/* ===== UID ===== */
+function uid(prefix){
+  return prefix + "_" + Date.now() + "_" + Math.floor(Math.random()*1000);
 }
 </script>
-
 <!-- ================= INVOICE ================= -->
 <section id="invoice">
   <div class="card" id="newInvoiceCard">
