@@ -164,15 +164,15 @@ button{
 
 <!-- ================= DATABASE ================= -->
 <script>
-function saveDB(){
-  localStorage.setItem("products", JSON.stringify(DB.products));
-  localStorage.setItem("vendors", JSON.stringify(DB.vendors));
-  localStorage.setItem("purchases", JSON.stringify(DB.purchases));
-  localStorage.setItem("invoices", JSON.stringify(DB.invoices));
-  localStorage.setItem("cash", JSON.stringify(DB.cash));
-  localStorage.setItem("deleted", JSON.stringify(DB.deleted));
-  localStorage.setItem("settings", JSON.stringify(DB.settings));
-}
+let DB = {
+  products: JSON.parse(localStorage.getItem("products") || "[]"),
+  vendors: JSON.parse(localStorage.getItem("vendors") || "[]"),
+  purchases: JSON.parse(localStorage.getItem("purchases") || "[]"),
+  invoices: JSON.parse(localStorage.getItem("invoices") || "[]"),
+  cash: JSON.parse(localStorage.getItem("cash") || "[]"),
+  deleted: JSON.parse(localStorage.getItem("deleted") || "[]"),
+  settings: JSON.parse(localStorage.getItem("settings") || "{}")
+};
 
 function saveDB() { 
   for(let k in DB){ 
