@@ -651,9 +651,9 @@ renderProducts();
 </script>
 
 
-<script>
-/* ================= VENDOR LEDGER (FULL PAGE) ================= */
 
+/* ================= VENDOR LEDGER (FULL PAGE) ================= */
+<script>
 function showVendorLedger(vendorId){
   const vendor = DB.vendors.find(v => v.id === vendorId);
   if(!vendor) return;
