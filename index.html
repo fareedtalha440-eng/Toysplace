@@ -164,7 +164,7 @@ button{
 
 <!-- ================= DATABASE ================= -->
 <script>
-const DB = {
+let DB = {
   products: JSON.parse(localStorage.getItem("products")||"[]"),
   vendors: JSON.parse(localStorage.getItem("vendors")||"[]"),
   purchases: JSON.parse(localStorage.getItem("purchases")||"[]"),
