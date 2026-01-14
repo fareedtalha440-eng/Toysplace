@@ -162,28 +162,30 @@ button{
   <div onclick="openTab('settings')" id="tab-settings">Settings</div>
 </nav>
 
-<!-- ================= CLOUD DATABASE (SYNCED) ================= -->
+<!-- ================== DATABASE : FIREBASE REALTIME (FULL SYSTEM) ================== -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
+/* ================= FIREBASE CONFIG ================= */
 const firebaseConfig = {
   apiKey: "AIzaSyBOQlJFdkZp76fIttXe_-VODF0tdkxX98g",
   authDomain: "tets-b1096.firebaseapp.com",
   databaseURL: "https://tets-b1096-default-rtdb.firebaseio.com",
   projectId: "tets-b1096",
-  storageBucket: "tets-b1096.appspot.com",
+  storageBucket: "tets-b1096.firebasestorage.app",
   messagingSenderId: "966395425566",
-  appId: "1:966395425566:web:9aaa5766e96635673a8f0f"
+  appId: "1:966395425566:web:9aaa5766e96635673a8f0f",
+  measurementId: "G-QPQJ3194GB"
 };
 
-try {
-  firebase.initializeApp(firebaseConfig);
-} catch (e) {}
+/* ================= INIT ================= */
+firebase.initializeApp(firebaseConfig);
 
-const dbRef = firebase.database().ref("DANI_TEST_SOFTWARE");
+/* ================= DATABASE ROOT ================= */
+const dbRef = firebase.database().ref("TOYS_PLACE_SOFTWARE");
 
-/* ===== DEFAULT STRUCTURE ===== */
+/* ================= DEFAULT STRUCTURE ================= */
 const DEFAULT_DB = {
   products: [],
   vendors: [],
@@ -192,53 +194,46 @@ const DEFAULT_DB = {
   cash: [],
   deleted: [],
   settings: {
-    softwareName: "Dani Test Software",
+    softwareName: "Toys Place",
     logo: ""
   }
 };
 
+/* ================= MAIN DB ================= */
 let DB = JSON.parse(JSON.stringify(DEFAULT_DB));
 
-<script>
-const DB_KEY = "DANI_TEST_SOFTWARE_LOCAL";
-
-/* ===== DEFAULT STRUCTURE ===== */
-const DEFAULT_DB = {
-  products: [],
-  vendors: [],
-  purchases: [],
-  invoices: [],
-  cash: [],
-  deleted: [],
-  settings: {
-    softwareName: "Dani Test Software",
-    logo: ""
+/* ================= FIRST TIME CREATE ================= */
+dbRef.once("value").then(snapshot => {
+  if (!snapshot.exists()) {
+    dbRef.set(DEFAULT_DB);
   }
-};
+});
 
-let DB = JSON.parse(localStorage.getItem(DB_KEY));
-if(!DB){
-  DB = JSON.parse(JSON.stringify(DEFAULT_DB));
-  localStorage.setItem(DB_KEY, JSON.stringify(DB));
+/* ================= REALTIME SYNC (ALL PCS / ALL BROWSERS) ================= */
+dbRef.on("value", snapshot => {
+  if (!snapshot.exists()) return;
+
+  DB = snapshot.val();
+
+  if (window.renderProducts) renderProducts();
+  if (window.renderVendors) renderVendors();
+  if (window.renderPurchaseHistory) renderPurchaseHistory();
+  if (window.renderInvoiceList) renderInvoiceList();
+  if (window.renderCash) renderCash();
+  if (window.applySettings) applySettings();
+});
+
+/* ================= SAVE ================= */
+function saveDB() {
+  dbRef.set(DB);
 }
 
-function saveDB(){
-  localStorage.setItem(DB_KEY, JSON.stringify(DB));
-  console.log("Saved locally");
-}
-</script>
-
-<script>
-/* ===== SAVE ===== */
-function saveDB(){
-  localStorage.setItem("DANI_TEST_SOFTWARE_LOCAL", JSON.stringify(DB));
-}
-
-/* ===== UID ===== */
-function uid(prefix){
+/* ================= UID ================= */
+function uid(prefix) {
   return prefix + "_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
 }
 </script>
+<!-- ================== END DATABASE SECTION ================== -->
 
 <!-- ================= INVOICE ================= -->
 <section id="invoice">
