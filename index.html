@@ -1124,29 +1124,39 @@ function generateReport(){ document.getElementById("reportOutput").innerText=JSO
 function applySettings(){
   if(!DB.settings) DB.settings = {};
 
-  if(DB.settings.softwareName){
-    document.getElementById("softwareName").innerText = DB.settings.softwareName;
-    document.getElementById("setSoftwareName").value = DB.settings.softwareName;
-  }
+  const name = DB.settings.softwareName || "Dani Test Software";
 
+  /* Header text */
+  document.getElementById("softwareName").innerText = name;
+  document.getElementById("setSoftwareName").value = name;
+
+  /* Browser tab title */
+  document.title = name;
+
+  /* Logo */
   if(DB.settings.logo){
     const img = document.getElementById("header-logo");
     img.src = DB.settings.logo;
     img.style.display = "block";
   }
 }
-
 document.addEventListener("DOMContentLoaded", applySettings);
 
+/* ===== SAVE SOFTWARE NAME ===== */
 function saveSoftwareName(){
   if(!DB.settings) DB.settings = {};
-  DB.settings.softwareName =
-    document.getElementById("setSoftwareName").value || "Dani Test Software";
+
+  const name =
+    document.getElementById("setSoftwareName").value.trim() ||
+    "Dani Test Software";
+
+  DB.settings.softwareName = name;
   saveDB();
   applySettings();
   alert("Software name updated");
 }
 
+/* ===== UPLOAD LOGO ===== */
 function uploadLogo(input){
   const file = input.files[0];
   if(!file) return;
@@ -1161,6 +1171,7 @@ function uploadLogo(input){
   reader.readAsDataURL(file);
 }
 
+/* ===== DOWNLOAD BACKUP ===== */
 function downloadBackup(){
   const blob = new Blob([JSON.stringify(DB,null,2)], {type:"application/json"});
   const a = document.createElement("a");
@@ -1169,6 +1180,7 @@ function downloadBackup(){
   a.click();
 }
 
+/* ===== RESTORE BACKUP ===== */
 function restoreBackup(input){
   const file = input.files[0];
   if(!file) return;
@@ -1186,6 +1198,7 @@ function restoreBackup(input){
   reader.readAsText(file);
 }
 
+/* ===== RESET SYSTEM (AUTO BACKUP) ===== */
 function resetSystem(){
   if(!confirm("Backup will be downloaded automatically. Continue reset?")) return;
 
