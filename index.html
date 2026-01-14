@@ -221,9 +221,19 @@ dbRef.on("value", snap=>{
 });
 
 /* ===== SAVE ===== */
+<script>
 function saveDB(){
-  dbRef.set(DB);
+  dbRef.set(DB)
+    .then(()=>{
+      console.log("✅ Data saved to Firebase");
+    })
+    .catch(err=>{
+      console.error("❌ Firebase save failed:", err);
+      alert("Firebase write blocked:\n\n" + err.message);
+    });
 }
+</script>
+
 
 /* ===== UID ===== */
 function uid(prefix){
