@@ -173,13 +173,18 @@ const firebaseConfig = {
   authDomain: "tets-b1096.firebaseapp.com",
   databaseURL: "https://tets-b1096-default-rtdb.firebaseio.com",
   projectId: "tets-b1096",
-  storageBucket: "tets-b1096.firebasestorage.app",
+  storageBucket: "tets-b1096.appspot.com",
   messagingSenderId: "966395425566",
-  appId: "1:966395425566:web:9aaa5766e96635673a8f0f",
-  measurementId: "G-QPQJ3194GB"
+  appId: "1:966395425566:web:9aaa5766e96635673a8f0f"
 };
 
-firebase.initializeApp(firebaseConfig);
+/* ===== INIT FIREBASE SAFELY ===== */
+try{
+  firebase.initializeApp(firebaseConfig);
+}catch(e){
+  console.warn("Firebase already initialized");
+}
+
 const dbRef = firebase.database().ref("DANI_TEST_SOFTWARE");
 
 /* ===== MAIN DATABASE ===== */
@@ -200,12 +205,13 @@ let DB = {
 dbRef.on("value", snapshot => {
   if(snapshot.exists()){
     DB = snapshot.val();
-    applySettings?.();
-    renderProducts?.();
-    renderVendors?.();
-    renderPurchaseHistory?.();
-    renderInvoiceList?.();
-    renderCash?.();
+
+    if(typeof applySettings === "function") applySettings();
+    if(typeof renderProducts === "function") renderProducts();
+    if(typeof renderVendors === "function") renderVendors();
+    if(typeof renderPurchaseHistory === "function") renderPurchaseHistory();
+    if(typeof renderInvoiceList === "function") renderInvoiceList();
+    if(typeof renderCash === "function") renderCash();
   }
 });
 
@@ -219,6 +225,7 @@ function uid(prefix){
   return prefix + "_" + Date.now() + "_" + Math.floor(Math.random()*1000);
 }
 </script>
+
 <!-- ================= INVOICE ================= -->
 <section id="invoice">
   <div class="card" id="newInvoiceCard">
