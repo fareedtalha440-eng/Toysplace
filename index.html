@@ -1117,27 +1117,32 @@ function generateReport(){ document.getElementById("reportOutput").innerText=JSO
     <button class="red" onclick="resetSystem()">RESET COMPLETE SOFTWARE</button>
   </div>
 </section>
+
 <script>
 /* ===== APPLY SETTINGS ===== */
 function applySettings(){
-  if(DB.settings){
-    if(DB.settings.softwareName){
-      document.getElementById("softwareName").innerText = DB.settings.softwareName;
-      document.getElementById("setSoftwareName").value = DB.settings.softwareName;
-    }
-    if(DB.settings.logo){
-      const img = document.getElementById("header-logo");
-      img.src = DB.settings.logo;
-      img.style.display = "block";
-    }
+  if(!DB.settings) DB.settings = {};
+
+  if(DB.settings.softwareName){
+    document.getElementById("softwareName").innerText = DB.settings.softwareName;
+    document.getElementById("setSoftwareName").value = DB.settings.softwareName;
+  }
+
+  if(DB.settings.logo){
+    const img = document.getElementById("header-logo");
+    img.src = DB.settings.logo;
+    img.style.display = "block";
   }
 }
+document.addEventListener("DOMContentLoaded", applySettings);
 
-/* ===== SAVE NAME ===== */
+/* ===== SAVE SOFTWARE NAME ===== */
 function saveSoftwareName(){
-  DB.settings = DB.settings || {};
-  DB.settings.softwareName = document.getElementById("setSoftwareName").value || "Dani Test Software";
+  if(!DB.settings) DB.settings = {};
+  DB.settings.softwareName =
+    document.getElementById("setSoftwareName").value || "Dani Test Software";
   saveDB();
+  applySettings();
   alert("Software name updated");
 }
 
@@ -1148,9 +1153,10 @@ function uploadLogo(input){
 
   const reader = new FileReader();
   reader.onload = e => {
-    DB.settings = DB.settings || {};
+    if(!DB.settings) DB.settings = {};
     DB.settings.logo = e.target.result;
     saveDB();
+    applySettings();
   };
   reader.readAsDataURL(file);
 }
@@ -1158,9 +1164,10 @@ function uploadLogo(input){
 /* ===== DOWNLOAD BACKUP ===== */
 function downloadBackup(){
   const data = JSON.stringify(DB, null, 2);
+  const blob = new Blob([data], {type:"application/json"});
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([data], {type:"application/json"}));
-  a.download = "dani_software_backup.json";
+  a.href = URL.createObjectURL(blob);
+  a.download = "dani_software_backup_" + Date.now() + ".json";
   a.click();
 }
 
@@ -1174,7 +1181,7 @@ function restoreBackup(input){
     try{
       DB = JSON.parse(e.target.result);
       saveDB();
-      alert("Backup restored successfully");
+      location.reload();   // IMPORTANT
     }catch{
       alert("Invalid backup file");
     }
@@ -1184,7 +1191,7 @@ function restoreBackup(input){
 
 /* ===== RESET SYSTEM (AUTO BACKUP) ===== */
 function resetSystem(){
-  if(!confirm("System will auto-backup and then RESET. Continue?")) return;
+  if(!confirm("Backup will be downloaded automatically. Continue reset?")) return;
 
   downloadBackup();
 
@@ -1202,26 +1209,6 @@ function resetSystem(){
   };
 
   saveDB();
-  alert("System reset completed");
+  location.reload();
 }
- 
-// ===== MENU ===== //
-function openTab(id){
-  document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
-  document.querySelectorAll("nav div").forEach(d=>d.classList.remove("active"));
-  document.getElementById("tab-"+id).classList.add("active");
-}
-openTab("invoice");
-
-// ===== DATE & TIME =====
-function updateTime(){
-  const now=new Date();
-  document.getElementById("dateTime").innerText=now.toLocaleString();
-}
-setInterval(updateTime,1000);
-updateTime();
 </script>
-
-</body>
-</html>
