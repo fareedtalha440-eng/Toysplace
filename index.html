@@ -1161,7 +1161,6 @@ function generateReport(){ document.getElementById("reportOutput").innerText=JSO
   </div>
 </section>
 <script>
-<script>
 /* ===== APPLY SETTINGS ===== */
 function applySettings(){
   if(DB.settings){
@@ -1248,9 +1247,8 @@ function resetSystem(){
   saveDB();
   alert("System reset completed");
 }
-</script>
-  
-// ===== MENU =====
+ 
+// ===== MENU ===== //
 function openTab(id){
   document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
