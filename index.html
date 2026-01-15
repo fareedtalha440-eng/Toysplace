@@ -476,14 +476,7 @@ td{position:relative;}
 <section id="cash">
 
   <!-- ===== STICKY BALANCE BAR ===== -->
-  <div style="
-    position:sticky;
-    top:0;
-    z-index:10;
-    background:#fff;
-    padding:10px;
-    border-bottom:2px solid #ddd;
-  ">
+  <div style="position:sticky; top:0; z-index:10; background:#fff; padding:10px; border-bottom:2px solid #ddd;">
     <h2>Cash In Hand</h2>
     <h3>Balance: <span id="cashBal">0</span></h3>
   </div>
@@ -495,7 +488,9 @@ td{position:relative;}
     <hr>
     <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:15px;">
       <input type="date" id="payDate" style="flex:1 1 150px;">
-      <input placeholder="Vendor" id="payVendor" style="flex:1 1 150px;">
+      <select id="payVendor" style="flex:1 1 150px;">
+        <option value="">Select Vendor</option>
+      </select>
       <input placeholder="Reference" id="payRef" style="flex:1 1 150px;">
       <input type="number" placeholder="Amount" id="payAmount" style="flex:1 1 120px;">
       <button class="red" onclick="addCashPayment()">Pay</button>
@@ -504,37 +499,67 @@ td{position:relative;}
     <!-- ===== FILTER ===== -->
     <h3>Filter</h3>
     <hr>
-    <label>From</label>
-    <input type="date" id="cashFrom">
-    <label>To</label>
-    <input type="date" id="cashTo">
-    <button onclick="renderCash()">Apply</button>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:5px;">
+      <label>From</label><input type="date" id="cashFrom">
+      <label>To</label><input type="date" id="cashTo">
+      <select id="cashVendorFilter">
+        <option value="">All Vendors</option>
+      </select>
+      <input placeholder="Search Vendor / Amount / Ref" id="cashSearch" style="flex:1">
+      <button onclick="renderCash()">Apply</button>
+      <button onclick="downloadCashCSV()">Download CSV</button>
+    </div>
 
     <!-- ===== CASH TABLE ===== -->
-    <table style="margin-top:10px;">
+    <table style="margin-top:10px; width:100%;">
       <thead>
         <tr>
           <th>Date</th>
+          <th>Time</th>
           <th>Type</th>
           <th>Vendor</th>
           <th>Amount</th>
-          <th>Ref</th>
+          <th>Reference</th>
           <th>Balance</th>
+          <th>Edit</th>
+          <th>Delete</th>
         </tr>
       </thead>
       <tbody id="cashRows"></tbody>
     </table>
 
+    <!-- ===== PAGINATION ===== -->
+    <div style="margin-top:10px; display:flex; gap:10px;">
+      <button onclick="prevCashPage()">Prev</button>
+      <button onclick="nextCashPage()">Next</button>
+    </div>
   </div>
 </section>
 
 <script>
-/* ===== CASH BALANCE ===== */
-function cashBalance(){
-  return DB.cash.reduce((s,t)=>t.type==="IN" ? s+t.amount : s-t.amount, 0);
+let cashPage = 1, cashPerPage = 100;
+
+/* ===== FORMAT NUMBER WITH COMMAS ===== */
+function formatNumber(x){ return Number(x).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}); }
+
+/* ===== POPULATE VENDOR SELECT ===== */
+function loadVendorOptions(){
+  const selectAdd = document.getElementById("payVendor");
+  const selectFilter = document.getElementById("cashVendorFilter");
+  selectAdd.innerHTML='<option value="">Select Vendor</option>';
+  selectFilter.innerHTML='<option value="">All Vendors</option>';
+  DB.vendors.forEach(v=>{
+    selectAdd.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
+    selectFilter.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
+  });
 }
 
-/* ===== ADD PAYMENT (CASH OUT) ===== */
+/* ===== CASH BALANCE ===== */
+function cashBalance(){
+  return DB.cash.reduce((s,t)=>t.type==="IN"?s+t.amount:s-t.amount,0);
+}
+
+/* ===== ADD PAYMENT ===== */
 function addCashPayment(){
   const date = document.getElementById("payDate").value;
   const vendor = document.getElementById("payVendor").value.trim();
@@ -543,57 +568,144 @@ function addCashPayment(){
 
   if(!date || !amount) return alert("Date and Amount required");
 
+  // Deduct from vendor balance if exists
+  if(vendor){
+    const v = DB.vendors.find(x=>x.name===vendor);
+    if(v) v.balance = (v.balance || 0) - amount;
+  }
+
   DB.cash.push({
     id: uid("C"),
-    date,
-    type: "OUT",
+    dateTime: new Date(date).toISOString(),
+    type:"OUT",
     vendor,
-    ref,
+    ref: ref || vendor,
     amount
   });
 
-  saveDB();
-  renderCash();
+  saveDB(); resetCashForm(); renderCash();
+}
 
-  payDate.value="";
-  payVendor.value="";
-  payRef.value="";
-  payAmount.value="";
+function resetCashForm(){
+  document.getElementById("payDate").value="";
+  document.getElementById("payVendor").value="";
+  document.getElementById("payRef").value="";
+  document.getElementById("payAmount").value="";
 }
 
 /* ===== RENDER CASH ===== */
 function renderCash(){
+  loadVendorOptions();
   const tbody = document.getElementById("cashRows");
-  tbody.innerHTML = "";
+  tbody.innerHTML="";
 
-  const from = cashFrom.value;
-  const to = cashTo.value;
+  const from = document.getElementById("cashFrom").value;
+  const to = document.getElementById("cashTo").value;
+  const vendorFilter = document.getElementById("cashVendorFilter").value.trim();
+  const searchText = document.getElementById("cashSearch").value.trim().toLowerCase();
 
   let bal = 0;
-
-  DB.cash
-    .sort((a,b)=>a.date.localeCompare(b.date))
-    .forEach(c=>{
-      if((from && c.date < from) || (to && c.date > to)) return;
-
-      bal = c.type==="IN" ? bal + c.amount : bal - c.amount;
-
-      tbody.innerHTML += `
-        <tr>
-          <td>${c.date}</td>
-          <td>${c.type}</td>
-          <td>${c.vendor || ""}</td>
-          <td>${c.amount.toFixed(2)}</td>
-          <td>${c.ref || ""}</td>
-          <td>${bal.toFixed(2)}</td>
-        </tr>
-      `;
+  const filtered = DB.cash
+    .sort((a,b)=>new Date(a.dateTime)-new Date(b.dateTime))
+    .filter(c=>{
+      if(from && new Date(c.dateTime)<new Date(from)) return false;
+      if(to && new Date(c.dateTime)>new Date(to)) return false;
+      if(vendorFilter && c.vendor!==vendorFilter) return false;
+      if(searchText && !(
+        (c.vendor||"").toLowerCase().includes(searchText) ||
+        (c.ref||"").toLowerCase().includes(searchText) ||
+        (c.amount+"").includes(searchText)
+      )) return false;
+      return true;
     });
 
-  document.getElementById("cashBal").innerText = bal.toFixed(2);
+  const paged = filtered.slice((cashPage-1)*cashPerPage, cashPage*cashPerPage);
+
+  paged.forEach(c=>{
+    bal = c.type==="IN"?bal+c.amount:bal-c.amount;
+    const dt = new Date(c.dateTime);
+    tbody.innerHTML+=`
+      <tr>
+        <td>${dt.toLocaleDateString()}</td>
+        <td>${dt.toLocaleTimeString()}</td>
+        <td>${c.type}</td>
+        <td>${c.vendor||""}</td>
+        <td>${formatNumber(c.amount)}</td>
+        <td>${c.ref||""}</td>
+        <td>${formatNumber(bal)}</td>
+        <td><button onclick="editCashPayment('${c.id}')">Edit</button></td>
+        <td><button onclick="deleteCashPayment('${c.id}')">Delete</button></td>
+      </tr>
+    `;
+  });
+
+  document.getElementById("cashBal").innerText=formatNumber(bal);
+}
+
+/* ===== PAGINATION ===== */
+function nextCashPage(){ cashPage++; renderCash(); }
+function prevCashPage(){ if(cashPage>1){ cashPage--; renderCash();} }
+
+/* ===== EDIT / DELETE ===== */
+function editCashPayment(id){
+  const c = DB.cash.find(x=>x.id===id);
+  if(!c) return;
+  const dt = new Date(c.dateTime);
+  document.getElementById("payDate").value = dt.toISOString().slice(0,10);
+  document.getElementById("payVendor").value = c.vendor;
+  document.getElementById("payRef").value = c.ref;
+  document.getElementById("payAmount").value = c.amount;
+  deleteCashPayment(id,true); // remove before editing
+}
+
+function deleteCashPayment(id,isEdit=false){
+  const c = DB.cash.find(x=>x.id===id);
+  if(!c) return;
+  if(!confirm("Delete this payment?")) return;
+  if(!DB.deletedPayments) DB.deletedPayments=[];
+  DB.deletedPayments.push({
+    id: c.id,
+    dateTime: new Date().toISOString(),
+    original: c
+  });
+
+  // Refund to vendor balance
+  if(c.vendor){
+    const v = DB.vendors.find(x=>x.name===c.vendor);
+    if(v) v.balance = (v.balance || 0) + c.amount;
+  }
+
+  DB.cash = DB.cash.filter(x=>x.id!==id);
+  saveDB();
+  if(!isEdit) renderCash();
+}
+
+/* ===== DOWNLOAD CSV ===== */
+function downloadCashCSV(){
+  const rows = [["Date","Time","Type","Vendor","Amount","Reference","Balance"]];
+  let bal=0;
+  DB.cash.sort((a,b)=>new Date(a.dateTime)-new Date(b.dateTime)).forEach(c=>{
+    bal = c.type==="IN"?bal+c.amount:bal-c.amount;
+    const dt = new Date(c.dateTime);
+    rows.push([
+      dt.toLocaleDateString(),
+      dt.toLocaleTimeString(),
+      c.type,
+      c.vendor||"",
+      c.amount,
+      c.ref||"",
+      bal
+    ]);
+  });
+  const csvContent = "data:text/csv;charset=utf-8," + rows.map(r=>r.join(",")).join("\n");
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a"); link.setAttribute("href", encodedUri);
+  link.setAttribute("download","cash.csv");
+  document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
 
 /* ===== INITIAL LOAD ===== */
+loadVendorOptions();
 renderCash();
 </script>
 <!-- ================= PRODUCTS ================= -->
