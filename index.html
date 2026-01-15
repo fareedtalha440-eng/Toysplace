@@ -204,18 +204,23 @@ function uid(prefix){
       </thead>
       <tbody id="invoiceRows"></tbody>
     </table>
+
     <button class="green" onclick="addInvoiceRow()">+ Add Item</button>
 
-    <!-- ===== DISCOUNT + TOTAL ===== -->
-    <div style="margin-top:10px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+    <!-- ===== DISCOUNT + TOTAL ROW ===== -->
+    <div style="margin-top:10px; display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
       <div>
         <label>Main Discount Amount</label><br>
-        <input type="number" id="mainDiscAmt" value="0" onchange="applyMainDiscount(getSubTotal())" style="width:120px">
+        <input type="number" id="mainDiscAmt" value="0"
+          onchange="applyMainDiscount(getSubTotal())"
+          style="width:110px">
       </div>
 
       <div>
         <label>Main Discount %</label><br>
-        <input type="number" id="mainDiscPct" value="0" onchange="applyMainDiscount(getSubTotal())" style="width:100px">
+        <input type="number" id="mainDiscPct" value="0"
+          onchange="applyMainDiscount(getSubTotal())"
+          style="width:90px">
       </div>
 
       <div style="margin-left:auto; font-size:16px;">
@@ -259,22 +264,23 @@ function uid(prefix){
 </section>
 
 <script>
-/* ================= INVOICE LOGIC ================= */
-
-/* ===== TOTAL / DISCOUNT (FIXED, NO SIDE EFFECTS) ===== */
+/* ===== DISCOUNT CALCULATION (FIXED, NO SIDE EFFECT) ===== */
 function applyMainDiscount(sub){
   const amt = +document.getElementById("mainDiscAmt").value || 0;
   const pct = +document.getElementById("mainDiscPct").value || 0;
-  const pctAmt = sub * (pct / 100);
-  document.getElementById("invTotal").innerText = (sub - amt - pctAmt).toFixed(2);
+  const pctAmt = sub * pct / 100;
+  document.getElementById("invTotal").innerText =
+    (sub - amt - pctAmt).toFixed(2);
 }
 
-/* ===== SAVE INVOICE (ONLY DATE+TIME ADDED) ===== */
+/* ===== SAVE INVOICE (DATE + TIME ONLY ADDED) ===== */
 function saveInvoice(){
   if(!invoiceDraft.length) return alert("Invoice empty");
-  if(invoiceDraft.some(r=>!r.valid)) return alert("Invoice contains invalid product.");
+  if(invoiceDraft.some(r=>!r.valid))
+    return alert("Invoice contains invalid product.");
 
   const id = editingInvoiceId || uid("INV");
+
   const now = new Date();
   const dateTime =
     now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0")+" "+
@@ -296,15 +302,26 @@ function saveInvoice(){
   });
 
   DB.invoices = DB.invoices.filter(i=>i.id!==id);
-  DB.invoices.push({ id, date: dateTime, total, items: JSON.parse(JSON.stringify(invoiceDraft)) });
+  DB.invoices.push({
+    id,
+    date: dateTime,
+    total,
+    items: JSON.parse(JSON.stringify(invoiceDraft))
+  });
 
-  DB.cash.push({ id: uid("C"), type:"IN", amount: total, ref:id, date: dateTime });
+  DB.cash.push({
+    id: uid("C"),
+    type: "IN",
+    amount: total,
+    ref: id,
+    date: dateTime
+  });
 
   saveDB();
-  invoiceDraft=[];
-  editingInvoiceId=null;
-  document.getElementById("mainDiscAmt").value=0;
-  document.getElementById("mainDiscPct").value=0;
+  invoiceDraft = [];
+  editingInvoiceId = null;
+  mainDiscAmt.value = 0;
+  mainDiscPct.value = 0;
 
   renderInvoice();
   renderInvoiceList();
@@ -312,10 +329,10 @@ function saveInvoice(){
   alert("Invoice saved successfully");
 }
 
-/* ===== FILTER (UNCHANGED LOGIC, DATE+TIME SAFE) ===== */
+/* ===== FILTER (DATE-TIME SAFE) ===== */
 function applyInvoiceFilter(){
-  const from = document.getElementById("invFrom").value;
-  const to   = document.getElementById("invTo").value;
+  const from = invFrom.value;
+  const to   = invTo.value;
 
   invFiltered = DB.invoices.filter(i=>{
     const d = (i.date || "").slice(0,10);
@@ -327,19 +344,6 @@ function applyInvoiceFilter(){
   renderInvoiceList();
 }
 </script>
-
-<style>
-.invSug{
-  position:absolute;
-  background:#fff;
-  border:1px solid #ccc;
-  max-height:160px;
-  overflow:auto;
-  z-index:50;
-}
-.invSug div:hover{ background:#eee; }
-td{ position:relative; }
-</style>
 
 <!-- ================= CASH ================= -->
 <section id="cash">
