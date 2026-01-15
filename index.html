@@ -484,7 +484,7 @@ td{position:relative;}
   <div class="card">
 
     <!-- ===== ADD NEW PAYMENT ===== -->
-    <h3>Add New Payment</h3>
+    <h3>Add / Edit Payment</h3>
     <hr>
     <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:15px;">
       <input type="date" id="payDate" style="flex:1 1 150px;">
@@ -493,7 +493,7 @@ td{position:relative;}
       </select>
       <input placeholder="Reference" id="payRef" style="flex:1 1 150px;">
       <input type="number" placeholder="Amount" id="payAmount" style="flex:1 1 120px;">
-      <button class="red" onclick="addCashPayment()">Pay</button>
+      <button class="red" onclick="saveCashPayment()">Save</button>
     </div>
 
     <!-- ===== FILTER ===== -->
@@ -542,9 +542,21 @@ td{position:relative;}
 <script>
 let cashPage = 1, cashPerPage = 100;
 let cashFiltered = null;
+let editingCashId = null;
 
 /* ===== FORMAT NUMBER WITH COMMAS ===== */
 function formatNumber(x){ return Number(x).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}); }
+
+/* ===== PAYMENT ID SEQUENTIAL ===== */
+function getNextPaymentId(){
+  if(!DB.cash || !DB.cash.length) return "P-000001";
+  const nums = DB.cash.map(p=>{
+    const n = parseInt(p.id.replace("P-",""),10);
+    return isNaN(n)?0:n;
+  });
+  const next = Math.max(...nums)+1;
+  return "P-"+String(next).padStart(6,"0");
+}
 
 /* ===== POPULATE VENDOR SELECT ===== */
 function loadVendorOptions(){
@@ -563,8 +575,8 @@ function cashBalance(){
   return DB.cash.reduce((s,t)=>t.type==="IN"?s+t.amount:s-t.amount,0);
 }
 
-/* ===== ADD PAYMENT ===== */
-function addCashPayment(){
+/* ===== SAVE PAYMENT (ADD / EDIT) ===== */
+function saveCashPayment(){
   const date = document.getElementById("payDate").value;
   const vendor = document.getElementById("payVendor").value.trim();
   const ref = document.getElementById("payRef").value.trim();
@@ -572,20 +584,47 @@ function addCashPayment(){
 
   if(!date || !amount) return alert("Date and Amount required");
 
-  // Deduct from vendor balance if exists
-  if(vendor){
-    const v = DB.vendors.find(x=>x.name===vendor);
-    if(v) v.balance = (v.balance || 0) - amount;
-  }
+  let dtISO = new Date(date).toISOString();
 
-  DB.cash.push({
-    id: uid("C"),
-    dateTime: new Date(date).toISOString(),
-    type:"OUT",
-    vendor: vendor || "",
-    ref: ref || vendor || "",
-    amount
-  });
+  if(editingCashId){
+    // EDIT EXISTING PAYMENT
+    const c = DB.cash.find(x=>x.id===editingCashId);
+    if(!c) return alert("Payment not found");
+
+    // Adjust vendor balance
+    if(c.vendor){
+      const v = DB.vendors.find(x=>x.name===c.vendor);
+      if(v) v.balance = (v.balance || 0) + c.amount; // revert old amount
+    }
+
+    c.dateTime = dtISO;
+    c.vendor = vendor || "";
+    c.ref = ref || vendor || "";
+    c.amount = amount;
+
+    if(vendor){
+      const v = DB.vendors.find(x=>x.name===vendor);
+      if(v) v.balance = (v.balance || 0) - amount; // apply new
+    }
+
+    editingCashId = null;
+  } else {
+    // ADD NEW PAYMENT
+    const id = getNextPaymentId();
+    if(vendor){
+      const v = DB.vendors.find(x=>x.name===vendor);
+      if(v) v.balance = (v.balance || 0) - amount;
+    }
+
+    DB.cash.push({
+      id,
+      dateTime: dtISO,
+      type:"OUT",
+      vendor: vendor || "",
+      ref: ref || vendor || "",
+      amount
+    });
+  }
 
   saveDB(); resetCashForm(); renderCash();
 }
@@ -595,6 +634,7 @@ function resetCashForm(){
   document.getElementById("payVendor").value="";
   document.getElementById("payRef").value="";
   document.getElementById("payAmount").value="";
+  editingCashId = null;
 }
 
 /* ===== APPLY FILTERS ===== */
@@ -611,12 +651,12 @@ function renderCash(){
 
   let filtered = DB.cash.sort((a,b)=>new Date(a.dateTime)-new Date(b.dateTime));
 
-  // Apply filters individually
+  // Filters
   const from = document.getElementById("cashFrom").value;
-  if(from) filtered = filtered.filter(c=>new Date(c.dateTime) >= new Date(from));
+  if(from) filtered = filtered.filter(c=>new Date(c.dateTime)>=new Date(from));
 
   const to = document.getElementById("cashTo").value;
-  if(to) filtered = filtered.filter(c=>new Date(c.dateTime) <= new Date(to));
+  if(to) filtered = filtered.filter(c=>new Date(c.dateTime)<=new Date(to));
 
   const vendorFilter = document.getElementById("cashVendorFilter").value.trim();
   if(vendorFilter) filtered = filtered.filter(c=>c.vendor===vendorFilter);
@@ -630,19 +670,14 @@ function renderCash(){
 
   cashFiltered = filtered;
 
-  // Balance calculation (always total, not filtered)
-  let bal=0;
-  DB.cash.sort((a,b)=>new Date(a.dateTime)-new Date(b.dateTime)).forEach(c=>{
-    bal = c.type==="IN"?bal+c.amount:bal-c.amount;
-  });
-  const totalBalance = bal;
+  // Compute running balance per row
+  let runningBal = 0;
+  let displayRows = filtered.slice((cashPage-1)*cashPerPage, cashPage*cashPerPage);
 
-  // Pagination display
-  const paged = filtered.slice((cashPage-1)*cashPerPage, cashPage*cashPerPage);
+  displayRows.forEach(c=>{
+    if(c.type==="IN") runningBal += c.amount;
+    else runningBal -= c.amount;
 
-  let runningBal=0;
-  paged.forEach(c=>{
-    runningBal = c.type==="IN"?runningBal+c.amount:runningBal-c.amount;
     const dt = new Date(c.dateTime);
     const vendorName = c.vendor || (c.type==="IN"?"Cash Customer":"");
     tbody.innerHTML+=`
@@ -653,14 +688,14 @@ function renderCash(){
         <td>${vendorName}</td>
         <td>${formatNumber(c.amount)}</td>
         <td>${c.ref || ""}</td>
-        <td>${formatNumber(totalBalance)}</td>
+        <td>${formatNumber(runningBal)}</td>
         <td>${c.type==="OUT"?`<button onclick="editCashPayment('${c.id}')">Edit</button>`:""}</td>
         <td>${c.type==="OUT"?`<button onclick="deleteCashPayment('${c.id}')">Delete</button>`:""}</td>
       </tr>
     `;
   });
 
-  document.getElementById("cashBal").innerText=formatNumber(totalBalance);
+  document.getElementById("cashBal").innerText = formatNumber(cashBalance());
 }
 
 /* ===== PAGINATION ===== */
@@ -671,6 +706,7 @@ function prevCashPage(){ if(cashPage>1){ cashPage--; renderCash(); } }
 function editCashPayment(id){
   const c = DB.cash.find(x=>x.id===id && x.type==="OUT");
   if(!c) return alert("Only vendor payments can be edited.");
+  editingCashId = id;
   const dt = new Date(c.dateTime);
   document.getElementById("payDate").value = dt.toISOString().slice(0,10);
   document.getElementById("payVendor").value = c.vendor;
@@ -686,7 +722,6 @@ function deleteCashPayment(id){
   if(!DB.deletedPayments) DB.deletedPayments=[];
   DB.deletedPayments.push({id:c.id,dateTime:new Date().toISOString(),original:c});
 
-  // Refund vendor balance
   if(c.vendor){
     const v = DB.vendors.find(x=>x.name===c.vendor);
     if(v) v.balance = (v.balance || 0) + c.amount;
@@ -699,12 +734,12 @@ function deleteCashPayment(id){
 /* ===== DOWNLOAD CSV ===== */
 function downloadCashCSV(){
   const rows=[["Date","Time","Type","Vendor","Amount","Reference","Balance"]];
-  let bal=0;
+  let runningBal=0;
   DB.cash.sort((a,b)=>new Date(a.dateTime)-new Date(b.dateTime)).forEach(c=>{
-    bal=c.type==="IN"?bal+c.amount:bal-c.amount;
-    const dt=new Date(c.dateTime);
+    if(c.type==="IN") runningBal+=c.amount; else runningBal-=c.amount;
+    const dt = new Date(c.dateTime);
     const vendorName = c.vendor || (c.type==="IN"?"Cash Customer":"");
-    rows.push([dt.toLocaleDateString(),dt.toLocaleTimeString(),c.type,vendorName,c.amount,c.ref||"",bal]);
+    rows.push([dt.toLocaleDateString(),dt.toLocaleTimeString(),c.type,vendorName,c.amount,c.ref||"",runningBal]);
   });
   const csvContent = "data:text/csv;charset=utf-8," + rows.map(r=>r.join(",")).join("\n");
   const encodedUri = encodeURI(csvContent);
