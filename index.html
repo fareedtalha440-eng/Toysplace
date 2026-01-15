@@ -996,14 +996,17 @@ renderProducts();
 <section id="vendors">
   <div class="card">
     <h2>Vendors</h2>
-    <input placeholder="Vendor Name" id="vendorName">
-    <button onclick="addVendor()">Add Vendor</button>
+    <div style="display:flex; gap:10px; margin-bottom:10px;">
+      <input placeholder="Vendor Name" id="vendorName" style="flex:1">
+      <button onclick="addVendor()">Add Vendor</button>
+    </div>
 
-    <table>
+    <table style="width:100%; border-collapse:collapse;">
       <thead>
-        <tr>
+        <tr style="background:#f6f8fa">
           <th>#</th>
-          <th>Name & Balance</th>
+          <th>Vendor ID & Name</th>
+          <th>Balance</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -1014,35 +1017,74 @@ renderProducts();
 
 <script>
 /* ================= VENDOR LOGIC ================= */
+function formatNumber(x){ return Number(x).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
+function getNextVendorId(){
+  if(!DB.vendors || !DB.vendors.length) return "V-1001";
+  const nums = DB.vendors.map(v=>parseInt(v.id.replace("V-","")));
+  const next = Math.max(...nums)+1;
+  return "V-"+next;
+}
+
+/* ===== ADD VENDOR ===== */
+function addVendor(){
+  const name = vendorName.value.trim();
+  if(!name) return alert("Enter vendor name");
+
+  const id = getNextVendorId();
+  DB.vendors.push({ id, name });
+  saveDB();
+  vendorName.value="";
+  renderVendors();
+}
+
+/* ===== EDIT VENDOR ===== */
+function editVendor(id){
+  const v = DB.vendors.find(x=>x.id===id);
+  const n = prompt("Edit vendor name", v.name);
+  if(n){ v.name=n.trim(); saveDB(); renderVendors(); }
+}
+
+/* ===== DELETE VENDOR ===== */
+function deleteVendor(id){
+  const purchaseTotal = DB.purchases.filter(p=>p.vendorId===id).reduce((s,p)=>s+(p.total||0),0);
+  const paymentTotal = DB.cash.filter(c=>c.vendorId===id && c.type==="OUT").reduce((s,c)=>s+c.amount,0);
+  if(purchaseTotal-paymentTotal !==0) return alert("Cannot delete vendor with balance");
+  if(confirm("Delete this vendor?")){
+    DB.vendors = DB.vendors.filter(v=>v.id!==id);
+    saveDB();
+    renderVendors();
+  }
+}
+
+/* ===== RENDER VENDORS ===== */
 function renderVendors(){
-  const tbody = document.getElementById("vendorRows");
-  tbody.innerHTML = "";
+  const tbody=document.getElementById("vendorRows");
+  tbody.innerHTML="";
 
-  DB.vendors.forEach((v, idx) => {
-
-    const purchaseTotal = DB.purchases
-      .filter(p => p.vendorId === v.id)
-      .reduce((s, p) => s + (p.total || 0), 0);
-
-    const paymentTotal = DB.cash
-      .filter(c => c.vendorId === v.id && c.type === "OUT")
-      .reduce((s, c) => s + c.amount, 0);
-
+  DB.vendors.forEach((v,idx)=>{
+    const purchaseTotal = DB.purchases.filter(p=>p.vendorId===v.id).reduce((s,p)=>s+(p.total||0),0);
+    const paymentTotal = DB.cash.filter(c=>c.vendorId===v.id && c.type==="OUT").reduce((s,c)=>s+c.amount,0);
     const balance = purchaseTotal - paymentTotal;
 
-    tbody.innerHTML += `
-      <tr>
-        <td>${idx + 1}</td>
+    // Reminder alert for unpaid >30 days
+    const lastPaymentDate = DB.cash.filter(c=>c.vendorId===v.id && c.type==="OUT")
+                                  .map(c=>new Date(c.dateTime))
+                                  .sort((a,b)=>b-a)[0];
+    const today = new Date();
+    let overdue=false;
+    if(balance>0 && lastPaymentDate){
+      const diffDays = Math.floor((today-lastPaymentDate)/(1000*60*60*24));
+      if(diffDays>30) overdue=true;
+    }
+
+    tbody.innerHTML+=`
+      <tr style="${overdue?'background:#fff3cd':''}">
+        <td>${idx+1}</td>
+        <td>${v.id}<br><strong>${v.name}</strong></td>
+        <td>₨ ${formatNumber(balance)}</td>
         <td>
-          <span style="cursor:pointer;color:#1f6feb;text-decoration:underline"
-                onclick="showVendorLedger('${v.id}')">
-            ${v.name}
-          </span>
-          <br>
-          <small>Balance: ₨ ${balance.toFixed(2)}</small>
-        </td>
-        <td>
+          <button onclick="showVendorLedger('${v.id}')">Open Ledger</button>
           <button onclick="editVendor('${v.id}')">Edit</button>
           <button onclick="deleteVendor('${v.id}')">Delete</button>
         </td>
@@ -1051,144 +1093,136 @@ function renderVendors(){
   });
 }
 
-function addVendor(){
-  const name = vendorName.value.trim();
-  if(!name) return alert("Enter vendor name");
-
-  DB.vendors.push({ id: uid("V"), name });
-  saveDB();
-  vendorName.value = "";
-  renderVendors();
-}
-
-function editVendor(id){
-  const v = DB.vendors.find(x => x.id === id);
-  const n = prompt("Edit vendor name", v.name);
-  if(n){
-    v.name = n.trim();
-    saveDB();
-    renderVendors();
-  }
-}
-
-function deleteVendor(id){
-  const purchaseTotal = DB.purchases
-    .filter(p => p.vendorId === id)
-    .reduce((s,p)=>s+(p.total||0),0);
-
-  const paymentTotal = DB.cash
-    .filter(c => c.vendorId === id && c.type === "OUT")
-    .reduce((s,c)=>s+c.amount,0);
-
-  if(purchaseTotal - paymentTotal !== 0)
-    return alert("Cannot delete vendor with balance");
-
-  if(confirm("Delete this vendor?")){
-    DB.vendors = DB.vendors.filter(v => v.id !== id);
-    saveDB();
-    renderVendors();
-  }
-}
-
-/* ================= LEDGER PAGE ================= */
-
+/* ===== VENDOR LEDGER ===== */
 function showVendorLedger(vendorId){
-  const vendor = DB.vendors.find(v => v.id === vendorId);
+  const vendor = DB.vendors.find(v=>v.id===vendorId);
   if(!vendor) return;
 
   const rows = [];
-  let balance = 0;
 
-  DB.purchases
-    .filter(p => p.vendorId === vendorId)
-    .forEach(p => rows.push({
-      date: p.date,
+  // Purchases
+  DB.purchases.filter(p=>p.vendorId===vendorId).forEach(p=>{
+    rows.push({
+      date: p.dateTime || p.date,
       type: "Purchase",
       ref: p.id,
       debit: p.total,
       credit: 0
-    }));
+    });
+  });
 
-  DB.cash
-    .filter(c => c.vendorId === vendorId && c.type === "OUT")
-    .forEach(c => rows.push({
-      date: c.date,
+  // Payments
+  DB.cash.filter(c=>c.vendorId===vendorId && c.type==="OUT").forEach(c=>{
+    rows.push({
+      date: c.dateTime,
       type: "Payment",
       ref: c.ref || c.id,
       debit: 0,
       credit: c.amount
-    }));
+    });
+  });
 
   rows.sort((a,b)=>new Date(a.date)-new Date(b.date));
 
-  const win = window.open("", "_blank");
+  // Filter interface
+  const win=window.open("","_blank");
   win.document.write(`
-<!DOCTYPE html>
 <html>
 <head>
-<title>Vendor Ledger - ${vendor.name}</title>
+<title>Ledger - ${vendor.name}</title>
 <style>
 body{font-family:Segoe UI,Arial;padding:30px}
+h2,h3{margin:5px 0}
 table{width:100%;border-collapse:collapse;margin-top:20px}
 th,td{border:1px solid #d0d7de;padding:8px;text-align:center}
 th{background:#f6f8fa}
 .right{text-align:right}
 button{margin-right:10px;padding:6px 12px}
 .link{color:#1f6feb;cursor:pointer;text-decoration:underline}
+.block{display:flex;gap:10px;margin-bottom:10px;align-items:center;}
 </style>
 </head>
 <body>
 
-<h2>Vendor Ledger</h2>
-<h3>${vendor.name}</h3>
+<h2>Vendor Ledger - ${vendor.name}</h2>
 
-<button onclick="window.print()">Print</button>
+<div class="block">
+<label>From:</label><input type="date" id="ledgerFrom">
+<label>To:</label><input type="date" id="ledgerTo">
+<button onclick="applyFilter()">Apply Filter</button>
+<button onclick="print()">Print</button>
 <button onclick="downloadCSV()">Download CSV</button>
+</div>
 
 <table>
 <thead>
 <tr>
-<th>Date</th>
-<th>Type</th>
-<th>Reference</th>
-<th>Debit</th>
-<th>Credit</th>
-<th>Balance</th>
+<th>Date</th><th>Type</th><th>Reference</th><th>Debit</th><th>Credit</th><th>Balance</th>
 </tr>
 </thead>
 <tbody id="ledgerRows"></tbody>
+<tfoot>
+<tr style="font-weight:bold; background:#f1f3f5;">
+<td colspan="3">Totals</td>
+<td id="totalDebit"></td>
+<td id="totalCredit"></td>
+<td></td>
+</tr>
+</tfoot>
 </table>
 
 <script>
-const data = ${JSON.stringify(rows)};
-let balance = 0;
-let csv = "Date,Type,Reference,Debit,Credit,Balance\\n";
-const tbody = document.getElementById("ledgerRows");
+let ledgerData=${JSON.stringify(rows)};
 
-data.forEach(r=>{
-  balance += r.debit - r.credit;
-  csv += r.date+","+r.type+","+r.ref+","+r.debit+","+r.credit+","+balance+"\\n";
+function formatNum(x){return Number(x).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
 
-  const tr = document.createElement("tr");
-  tr.innerHTML = \`
-    <td>\${r.date}</td>
-    <td>\${r.type}</td>
-    <td class="link" onclick="window.open(location.pathname+'?ref='+ '\${r.ref}','_blank')">\${r.ref}</td>
-    <td class="right">\${r.debit.toFixed(2)}</td>
-    <td class="right">\${r.credit.toFixed(2)}</td>
-    <td class="right">\${balance.toFixed(2)}</td>
-  \`;
-  tbody.appendChild(tr);
-});
+function renderLedger(filtered=null){
+  const tbody=document.getElementById("ledgerRows");
+  tbody.innerHTML="";
+  const data=filtered||ledgerData;
+  let bal=0, totalDebit=0, totalCredit=0;
+  data.forEach(r=>{
+    bal+=r.debit-r.credit;
+    totalDebit+=r.debit; totalCredit+=r.credit;
+    const dt=new Date(r.date);
+    tbody.innerHTML+=\`<tr>
+      <td>\${dt.toLocaleDateString()}</td>
+      <td>\${r.type}</td>
+      <td class="link" onclick="window.open(location.pathname+'?ref='+ '\${r.ref}','_blank')">\${r.ref}</td>
+      <td class="right">\${formatNum(r.debit)}</td>
+      <td class="right">\${formatNum(r.credit)}</td>
+      <td class="right">\${formatNum(bal)}</td>
+    </tr>\`;
+  });
+  document.getElementById("totalDebit").innerText=formatNum(totalDebit);
+  document.getElementById("totalCredit").innerText=formatNum(totalCredit);
+}
+
+function applyFilter(){
+  const from=document.getElementById("ledgerFrom").value;
+  const to=document.getElementById("ledgerTo").value;
+  let filtered=ledgerData;
+  if(from) filtered=filtered.filter(r=>new Date(r.date)>=new Date(from));
+  if(to) filtered=filtered.filter(r=>new Date(r.date)<=new Date(to));
+  renderLedger(filtered);
+}
 
 function downloadCSV(){
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
-  a.download="vendor_ledger_${vendor.name.replace(/\s+/g,"_")}.csv";
-  a.click();
+  const rows=[["Date","Type","Reference","Debit","Credit","Balance"]];
+  let bal=0;
+  ledgerData.forEach(r=>{
+    bal+=r.debit-r.credit;
+    rows.push([new Date(r.date).toLocaleDateString(),r.type,r.ref,formatNum(r.debit),formatNum(r.credit),formatNum(bal)]);
+  });
+  const csvContent="data:text/csv;charset=utf-8,"+rows.map(r=>r.join(",")).join("\\n");
+  const link=document.createElement("a");
+  link.href=encodeURI(csvContent);
+  link.download="vendor_ledger_${vendor.name.replace(/\s+/g,"_")}.csv";
+  link.click();
 }
-<\/script>
 
+renderLedger();
+<\/script>
 </body>
 </html>
 `);
