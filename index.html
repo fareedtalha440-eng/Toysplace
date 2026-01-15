@@ -1017,25 +1017,29 @@ renderProducts();
 </section>
 
 <script>
+/* ================= INIT DB ================= */
+if(!window.DB) window.DB = {};
+if(!DB.vendors) DB.vendors = [];
+if(!DB.purchases) DB.purchases = [];
+if(!DB.cash) DB.cash = [];
+
 /* ================= VENDOR LOGIC ================= */
 function formatNumber(x){ return Number(x).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
 function getNextVendorId(){
-  if(!DB.vendors || !DB.vendors.length) return "V-1001";
+  if(!DB.vendors.length) return "V-1001";
   const nums = DB.vendors.map(v=>parseInt(v.id.replace("V-",""))||1000);
-  const next = Math.max(...nums)+1;
-  return "V-"+next;
+  return "V-"+(Math.max(...nums)+1);
 }
 
 /* ===== ADD VENDOR ===== */
 function addVendor(){
-  const name = vendorName.value.trim();
+  const name = document.getElementById("vendorName").value.trim();
   if(!name) return alert("Enter vendor name");
-
   const id = getNextVendorId();
   DB.vendors.push({ id, name });
   saveDB();
-  vendorName.value="";
+  document.getElementById("vendorName").value="";
   renderVendors();
 }
 
@@ -1066,7 +1070,7 @@ function renderVendors(){
     const paymentTotal = DB.cash.filter(c=>c.vendorId===v.id && c.type==="OUT").reduce((s,c)=>s+c.amount,0);
     const balance = purchaseTotal - paymentTotal;
 
-    // Reminder overdue >30 days
+    // Highlight overdue (>30 days) if balance>0
     const lastPaymentDate = DB.cash.filter(c=>c.vendorId===v.id && c.type==="OUT")
                                   .map(c=>new Date(c.dateTime))
                                   .sort((a,b)=>b-a)[0];
@@ -1099,7 +1103,6 @@ function showVendorLedger(vendorId){
   if(!vendor) return;
 
   const ledgerRows=[];
-  // Purchases
   DB.purchases.filter(p=>p.vendorId===vendorId).forEach(p=>{
     ledgerRows.push({
       date:p.dateTime || p.date,
@@ -1109,7 +1112,6 @@ function showVendorLedger(vendorId){
       credit:0
     });
   });
-  // Payments
   DB.cash.filter(c=>c.vendorId===vendorId && c.type==="OUT").forEach(c=>{
     ledgerRows.push({
       date:c.dateTime,
@@ -1128,9 +1130,8 @@ function showVendorLedger(vendorId){
 <title>Ledger - ${vendor.name}</title>
 <style>
 body{font-family:Segoe UI,Arial;padding:30px}
-h1,h2{margin:0}
-h1{font-size:26px;font-weight:bold;}
-h2{font-size:16px;color:#555;margin-bottom:20px;}
+h1{font-size:26px;font-weight:bold;margin:0}
+h2{font-size:16px;color:#555;margin:0 0 20px 0;}
 table{width:100%;border-collapse:collapse;margin-top:10px}
 th,td{border:1px solid #d0d7de;padding:8px;text-align:center}
 th{background:#f6f8fa}
@@ -1141,7 +1142,7 @@ th{background:#f6f8fa}
 <body>
 
 <h1>${vendor.name}</h1>
-<h2>Vendor No: ${vendor.id} &nbsp;&nbsp;&nbsp;Period: </h2>
+<h2>Vendor No: ${vendor.id}</h2>
 
 <table>
 <thead>
@@ -1155,8 +1156,7 @@ th{background:#f6f8fa}
 <th>Balance</th>
 </tr>
 </thead>
-<tbody>
-</tbody>
+<tbody></tbody>
 </table>
 
 <div class="totBal">Present Balance: ₨ ${formatNumber(DB.purchases.filter(p=>p.vendorId===vendorId).reduce((s,p)=>s+(p.total||0),0) -
@@ -1189,8 +1189,10 @@ data.forEach((r,i)=>{
 `);
 }
 
+// Initial render
 renderVendors();
 </script>
+
 
 <!-- ================= PURCHASE ================= -->
 
