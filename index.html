@@ -497,16 +497,19 @@ td{position:relative;}
     </div>
 
     <!-- ===== FILTER ===== -->
-    <h3>Filter</h3>
+    <h3>Filter Payments</h3>
     <hr>
     <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:5px;">
       <label>From</label><input type="date" id="cashFrom">
+      <button onclick="applyCashFrom()">Apply</button>
       <label>To</label><input type="date" id="cashTo">
+      <button onclick="applyCashTo()">Apply</button>
       <select id="cashVendorFilter">
         <option value="">All Vendors</option>
       </select>
+      <button onclick="applyCashVendor()">Apply</button>
       <input placeholder="Search Vendor / Amount / Ref" id="cashSearch" style="flex:1">
-      <button onclick="renderCash()">Apply</button>
+      <button onclick="applyCashSearch()">Apply</button>
       <button onclick="downloadCashCSV()">Download CSV</button>
     </div>
 
@@ -538,6 +541,7 @@ td{position:relative;}
 
 <script>
 let cashPage = 1, cashPerPage = 100;
+let cashFiltered = null;
 
 /* ===== FORMAT NUMBER WITH COMMAS ===== */
 function formatNumber(x){ return Number(x).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}); }
@@ -593,33 +597,42 @@ function resetCashForm(){
   document.getElementById("payAmount").value="";
 }
 
+/* ===== APPLY FILTERS ===== */
+function applyCashFrom(){ cashFiltered = null; renderCash(); }
+function applyCashTo(){ cashFiltered = null; renderCash(); }
+function applyCashVendor(){ cashFiltered = null; renderCash(); }
+function applyCashSearch(){ cashFiltered = null; renderCash(); }
+
 /* ===== RENDER CASH ===== */
 function renderCash(){
   loadVendorOptions();
   const tbody = document.getElementById("cashRows");
   tbody.innerHTML="";
 
+  let filtered = DB.cash.sort((a,b)=>new Date(a.dateTime)-new Date(b.dateTime));
+
+  // Apply filters individually
   const from = document.getElementById("cashFrom").value;
+  if(from) filtered = filtered.filter(c=>new Date(c.dateTime) >= new Date(from));
+
   const to = document.getElementById("cashTo").value;
+  if(to) filtered = filtered.filter(c=>new Date(c.dateTime) <= new Date(to));
+
   const vendorFilter = document.getElementById("cashVendorFilter").value.trim();
+  if(vendorFilter) filtered = filtered.filter(c=>c.vendor===vendorFilter);
+
   const searchText = document.getElementById("cashSearch").value.trim().toLowerCase();
+  if(searchText) filtered = filtered.filter(c=> 
+    (c.vendor||"").toLowerCase().includes(searchText) ||
+    (c.ref||"").toLowerCase().includes(searchText) ||
+    (c.amount+"").includes(searchText)
+  );
 
-  let bal = 0;
-  const filtered = DB.cash
-    .sort((a,b)=>new Date(a.dateTime)-new Date(b.dateTime))
-    .filter(c=>{
-      if(from && new Date(c.dateTime)<new Date(from)) return false;
-      if(to && new Date(c.dateTime)>new Date(to)) return false;
-      if(vendorFilter && c.vendor!==vendorFilter) return false;
-      if(searchText && !(
-        (c.vendor||"").toLowerCase().includes(searchText) ||
-        (c.ref||"").toLowerCase().includes(searchText) ||
-        (c.amount+"").includes(searchText)
-      )) return false;
-      return true;
-    });
+  cashFiltered = filtered;
 
+  // Pagination
   const paged = filtered.slice((cashPage-1)*cashPerPage, cashPage*cashPerPage);
+  let bal=0;
 
   paged.forEach(c=>{
     bal = c.type==="IN"?bal+c.amount:bal-c.amount;
@@ -633,8 +646,8 @@ function renderCash(){
         <td>${formatNumber(c.amount)}</td>
         <td>${c.ref||""}</td>
         <td>${formatNumber(bal)}</td>
-        <td><button onclick="editCashPayment('${c.id}')">Edit</button></td>
-        <td><button onclick="deleteCashPayment('${c.id}')">Delete</button></td>
+        <td>${c.type==="OUT"?`<button onclick="editCashPayment('${c.id}')">Edit</button>`:""}</td>
+        <td>${c.type==="OUT"?`<button onclick="deleteCashPayment('${c.id}')">Delete</button>`:""}</td>
       </tr>
     `;
   });
@@ -643,59 +656,46 @@ function renderCash(){
 }
 
 /* ===== PAGINATION ===== */
-function nextCashPage(){ cashPage++; renderCash(); }
-function prevCashPage(){ if(cashPage>1){ cashPage--; renderCash();} }
+function nextCashPage(){ if(cashFiltered && cashPage*cashPerPage<cashFiltered.length) cashPage++; renderCash(); }
+function prevCashPage(){ if(cashPage>1){ cashPage--; renderCash(); } }
 
 /* ===== EDIT / DELETE ===== */
 function editCashPayment(id){
-  const c = DB.cash.find(x=>x.id===id);
-  if(!c) return;
+  const c = DB.cash.find(x=>x.id===id && x.type==="OUT");
+  if(!c) return alert("Only vendor payments can be edited.");
   const dt = new Date(c.dateTime);
   document.getElementById("payDate").value = dt.toISOString().slice(0,10);
   document.getElementById("payVendor").value = c.vendor;
   document.getElementById("payRef").value = c.ref;
   document.getElementById("payAmount").value = c.amount;
-  deleteCashPayment(id,true); // remove before editing
 }
 
-function deleteCashPayment(id,isEdit=false){
-  const c = DB.cash.find(x=>x.id===id);
-  if(!c) return;
+function deleteCashPayment(id){
+  const c = DB.cash.find(x=>x.id===id && x.type==="OUT");
+  if(!c) return alert("Only vendor payments can be deleted.");
   if(!confirm("Delete this payment?")) return;
-  if(!DB.deletedPayments) DB.deletedPayments=[];
-  DB.deletedPayments.push({
-    id: c.id,
-    dateTime: new Date().toISOString(),
-    original: c
-  });
 
-  // Refund to vendor balance
+  if(!DB.deletedPayments) DB.deletedPayments=[];
+  DB.deletedPayments.push({id:c.id,dateTime:new Date().toISOString(),original:c});
+
+  // Refund vendor balance
   if(c.vendor){
     const v = DB.vendors.find(x=>x.name===c.vendor);
     if(v) v.balance = (v.balance || 0) + c.amount;
   }
 
   DB.cash = DB.cash.filter(x=>x.id!==id);
-  saveDB();
-  if(!isEdit) renderCash();
+  saveDB(); renderCash();
 }
 
 /* ===== DOWNLOAD CSV ===== */
 function downloadCashCSV(){
-  const rows = [["Date","Time","Type","Vendor","Amount","Reference","Balance"]];
+  const rows=[["Date","Time","Type","Vendor","Amount","Reference","Balance"]];
   let bal=0;
   DB.cash.sort((a,b)=>new Date(a.dateTime)-new Date(b.dateTime)).forEach(c=>{
-    bal = c.type==="IN"?bal+c.amount:bal-c.amount;
-    const dt = new Date(c.dateTime);
-    rows.push([
-      dt.toLocaleDateString(),
-      dt.toLocaleTimeString(),
-      c.type,
-      c.vendor||"",
-      c.amount,
-      c.ref||"",
-      bal
-    ]);
+    bal=c.type==="IN"?bal+c.amount:bal-c.amount;
+    const dt=new Date(c.dateTime);
+    rows.push([dt.toLocaleDateString(),dt.toLocaleTimeString(),c.type,c.vendor||"",c.amount,c.ref||"",bal]);
   });
   const csvContent = "data:text/csv;charset=utf-8," + rows.map(r=>r.join(",")).join("\n");
   const encodedUri = encodeURI(csvContent);
@@ -705,8 +705,7 @@ function downloadCashCSV(){
 }
 
 /* ===== INITIAL LOAD ===== */
-loadVendorOptions();
-renderCash();
+loadVendorOptions(); renderCash();
 </script>
 <!-- ================= PRODUCTS ================= -->
 <section id="products">
