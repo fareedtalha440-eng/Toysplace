@@ -193,13 +193,13 @@ function uid(prefix){
     <table style="width:100%; margin-bottom:10px;">
       <thead>
         <tr>
-          <th style="width:10%">Barcode</th>
-          <th style="width:10%">Item No</th>
-          <th style="width:30%">Description</th>
+          <th style="width:12%">Barcode</th>
+          <th style="width:12%">Item No</th>
+          <th style="width:34%">Description</th>
           <th style="width:8%">Qty</th>
           <th style="width:12%">Rate (PKR)</th>
           <th style="width:12%">Total (PKR)</th>
-          <th style="width:8%">Delete</th>
+          <th style="width:10%">Delete</th>
         </tr>
       </thead>
       <tbody id="invoiceRows"></tbody>
@@ -216,7 +216,7 @@ function uid(prefix){
         <label>Main Discount %:</label>
         <input type="number" id="mainDiscPct" value="0" oninput="applyMainDiscount(getSubTotal())">
       </div>
-      <div style="border:1px solid #000; padding:5px; font-weight:bold;">
+      <div style="padding:5px; font-weight:bold; border-bottom:2px solid #000;">
         <label>Total:</label>
         <b id="invTotal">0</b> PKR
       </div>
@@ -268,113 +268,74 @@ function uid(prefix){
 let invoiceDraft = [];
 let editingInvoiceId = null;
 let invPage = 1, invPerPage = 100;
-let invFiltered = DB.invoices;
+let invFiltered = null;
+
+/* ===== FORMAT NUMBER WITH COMMAS ===== */
+function formatNumber(x){
+  return Number(x).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2});
+}
 
 /* ===== SEQUENTIAL INVOICE NUMBER ===== */
 function getNextInvoiceNumber(){
   if(!DB.invoices || !DB.invoices.length) return "000001";
-  const nums = DB.invoices.map(inv=>{
-    const n = parseInt(inv.id,10);
-    return isNaN(n)?0:n;
-  });
-  const next = Math.max(...nums) + 1;
-  return String(next).padStart(6,'0');
+  const nums = DB.invoices.map(inv=>parseInt(inv.id,10)||0);
+  return String(Math.max(...nums)+1).padStart(6,'0');
 }
 
 /* ===== ADD ROW ===== */
 function addInvoiceRow(){
-  invoiceDraft.push({
-    productId: "",
-    barcode: "",
-    itemNo: "",
-    desc: "",
-    qty: 1,
-    rate: 0,
-    valid: false
-  });
+  invoiceDraft.push({ productId:"", barcode:"", itemNo:"", desc:"", qty:1, rate:0, valid:false });
   renderInvoice();
 }
 
-/* ===== RENDER INVOICE ===== */
+/* ===== RENDER INVOICE ROWS ===== */
 function renderInvoice(){
   const tbody = document.getElementById("invoiceRows");
   if(!tbody) return;
-  tbody.innerHTML = "";
-  let subtotal = 0;
+  tbody.innerHTML="";
+  let subtotal=0;
 
   invoiceDraft.forEach((r,i)=>{
     if(r.valid) subtotal += r.qty*r.rate;
-
     tbody.innerHTML += `
       <tr>
         <td style="position:relative;">
-          <input value="${r.barcode}" placeholder="Barcode"
-            oninput="searchInvProduct(${i}, this.value, 'barcode')">
+          <input value="${r.barcode}" placeholder="Barcode" oninput="searchInvProduct(${i}, this.value,'barcode')">
           <div id="invSugB${i}" class="invSug"></div>
         </td>
         <td style="position:relative;">
-          <input value="${r.itemNo}" placeholder="Item No"
-            oninput="searchInvProduct(${i}, this.value, 'itemNo')">
+          <input value="${r.itemNo}" placeholder="Item No" oninput="searchInvProduct(${i}, this.value,'itemNo')">
           <div id="invSugI${i}" class="invSug"></div>
         </td>
         <td style="position:relative;">
-          <input value="${r.desc}" placeholder="Description"
-            oninput="searchInvProduct(${i}, this.value, 'desc')">
+          <input value="${r.desc}" placeholder="Description" oninput="searchInvProduct(${i}, this.value,'desc')">
           <div id="invSugD${i}" class="invSug"></div>
         </td>
         <td><input type="number" min="1" value="${r.qty}" onchange="setInvQty(${i},this.value)"></td>
         <td><input type="number" value="${r.rate}" onchange="setInvRate(${i},this.value)"></td>
         <td>${r.valid ? formatNumber(r.qty*r.rate) : "<span style='color:red'>Invalid</span>"}</td>
         <td><button class="red" onclick="delInvRow(${i})">X</button></td>
-      </tr>
-    `;
+      </tr>`;
   });
 
   applyMainDiscount(subtotal);
 }
 
-/* ===== SEARCH WITH DROPDOWN ===== */
+/* ===== SEARCH DROPDOWN ===== */
 function searchInvProduct(i,val,field){
-  const q = val.trim().toLowerCase();
-  const row = invoiceDraft[i];
-  row.valid = false;
+  const q=val.trim().toLowerCase();
+  const row=invoiceDraft[i]; row.valid=false;
+  const box=document.getElementById(field==="barcode"?"invSugB"+i:field==="itemNo"?"invSugI"+i:"invSugD"+i);
+  box.innerHTML=""; if(!q) return;
 
-  const box = document.getElementById(
-    field==="barcode" ? "invSugB"+i :
-    field==="itemNo" ? "invSugI"+i : "invSugD"+i
-  );
-  box.innerHTML = "";
-  if(!q) return;
-
-  const results = DB.products.filter(p =>
-    ((field==="barcode"&&(p.barcode||"").toLowerCase().includes(q)) ||
-     (field==="itemNo"&&(p.itemNo||"").toLowerCase().includes(q)) ||
-     (field==="desc"&&(p.desc||"").toLowerCase().includes(q)))
-  );
-
-  if(!results.length){
-    box.innerHTML = `<div style="padding:4px;color:red">Product not exist or no stock</div>`;
-    return;
-  }
+  const results=DB.products.filter(p=>((field==="barcode"&&(p.barcode||"").toLowerCase().includes(q))||(field==="itemNo"&&(p.itemNo||"").toLowerCase().includes(q))||(field==="desc"&&(p.desc||"").toLowerCase().includes(q))));
+  if(!results.length){ box.innerHTML=`<div style="padding:4px;color:red">Product not exist or no stock</div>`; return; }
 
   results.forEach(p=>{
-    const stockNote = p.stock<=0 ? " ❌ NO STOCK" : "";
-    const d = document.createElement("div");
-    d.style.padding = "4px";
-    d.style.cursor = "pointer";
-    d.innerText = `${p.itemNo} - ${p.desc} (Stock: ${p.stock})${stockNote}`;
-    d.onclick = ()=>{
-      invoiceDraft[i] = {
-        productId: p.id,
-        barcode: p.barcode||"",
-        itemNo: p.itemNo,
-        desc: p.desc,
-        qty: 1,
-        rate: p.rate,
-        valid: true
-      };
-      renderInvoice();
-    };
+    const stockNote=p.stock<=0?" ❌ NO STOCK":"";
+    const d=document.createElement("div"); d.style.padding="4px"; d.style.cursor="pointer";
+    d.innerText=`${p.itemNo} - ${p.desc} (Stock: ${p.stock})${stockNote}`;
+    d.onclick=()=>{ invoiceDraft[i]={productId:p.id,barcode:p.barcode||"",itemNo:p.itemNo,desc:p.desc,qty:1,rate:p.rate,valid:true}; renderInvoice(); };
     box.appendChild(d);
   });
 }
@@ -387,15 +348,10 @@ function delInvRow(i){ invoiceDraft.splice(i,1); renderInvoice(); }
 /* ===== TOTAL / DISCOUNT ===== */
 function getSubTotal(){ return invoiceDraft.reduce((s,r)=>r.valid?s+(r.qty*r.rate):s,0); }
 function applyMainDiscount(sub){
-  let amt = +document.getElementById("mainDiscAmt")?.value||0;
-  let pct = +document.getElementById("mainDiscPct")?.value||0;
-  if(pct>0) amt = sub * pct/100;
-  document.getElementById("invTotal").innerText = formatNumber(sub-amt);
-}
-
-/* ===== FORMAT NUMBER WITH COMMAS ===== */
-function formatNumber(x){
-  return Number(x).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+  let amt=+document.getElementById("mainDiscAmt")?.value||0;
+  const pct=+document.getElementById("mainDiscPct")?.value||0;
+  if(pct>0) amt=sub*pct/100;
+  document.getElementById("invTotal").innerText=formatNumber(sub-amt);
 }
 
 /* ===== SAVE INVOICE ===== */
@@ -403,170 +359,79 @@ function saveInvoice(){
   if(!invoiceDraft.length) return alert("Invoice empty");
   if(invoiceDraft.some(r=>!r.valid)) return alert("Invoice contains invalid product. Select from list only.");
 
-  const id = editingInvoiceId || getNextInvoiceNumber();
-  const dt = new Date();
-  const dateTime = dt.toISOString();
-  const total = +document.getElementById("invTotal").innerText.replace(/,/g,'');
+  const id=editingInvoiceId||getNextInvoiceNumber();
+  const dt=new Date(); const dateTime=dt.toISOString();
+  const total=+document.getElementById("invTotal").innerText.replace(/,/g,'');
 
-  for(const r of invoiceDraft){
-    const p = DB.products.find(x=>x.id===r.productId);
-    if(!p) { alert("Product missing: " + r.desc); return; }
-    if(p.stock<r.qty){ alert("Insufficient stock for: "+r.desc); return; }
-  }
+  for(const r of invoiceDraft){ const p=DB.products.find(x=>x.id===r.productId); if(!p){alert("Product missing: "+r.desc); return;} if(p.stock<r.qty){alert("Insufficient stock for: "+r.desc); return;} }
+  invoiceDraft.forEach(r=>{ const p=DB.products.find(x=>x.id===r.productId); if(p) p.stock-=r.qty; });
 
-  invoiceDraft.forEach(r=>{
-    const p = DB.products.find(x=>x.id===r.productId);
-    if(p) p.stock -= r.qty;
-  });
+  DB.invoices=DB.invoices.filter(i=>i.id!==id);
+  DB.invoices.push({id,dateTime,total,items:JSON.parse(JSON.stringify(invoiceDraft))});
+  DB.cash.push({id:uid("C"),type:"IN",amount:total,ref:id,date:dateTime});
 
-  DB.invoices = DB.invoices.filter(i=>i.id!==id);
-  DB.invoices.push({ id, dateTime, total, items: JSON.parse(JSON.stringify(invoiceDraft)) });
-  DB.cash.push({ id: uid("C"), type:"IN", amount: total, ref:id, date: dateTime });
-
-  saveDB();
-  invoiceDraft=[];
-  editingInvoiceId=null;
+  saveDB(); invoiceDraft=[]; editingInvoiceId=null;
   document.getElementById("mainDiscAmt").value=document.getElementById("mainDiscPct").value=0;
 
-  renderInvoice();
-  renderInvoiceList();
-  renderCash();
+  renderInvoice(); renderInvoiceList(); renderCash();
   alert("Invoice saved successfully");
 }
 
-/* ===== INVOICE LIST ===== */
+/* ===== RENDER PREVIOUS INVOICES ===== */
 function renderInvoiceList(){
-  const tbody = document.getElementById("invoiceList");
-  if(!tbody) return;
-  tbody.innerHTML = "";
-
-  let invoices = invFiltered || DB.invoices;
-  invoices = invoices.slice((invPage-1)*invPerPage, invPage*invPerPage);
+  const tbody=document.getElementById("invoiceList"); if(!tbody) return;
+  tbody.innerHTML="";
+  const invoices=(invFiltered||DB.invoices).slice((invPage-1)*invPerPage,invPage*invPerPage);
 
   invoices.forEach((i,idx)=>{
-    const dt = new Date(i.dateTime);
-    tbody.innerHTML += `
-      <tr>
-        <td>${(invPage-1)*invPerPage + idx +1}</td>
-        <td>${i.id}</td>
-        <td>${dt.toLocaleDateString(undefined,{ weekday:'long'})}</td>
-        <td>${dt.toLocaleTimeString()}</td>
-        <td>${formatNumber(i.total)}</td>
-        <td><button onclick="printInvoice('${i.id}')">Print</button></td>
-        <td><button onclick="editInvoice('${i.id}')">Edit</button></td>
-        <td><button class="red" onclick="deleteInvoice('${i.id}')">Delete</button></td>
-      </tr>
-    `;
+    const dt=new Date(i.dateTime);
+    tbody.innerHTML+=`<tr>
+      <td>${(invPage-1)*invPerPage+idx+1}</td>
+      <td>${i.id}</td>
+      <td>${dt.toLocaleDateString(undefined,{weekday:'long'})}</td>
+      <td>${dt.toLocaleTimeString()}</td>
+      <td>${formatNumber(i.total)}</td>
+      <td><button onclick="printInvoice('${i.id}')">Print</button></td>
+      <td><button onclick="editInvoice('${i.id}')">Edit</button></td>
+      <td><button class="red" onclick="deleteInvoice('${i.id}')">Delete</button></td>
+    </tr>`;
   });
 }
 
-/* ===== PRINT INVOICE (PROFESSIONAL STYLE) ===== */
+/* ===== FILTER / PAGINATION ===== */
+function applyInvoiceFilter(){ const from=document.getElementById("invFrom").value; const to=document.getElementById("invTo").value;
+  invFiltered=DB.invoices.filter(i=>{
+    const dt=new Date(i.dateTime); const f=from?new Date(from):null; const t=to?new Date(to):null;
+    if(f&&dt<f) return false; if(t&&dt>t) return false; return true;
+  }); invPage=1; renderInvoiceList();
+}
+function nextInvPage(){ invPage++; renderInvoiceList(); }
+function prevInvPage(){ if(invPage>1){ invPage--; renderInvoiceList();} }
+
+/* ===== EDIT / DELETE ===== */
+function editInvoice(id){ const inv=DB.invoices.find(x=>x.id===id); if(!inv) return; editingInvoiceId=id; invoiceDraft=JSON.parse(JSON.stringify(inv.items)); renderInvoice();}
+function deleteInvoice(id){ if(!confirm("Delete invoice?")) return; const inv=DB.invoices.find(x=>x.id===id); inv.items.forEach(r=>{ const p=DB.products.find(x=>x.id===r.productId); if(p) p.stock+=r.qty; }); DB.cash=DB.cash.filter(c=>c.ref!==id); DB.invoices=DB.invoices.filter(i=>i.id!==id); saveDB(); renderInvoiceList();}
+
+/* ===== PRINT INVOICE PROFESSIONAL ===== */
 function printInvoice(id){
-  const inv = DB.invoices.find(x=>x.id===id);
-  if(!inv) return alert("Invoice not found");
-
-  const mainDiscAmt = +document.getElementById("mainDiscAmt")?.value || 0;
-  const mainDiscPct = +document.getElementById("mainDiscPct")?.value || 0;
-  const subtotal = inv.items.reduce((s,r)=>s+r.qty*r.rate,0);
-  const discountTotal = mainDiscPct>0 ? subtotal*mainDiscPct/100 : mainDiscAmt;
-
-  const dt = new Date(inv.dateTime);
-  const weekday = dt.toLocaleDateString(undefined, { weekday: 'long' });
-  const dateStr = `${weekday}, ${dt.toLocaleDateString()}`;
-  const timeStr = dt.toLocaleTimeString();
-
-  let logoTag = '';
-  if(DB.settings && DB.settings.logo) {
-    logoTag = `<img src="${DB.settings.logo}" style="max-width:150px; height:auto;">`;
-  }
-
-  let rowsHtml = '';
-  inv.items.forEach((r,i)=>{
-    rowsHtml += `<tr>
-      <td>${i+1}</td>
-      <td>${r.itemNo}</td>
-      <td>${r.desc}</td>
-      <td>${r.qty}</td>
-      <td>PKR ${formatNumber(r.rate)}</td>
-      <td>PKR ${formatNumber(r.qty*r.rate)}</td>
-    </tr>`;
-  });
-
-  const companyInfo = DB.settings?.company || "";
-
-  const html = `
-  <html>
-  <head>
-    <title>Invoice ${inv.id}</title>
-    <style>
-      body { font-family: Arial; padding:20px; width:100%; box-sizing:border-box;}
-      .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;}
-      .header-left div { margin-bottom:4px; padding:4px; border:1px solid #000; font-weight:500; }
-      .logo { text-align:right; }
-      h2 { text-align:center; margin:10px 0;}
-      table { width:100%; border-collapse: collapse; margin-top:10px; }
-      th, td { border:1px solid #000; padding:6px; text-align:left; font-weight:400; }
-      th { background:#eee; font-weight:600; }
-      .totals, .subtotal, .discount { border:1px solid #000; padding:6px; margin-top:5px; font-weight:500; width:300px; }
-      .totals { font-size:1.05em; font-weight:600; }
-      .info-block { display:flex; justify-content:space-between; margin-top:15px; flex-wrap:wrap; gap:10px; }
-      .info-block div { border:1px solid #000; padding:5px; font-weight:500; min-width:140px; text-align:center;}
-      @media print {
-        body { width:100%; }
-        table, .totals, .subtotal, .discount, .info-block div { page-break-inside: avoid; }
-      }
-    </style>
-  </head>
-  <body>
-    <div class="header">
-      <div class="header-left">
-        <div><b>Issued To:</b> Cash Customers</div>
-        <div><b>Invoice No:</b> ${inv.id}</div>
-        <div><b>Invoice Date:</b> ${dateStr}</div>
-        <div><b>Time:</b> ${timeStr}</div>
-      </div>
-      <div class="logo">${logoTag}</div>
-    </div>
-
-    <h2>Invoice</h2>
-
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Item No</th>
-          <th>Description</th>
-          <th>Qty</th>
-          <th>Rate (PKR)</th>
-          <th>Total (PKR)</th>
-        </tr>
-      </thead>
-      <tbody>${rowsHtml}</tbody>
-    </table>
-
+  const inv=DB.invoices.find(x=>x.id===id); if(!inv) return alert("Invoice not found");
+  const mainDiscAmt=+document.getElementById("mainDiscAmt")?.value||0; const mainDiscPct=+document.getElementById("mainDiscPct")?.value||0;
+  const subtotal=inv.items.reduce((s,r)=>s+r.qty*r.rate,0); const discountTotal=mainDiscPct>0?subtotal*mainDiscPct/100:mainDiscAmt;
+  const dt=new Date(inv.dateTime); const weekday=dt.toLocaleDateString(undefined,{weekday:'long'}); const dateStr=`${weekday}, ${dt.toLocaleDateString()}`; const timeStr=dt.toLocaleTimeString();
+  let logoTag=""; if(DB.settings&&DB.settings.logo){logoTag=`<img src="${DB.settings.logo}" style="max-width:120px;height:auto;">`;}
+  let rowsHtml=""; inv.items.forEach((r,i)=>{ rowsHtml+=`<tr><td>${i+1}</td><td>${r.itemNo}</td><td>${r.desc}</td><td>${r.qty}</td><td>PKR ${formatNumber(r.rate)}</td><td>PKR ${formatNumber(r.qty*r.rate)}</td></tr>`;});
+  const companyInfo=DB.settings?.company||"";
+  const html=`<html><head><title>Invoice ${inv.id}</title><style>
+    body{font-family:Arial;padding:20px;box-sizing:border-box;} .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;} .header-left div{margin-bottom:4px;padding:4px;border:1px solid #000;font-weight:500;} .logo{text-align:right;} h2{text-align:center;margin:10px 0;} table{width:100%;border-collapse:collapse;margin-top:10px;} th,td{border:1px solid #000;padding:6px;text-align:left;font-weight:400;} th{background:#eee;font-weight:600;} .subtotal,.discount,.totals{padding:6px;margin-top:5px;font-weight:500;} .totals{font-weight:600;} @media print{body{width:100%;} table,.totals,.subtotal,.discount{page-break-inside:avoid;}}</style></head>
+    <body><div class="header"><div class="header-left"><div><b>Issued To:</b> Cash Customers</div><div><b>Invoice No:</b> ${inv.id}</div><div><b>Invoice Date:</b> ${dateStr}</div><div><b>Time:</b> ${timeStr}</div></div><div class="logo">${logoTag}</div></div>
+    <h2>Invoice</h2><table><thead><tr><th>#</th><th>Item No</th><th>Description</th><th>Qty</th><th>Rate (PKR)</th><th>Total (PKR)</th></tr></thead><tbody>${rowsHtml}</tbody></table>
     <div class="subtotal">Subtotal: PKR ${formatNumber(subtotal)}</div>
     <div class="discount">Discount: PKR ${formatNumber(discountTotal)} (${mainDiscPct}%)</div>
     <div class="totals">Total: PKR ${formatNumber(inv.total)}</div>
+    <div style="margin-top:50px;border-top:1px solid #000;padding-top:10px;"><p>${companyInfo}</p></div></body></html>`;
 
-    <div style="margin-top:50px; border-top:1px solid #000; padding-top:10px;">
-      <p>${companyInfo}</p>
-    </div>
-  </body>
-  </html>
-  `;
-
-  const printWindow = window.open('', '_blank');
-  printWindow.document.write(html);
-  printWindow.document.close();
-  printWindow.print();
+  const printWindow=window.open('','_blank'); printWindow.document.write(html); printWindow.document.close(); printWindow.print();
 }
-
-/* ===== EDIT / DELETE / FILTER / PAGINATION ===== */
-function editInvoice(id){ const inv = DB.invoices.find(x=>x.id===id); if(!inv) return; editingInvoiceId=id; invoiceDraft=JSON.parse(JSON.stringify(inv.items)); renderInvoice();}
-function deleteInvoice(id){ if(!confirm("Delete invoice?")) return; const inv = DB.invoices.find(x=>x.id===id); inv.items.forEach(r=>{ const p = DB.products.find(x=>x.id===r.productId); if(p) p.stock += r.qty; }); DB.cash = DB.cash.filter(c=>c.ref!==id); DB.invoices = DB.invoices.filter(i=>i.id!==id); saveDB(); renderInvoiceList();}
-function applyInvoiceFilter(){ const from=document.getElementById("invFrom").value; const to=document.getElementById("invTo").value; invFiltered=DB.invoices.filter(i=>{ const date=new Date(i.dateTime); const f=from?new Date(from):null; const t=to?new Date(to):null; if(f&&date<f) return false; if(t&&date>t) return false; return true;}); invPage=1; renderInvoiceList();}
-function nextInvPage(){ invPage++; renderInvoiceList(); }
-function prevInvPage(){ if(invPage>1){ invPage--; renderInvoiceList();}
 
 /* ===== INITIAL RENDER ===== */
 renderInvoice();
@@ -574,16 +439,9 @@ renderInvoiceList();
 </script>
 
 <style>
-.invSug{
-  position:absolute;
-  background:#fff;
-  border:1px solid #ccc;
-  max-height:160px;
-  overflow:auto;
-  z-index:50;
-}
-.invSug div:hover{ background:#eee; }
-td{ position:relative; }
+.invSug{position:absolute;background:#fff;border:1px solid #ccc;max-height:160px;overflow:auto;z-index:50;}
+.invSug div:hover{background:#eee;}
+td{position:relative;}
 </style>
 
 <!-- ================= CASH ================= -->
