@@ -190,45 +190,53 @@ function uid(prefix){
     <h2>New Invoice</h2>
 
     <!-- ===== ADD PRODUCT ROW ===== -->
-    <table style="width:100%; margin-bottom:10px;">
+    <table style="width:100%; margin-bottom:8px;">
       <thead>
         <tr>
-          <th>Barcode</th>
-          <th>Item No</th>
+          <th style="width:12%">Barcode</th>
+          <th style="width:10%">Item No</th>
           <th>Description</th>
-          <th>Qty</th>
-          <th>Rate</th>
-          <th>Total</th>
-          <th>Delete</th>
+          <th style="width:6%">Qty</th>
+          <th style="width:8%">Rate</th>
+          <th style="width:10%">Total</th>
+          <th style="width:6%">Del</th>
         </tr>
       </thead>
       <tbody id="invoiceRows"></tbody>
     </table>
     <button class="green" onclick="addInvoiceRow()">+ Add Item</button>
 
-    <!-- ===== MAIN DISCOUNT ===== -->
-    <div style="margin-top:10px;">
-      <label>Main Discount Amount:</label>
-      <input type="number" id="mainDiscAmt" value="0" onchange="applyMainDiscount(getSubTotal())">
-      <label>Main Discount %:</label>
-      <input type="number" id="mainDiscPct" value="0" onchange="applyMainDiscount(getSubTotal())">
-      <span>Total: <b id="invTotal">0</b></span>
+    <!-- ===== DISCOUNT & TOTAL ROW ===== -->
+    <div style="display:flex; gap:12px; align-items:center; margin-top:12px; flex-wrap:wrap;">
+      <div>
+        <label>Discount Amount</label>
+        <input type="number" id="mainDiscAmt" value="0" oninput="recalcInvoice()" style="width:120px">
+      </div>
+
+      <div>
+        <label>Discount %</label>
+        <input type="number" id="mainDiscPct" value="0" oninput="recalcInvoice()" style="width:100px">
+      </div>
+
+      <div style="margin-left:auto; font-size:16px;">
+        <b>Total: </b><span id="invTotal">0.00</span>
+      </div>
     </div>
 
-    <!-- ===== SAVE INVOICE ===== -->
-    <div style="margin-top:10px;">
+    <!-- ===== SAVE ===== -->
+    <div style="margin-top:12px;">
       <button class="blue" onclick="saveInvoice()">Save Invoice</button>
     </div>
   </div>
 
-  <!-- ===== INVOICE LIST ===== -->
+  <!-- ===== PREVIOUS INVOICES ===== -->
   <div class="card" style="margin-top:20px;">
     <h2>Previous Invoices</h2>
 
     <!-- Filter -->
-    <div style="margin-bottom:10px;">
-      <label>From:</label><input type="date" id="invFrom">
-      <label>To:</label><input type="date" id="invTo">
+    <div style="margin-bottom:10px; display:flex; gap:8px; align-items:center;">
+      <label>From</label><input type="date" id="invFrom">
+      <label>To</label><input type="date" id="invTo">
       <button onclick="applyInvoiceFilter()">Apply</button>
     </div>
 
@@ -236,7 +244,7 @@ function uid(prefix){
       <thead>
         <tr>
           <th>#</th>
-          <th>Date</th>
+          <th>Date & Time</th>
           <th>Total</th>
           <th>Print</th>
           <th>Edit</th>
@@ -245,12 +253,6 @@ function uid(prefix){
       </thead>
       <tbody id="invoiceList"></tbody>
     </table>
-
-    <!-- Pagination -->
-    <div style="margin-top:10px; display:flex; gap:10px;">
-      <button onclick="prevInvPage()">Prev</button>
-      <button onclick="nextInvPage()">Next</button>
-    </div>
   </div>
 </section>
 
@@ -258,221 +260,121 @@ function uid(prefix){
 /* ================= INVOICE LOGIC ================= */
 let invoiceDraft = [];
 let editingInvoiceId = null;
-let invPage = 1, invPerPage = 100;
-let invFiltered = DB.invoices;
+let invFiltered = [];
+
+function nowDT(){
+  const d = new Date();
+  return d.toISOString().replace("T"," ").slice(0,19);
+}
 
 /* ===== ADD ROW ===== */
 function addInvoiceRow(){
-  invoiceDraft.push({
-    productId: "",
-    barcode: "",
-    itemNo: "",
-    desc: "",
-    qty: 1,
-    rate: 0,
-    valid: false
-  });
+  invoiceDraft.push({ productId:"", barcode:"", itemNo:"", desc:"", qty:1, rate:0, valid:false });
   renderInvoice();
 }
 
-/* ===== RENDER INVOICE ===== */
+/* ===== RENDER ===== */
 function renderInvoice(){
-  const tbody = document.getElementById("invoiceRows");
-  if(!tbody) return;
-  tbody.innerHTML = "";
-  let subtotal = 0;
-
+  const tb = document.getElementById("invoiceRows");
+  tb.innerHTML="";
   invoiceDraft.forEach((r,i)=>{
-    if(r.valid) subtotal += r.qty*r.rate;
-
-    tbody.innerHTML += `
-      <tr>
-        <td style="position:relative;">
-          <input value="${r.barcode}" placeholder="Barcode"
-            oninput="searchInvProduct(${i}, this.value, 'barcode')">
-          <div id="invSugB${i}" class="invSug"></div>
-        </td>
-        <td style="position:relative;">
-          <input value="${r.itemNo}" placeholder="Item No"
-            oninput="searchInvProduct(${i}, this.value, 'itemNo')">
-          <div id="invSugI${i}" class="invSug"></div>
-        </td>
-        <td style="position:relative;">
-          <input value="${r.desc}" placeholder="Description"
-            oninput="searchInvProduct(${i}, this.value, 'desc')">
-          <div id="invSugD${i}" class="invSug"></div>
-        </td>
-        <td><input type="number" min="1" value="${r.qty}" onchange="setInvQty(${i},this.value)"></td>
-        <td><input type="number" value="${r.rate}" onchange="setInvRate(${i},this.value)"></td>
-        <td>${r.valid ? (r.qty*r.rate).toFixed(2) : "<span style='color:red'>Invalid</span>"}</td>
-        <td><button class="red" onclick="delInvRow(${i})">X</button></td>
-      </tr>
-    `;
+    tb.innerHTML+=`
+    <tr>
+      <td><input value="${r.barcode}" oninput="searchInvProduct(${i},this.value,'barcode')"><div id="invSugB${i}" class="invSug"></div></td>
+      <td><input value="${r.itemNo}" oninput="searchInvProduct(${i},this.value,'itemNo')"><div id="invSugI${i}" class="invSug"></div></td>
+      <td><input value="${r.desc}" oninput="searchInvProduct(${i},this.value,'desc')"><div id="invSugD${i}" class="invSug"></div></td>
+      <td><input type="number" min="1" value="${r.qty}" onchange="setInvQty(${i},this.value)"></td>
+      <td><input type="number" value="${r.rate}" onchange="setInvRate(${i},this.value)"></td>
+      <td>${r.valid?(r.qty*r.rate).toFixed(2):"<span style='color:red'>Invalid</span>"}</td>
+      <td><button class="red" onclick="delInvRow(${i})">X</button></td>
+    </tr>`;
   });
-
-  applyMainDiscount(subtotal);
+  recalcInvoice();
 }
-
-/* ===== SEARCH WITH DROPDOWN ===== */
-function searchInvProduct(i,val,field){
-  const q = val.trim().toLowerCase();
-  const row = invoiceDraft[i];
-  row.valid = false;
-
-  const box = document.getElementById(
-    field==="barcode" ? "invSugB"+i :
-    field==="itemNo" ? "invSugI"+i : "invSugD"+i
-  );
-  box.innerHTML = "";
-  if(!q) return;
-
-  const results = DB.products.filter(p =>
-    ((field==="barcode"&&(p.barcode||"").toLowerCase().includes(q)) ||
-     (field==="itemNo"&&(p.itemNo||"").toLowerCase().includes(q)) ||
-     (field==="desc"&&(p.desc||"").toLowerCase().includes(q)))
-  );
-
-  if(!results.length){
-    box.innerHTML = `<div style="padding:4px;color:red">Product not exist or no stock</div>`;
-    return;
-  }
-
-  results.forEach(p=>{
-    const stockNote = p.stock<=0 ? " ❌ NO STOCK" : "";
-    const d = document.createElement("div");
-    d.style.padding = "4px";
-    d.style.cursor = "pointer";
-    d.innerText = `${p.itemNo} - ${p.desc} (Stock: ${p.stock})${stockNote}`;
-    d.onclick = ()=>{
-      invoiceDraft[i] = {
-        productId: p.id,
-        barcode: p.barcode||"",
-        itemNo: p.itemNo,
-        desc: p.desc,
-        qty: 1,
-        rate: p.rate,
-        valid: true
-      };
-      renderInvoice();
-    };
-    box.appendChild(d);
-  });
-}
-
-/* ===== SETTERS ===== */
-function setInvQty(i,v){ invoiceDraft[i].qty=+v; renderInvoice(); }
-function setInvRate(i,v){ invoiceDraft[i].rate=+v; renderInvoice(); }
-function delInvRow(i){ invoiceDraft.splice(i,1); renderInvoice(); }
 
 /* ===== TOTAL / DISCOUNT ===== */
-function getSubTotal(){ return invoiceDraft.reduce((s,r)=>r.valid ? s+(r.qty*r.rate):s,0); }
-function applyMainDiscount(sub){
-  const d = +document.getElementById("mainDiscAmt")?.value||0;
-  document.getElementById("invTotal").innerText = (sub-d).toFixed(2);
+function recalcInvoice(){
+  const sub = invoiceDraft.reduce((s,r)=>r.valid?s+r.qty*r.rate:s,0);
+  const pct = +document.getElementById("mainDiscPct").value||0;
+  const amt = +document.getElementById("mainDiscAmt").value||0;
+  const pctAmt = sub*(pct/100);
+  document.getElementById("invTotal").innerText = (sub-pctAmt-amt).toFixed(2);
 }
 
-/* ===== SAVE INVOICE ===== */
+/* ===== SAVE ===== */
 function saveInvoice(){
   if(!invoiceDraft.length) return alert("Invoice empty");
-  if(invoiceDraft.some(r=>!r.valid)) return alert("Invoice contains invalid product. Select from list only.");
+  if(invoiceDraft.some(r=>!r.valid)) return alert("Invalid product in invoice");
 
   const id = editingInvoiceId || uid("INV");
-  const date = new Date().toISOString().slice(0,10);
+  const dt = nowDT();
   const total = +document.getElementById("invTotal").innerText;
 
-  // STOCK CHECK
-  for(const r of invoiceDraft){
-    const p = DB.products.find(x=>x.id===r.productId);
-    if(!p) { alert("Product missing: " + r.desc); return; }
-    if(p.stock<r.qty){ alert("Insufficient stock for: "+r.desc); return; }
-  }
-
-  // DEDUCT STOCK
   invoiceDraft.forEach(r=>{
     const p = DB.products.find(x=>x.id===r.productId);
     if(p) p.stock -= r.qty;
   });
 
-  // SAVE INVOICE
   DB.invoices = DB.invoices.filter(i=>i.id!==id);
-  DB.invoices.push({ id, date, total, items: JSON.parse(JSON.stringify(invoiceDraft)) });
-
-  // CASH IN
-  DB.cash.push({ id: uid("C"), type:"IN", amount: total, ref:id, date });
+  DB.invoices.push({ id, datetime:dt, total, items:JSON.parse(JSON.stringify(invoiceDraft)) });
+  DB.cash.push({ id:uid("C"), type:"IN", amount:total, ref:id, datetime:dt });
 
   saveDB();
   invoiceDraft=[];
   editingInvoiceId=null;
-  document.getElementById("mainDiscAmt").value=document.getElementById("mainDiscPct").value=0;
+  document.getElementById("mainDiscAmt").value=0;
+  document.getElementById("mainDiscPct").value=0;
 
   renderInvoice();
   renderInvoiceList();
-  renderCash();
-  alert("Invoice saved successfully");
+  alert("Invoice saved");
 }
 
-/* ===== INVOICE LIST ===== */
+/* ===== LIST ===== */
 function renderInvoiceList(){
-  const tbody = document.getElementById("invoiceList");
-  if(!tbody) return;
-  tbody.innerHTML = "";
-
-  DB.invoices.forEach((i,idx)=>{
-    const total = Number(i.total || 0);
-    tbody.innerHTML += `
-      <tr>
-        <td>${idx+1}</td>
-        <td>${i.date || ""}</td>
-        <td>${total.toFixed(2)}</td>
-        <td><button onclick="printInvoice('${i.id}')">Print</button></td>
-        <td><button onclick="editInvoice('${i.id}')">Edit</button></td>
-        <td><button class="red" onclick="deleteInvoice('${i.id}')">Delete</button></td>
-      </tr>
-    `;
+  const tb=document.getElementById("invoiceList");
+  tb.innerHTML="";
+  invFiltered.forEach((i,idx)=>{
+    tb.innerHTML+=`
+    <tr>
+      <td>${idx+1}</td>
+      <td>${i.datetime}</td>
+      <td>${i.total.toFixed(2)}</td>
+      <td><button onclick="printInvoice('${i.id}')">Print</button></td>
+      <td><button onclick="editInvoice('${i.id}')">Edit</button></td>
+      <td><button class="red" onclick="deleteInvoice('${i.id}')">Delete</button></td>
+    </tr>`;
   });
-}
-
-/* ===== EDIT / DELETE ===== */
-function editInvoice(id){
-  const inv = DB.invoices.find(x=>x.id===id);
-  if(!inv) return;
-  editingInvoiceId = id;
-  invoiceDraft = JSON.parse(JSON.stringify(inv.items));
-  renderInvoice();
-}
-function deleteInvoice(id){
-  if(!confirm("Delete invoice?")) return;
-  const inv = DB.invoices.find(x=>x.id===id);
-  inv.items.forEach(r=>{
-    const p = DB.products.find(x=>x.id===r.productId);
-    if(p) p.stock += r.qty;
-  });
-  DB.cash = DB.cash.filter(c=>c.ref!==id);
-  DB.invoices = DB.invoices.filter(i=>i.id!==id);
-  saveDB();
-  renderInvoiceList();
 }
 
 /* ===== FILTER ===== */
 function applyInvoiceFilter(){
-  const from = document.getElementById("invFrom").value;
-  const to   = document.getElementById("invTo").value;
-
-  invFiltered = DB.invoices.filter(i=>{
-    if(from && i.date < from) return false;
-    if(to && i.date > to) return false;
+  const f=document.getElementById("invFrom").value;
+  const t=document.getElementById("invTo").value;
+  invFiltered=DB.invoices.filter(i=>{
+    if(f && i.datetime.slice(0,10)<f) return false;
+    if(t && i.datetime.slice(0,10)>t) return false;
     return true;
   });
-
-  invPage=1;
   renderInvoiceList();
 }
 
-/* ===== PAGINATION ===== */
-function nextInvPage(){ invPage++; renderInvoiceList(); }
-function prevInvPage(){ if(invPage>1){ invPage--; renderInvoiceList(); } }
+/* ===== PRINT ===== */
+function printInvoice(id){
+  const i=DB.invoices.find(x=>x.id===id);
+  if(!i) return;
+  let w=window.open("","","width=800");
+  w.document.write(`<h2>Invoice ${id}</h2><p>${i.datetime}</p><hr>`);
+  i.items.forEach(r=>{
+    w.document.write(`${r.desc} - ${r.qty} x ${r.rate} = ${r.qty*r.rate}<br>`);
+  });
+  w.document.write(`<hr><h3>Total: ${i.total}</h3>`);
+  w.print();
+  w.close();
+}
 
-/* ===== INITIAL RENDER ===== */
+/* ===== INIT ===== */
+invFiltered=DB.invoices;
 renderInvoice();
 renderInvoiceList();
 </script>
@@ -482,12 +384,12 @@ renderInvoiceList();
   position:absolute;
   background:#fff;
   border:1px solid #ccc;
-  max-height:160px;
+  max-height:150px;
   overflow:auto;
   z-index:50;
 }
-.invSug div:hover{ background:#eee; }
-td{ position:relative; } /* dropdown positioning */
+.invSug div:hover{background:#eee}
+td{position:relative}
 </style>
 <!-- ================= CASH ================= -->
 <section id="cash">
