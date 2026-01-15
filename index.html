@@ -206,8 +206,8 @@ function uid(prefix){
     </table>
     <button class="green" onclick="addInvoiceRow()">+ Add Item</button>
 
-    <!-- ===== DISCOUNT ROW ===== -->
-    <div style="margin-top:10px; display:flex; gap:12px; align-items:center;">
+    <!-- ===== DISCOUNT + TOTAL ===== -->
+    <div style="margin-top:10px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
       <div>
         <label>Main Discount Amount</label><br>
         <input type="number" id="mainDiscAmt" value="0" onchange="applyMainDiscount(getSubTotal())" style="width:120px">
@@ -261,14 +261,7 @@ function uid(prefix){
 <script>
 /* ================= INVOICE LOGIC ================= */
 
-/* ONLY DATE FORMAT CHANGE (SAFE) */
-function nowDateTime(){
-  const d=new Date();
-  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")+" "+
-         String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")+":"+String(d.getSeconds()).padStart(2,"0");
-}
-
-/* ===== TOTAL / DISCOUNT FIX (ONLY THIS LOGIC CHANGED) ===== */
+/* ===== TOTAL / DISCOUNT (FIXED, NO SIDE EFFECTS) ===== */
 function applyMainDiscount(sub){
   const amt = +document.getElementById("mainDiscAmt").value || 0;
   const pct = +document.getElementById("mainDiscPct").value || 0;
@@ -276,19 +269,25 @@ function applyMainDiscount(sub){
   document.getElementById("invTotal").innerText = (sub - amt - pctAmt).toFixed(2);
 }
 
-/* ===== SAVE INVOICE (ONLY DATE TIME ADDED) ===== */
-const _saveInvoice = saveInvoice;
-saveInvoice = function(){
+/* ===== SAVE INVOICE (ONLY DATE+TIME ADDED) ===== */
+function saveInvoice(){
   if(!invoiceDraft.length) return alert("Invoice empty");
   if(invoiceDraft.some(r=>!r.valid)) return alert("Invoice contains invalid product.");
 
   const id = editingInvoiceId || uid("INV");
-  const datetime = nowDateTime();
+  const now = new Date();
+  const dateTime =
+    now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0")+" "+
+    String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0")+":"+String(now.getSeconds()).padStart(2,"0");
+
   const total = +document.getElementById("invTotal").innerText;
 
   for(const r of invoiceDraft){
     const p = DB.products.find(x=>x.id===r.productId);
-    if(!p || p.stock<r.qty){ alert("Stock issue: "+r.desc); return; }
+    if(!p || p.stock < r.qty){
+      alert("Insufficient stock for: " + r.desc);
+      return;
+    }
   }
 
   invoiceDraft.forEach(r=>{
@@ -297,9 +296,9 @@ saveInvoice = function(){
   });
 
   DB.invoices = DB.invoices.filter(i=>i.id!==id);
-  DB.invoices.push({ id, date: datetime, total, items: JSON.parse(JSON.stringify(invoiceDraft)) });
+  DB.invoices.push({ id, date: dateTime, total, items: JSON.parse(JSON.stringify(invoiceDraft)) });
 
-  DB.cash.push({ id: uid("C"), type:"IN", amount: total, ref:id, date: datetime });
+  DB.cash.push({ id: uid("C"), type:"IN", amount: total, ref:id, date: dateTime });
 
   saveDB();
   invoiceDraft=[];
@@ -313,23 +312,20 @@ saveInvoice = function(){
   alert("Invoice saved successfully");
 }
 
-/* ===== LIST (UNCHANGED LOGIC) ===== */
-const _renderInvoiceList = renderInvoiceList;
-renderInvoiceList = function(){
-  const tb=document.getElementById("invoiceList");
-  tb.innerHTML="";
-  (invFiltered||DB.invoices).forEach((i,idx)=>{
-    tb.innerHTML+=`
-    <tr>
-      <td>${idx+1}</td>
-      <td>${i.date||""}</td>
-      <td>${Number(i.total).toFixed(2)}</td>
-      <td><button onclick="printInvoice('${i.id}')">Print</button></td>
-      <td><button onclick="editInvoice('${i.id}')">Edit</button></td>
-      <td><button class="red" onclick="deleteInvoice('${i.id}')">Delete</button></td>
-    </tr>`;
+/* ===== FILTER (UNCHANGED LOGIC, DATE+TIME SAFE) ===== */
+function applyInvoiceFilter(){
+  const from = document.getElementById("invFrom").value;
+  const to   = document.getElementById("invTo").value;
+
+  invFiltered = DB.invoices.filter(i=>{
+    const d = (i.date || "").slice(0,10);
+    if(from && d < from) return false;
+    if(to && d > to) return false;
+    return true;
   });
-};
+
+  renderInvoiceList();
+}
 </script>
 
 <style>
