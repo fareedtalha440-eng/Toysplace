@@ -243,6 +243,7 @@ function uid(prefix){
       <thead>
         <tr>
           <th>#</th>
+          <th>Invoice No</th>
           <th>Date & Time</th>
           <th>Total</th>
           <th>Print</th>
@@ -311,7 +312,7 @@ function renderInvoice(){
         </td>
         <td><input type="number" min="1" value="${r.qty}" onchange="setInvQty(${i},this.value)"></td>
         <td><input type="number" value="${r.rate}" onchange="setInvRate(${i},this.value)"></td>
-        <td>${r.valid ? (r.qty*r.rate).toFixed(2) : "<span style='color:red'>Invalid</span>"}</td>
+        <td>${r.valid ? formatNumber(r.qty*r.rate) : "<span style='color:red'>Invalid</span>"}</td>
         <td><button class="red" onclick="delInvRow(${i})">X</button></td>
       </tr>
     `;
@@ -377,7 +378,12 @@ function applyMainDiscount(sub){
   let amt = +document.getElementById("mainDiscAmt")?.value||0;
   let pct = +document.getElementById("mainDiscPct")?.value||0;
   if(pct>0) amt = sub * pct/100;
-  document.getElementById("invTotal").innerText = (sub-amt).toFixed(2);
+  document.getElementById("invTotal").innerText = formatNumber(sub-amt);
+}
+
+/* ===== FORMAT NUMBER WITH COMMAS ===== */
+function formatNumber(x){
+  return Number(x).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
 /* ===== SAVE INVOICE ===== */
@@ -387,10 +393,8 @@ function saveInvoice(){
 
   const id = editingInvoiceId || uid("INV");
   const dt = new Date();
-  const date = dt.toISOString().slice(0,10);
-  const time = dt.toTimeString().slice(0,8);
-  const dateTime = `${date} ${time}`;
-  const total = +document.getElementById("invTotal").innerText;
+  const dateTime = dt.toLocaleString(); // local time fixes day issue
+  const total = +document.getElementById("invTotal").innerText.replace(/,/g,'');
 
   // STOCK CHECK
   for(const r of invoiceDraft){
@@ -433,18 +437,91 @@ function renderInvoiceList(){
   invoices = invoices.slice((invPage-1)*invPerPage, invPage*invPerPage);
 
   invoices.forEach((i,idx)=>{
-    const total = Number(i.total || 0);
     tbody.innerHTML += `
       <tr>
         <td>${(invPage-1)*invPerPage + idx +1}</td>
-        <td>${i.dateTime || ""}</td>
-        <td>${total.toFixed(2)}</td>
+        <td>${i.id}</td>
+        <td>${i.dateTime}</td>
+        <td>${formatNumber(i.total)}</td>
         <td><button onclick="printInvoice('${i.id}')">Print</button></td>
         <td><button onclick="editInvoice('${i.id}')">Edit</button></td>
         <td><button class="red" onclick="deleteInvoice('${i.id}')">Delete</button></td>
       </tr>
     `;
   });
+}
+
+/* ===== PRINT INVOICE ===== */
+function printInvoice(id){
+  const inv = DB.invoices.find(x=>x.id===id);
+  if(!inv) return alert("Invoice not found");
+
+  let logoTag = '';
+  if(DB.settings && DB.settings.logo) logoTag = `<img src="${DB.settings.logo}" style="max-height:80px;">`;
+
+  let rowsHtml = '';
+  inv.items.forEach((r,i)=>{
+    rowsHtml += `<tr>
+      <td>${i+1}</td>
+      <td>${r.itemNo}</td>
+      <td>${r.desc}</td>
+      <td>${r.qty}</td>
+      <td>${formatNumber(r.rate)}</td>
+      <td>${formatNumber(r.qty*r.rate)}</td>
+    </tr>`;
+  });
+
+  const dt = new Date(inv.dateTime);
+  const fullDate = dt.toLocaleString();
+
+  const html = `
+    <html>
+    <head>
+      <title>Invoice ${inv.id}</title>
+      <style>
+        body{ font-family: Arial; padding:20px; }
+        h2{ text-align:center; }
+        table{ width:100%; border-collapse: collapse; margin-top:20px; }
+        th,td{ border:1px solid #000; padding:8px; text-align:left; }
+        th{ background:#eee; }
+        .totals{ margin-top:20px; width:300px; float:right; }
+        .logo{ text-align:center; margin-bottom:20px; }
+      </style>
+    </head>
+    <body>
+      <div class="logo">${logoTag}</div>
+      <h2>Invoice</h2>
+      <p><b>Invoice No:</b> ${inv.id}</p>
+      <p><b>Date & Time:</b> ${fullDate}</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Item No</th>
+            <th>Description</th>
+            <th>Qty</th>
+            <th>Rate</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
+
+      <div class="totals">
+        <p><b>Subtotal:</b> ${formatNumber(inv.items.reduce((s,r)=>s+r.qty*r.rate,0))}</p>
+        <p><b>Total:</b> ${formatNumber(inv.total)}</p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.print();
 }
 
 /* ===== EDIT / DELETE ===== */
@@ -474,9 +551,11 @@ function applyInvoiceFilter(){
   const to   = document.getElementById("invTo").value;
 
   invFiltered = DB.invoices.filter(i=>{
-    const date = i.dateTime ? i.dateTime.slice(0,10) : "";
-    if(from && date<from) return false;
-    if(to && date>to) return false;
+    const date = new Date(i.dateTime);
+    const f = from ? new Date(from) : null;
+    const t = to ? new Date(to) : null;
+    if(f && date<f) return false;
+    if(t && date>t) return false;
     return true;
   });
 
