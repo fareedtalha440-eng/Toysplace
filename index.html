@@ -216,7 +216,7 @@ function uid(prefix){
         <label>Main Discount %:</label>
         <input type="number" id="mainDiscPct" value="0" oninput="applyMainDiscount(getSubTotal())">
       </div>
-      <div style="padding:5px; font-weight:bold; border-bottom:2px solid #000;">
+      <div style="padding:5px; font-weight:bold;">
         <label>Total:</label>
         <b id="invTotal">0</b> PKR
       </div>
@@ -363,11 +363,15 @@ function saveInvoice(){
   const dt=new Date(); const dateTime=dt.toISOString();
   const total=+document.getElementById("invTotal").innerText.replace(/,/g,'');
 
+  // Check stock
   for(const r of invoiceDraft){ const p=DB.products.find(x=>x.id===r.productId); if(!p){alert("Product missing: "+r.desc); return;} if(p.stock<r.qty){alert("Insufficient stock for: "+r.desc); return;} }
+
+  // Deduct stock
   invoiceDraft.forEach(r=>{ const p=DB.products.find(x=>x.id===r.productId); if(p) p.stock-=r.qty; });
 
+  // Save invoice
   DB.invoices=DB.invoices.filter(i=>i.id!==id);
-  DB.invoices.push({id,dateTime,total,items:JSON.parse(JSON.stringify(invoiceDraft))});
+  DB.invoices.push({id,dateTime,total,items:JSON.parse(JSON.stringify(invoiceDraft)), discountAmt:+document.getElementById("mainDiscAmt").value, discountPct:+document.getElementById("mainDiscPct").value});
   DB.cash.push({id:uid("C"),type:"IN",amount:total,ref:id,date:dateTime});
 
   saveDB(); invoiceDraft=[]; editingInvoiceId=null;
@@ -388,7 +392,7 @@ function renderInvoiceList(){
     tbody.innerHTML+=`<tr>
       <td>${(invPage-1)*invPerPage+idx+1}</td>
       <td>${i.id}</td>
-      <td>${dt.toLocaleDateString(undefined,{weekday:'long'})}</td>
+      <td>${dt.toLocaleDateString(undefined,{weekday:'long', year:'numeric', month:'short', day:'numeric'})}</td>
       <td>${dt.toLocaleTimeString()}</td>
       <td>${formatNumber(i.total)}</td>
       <td><button onclick="printInvoice('${i.id}')">Print</button></td>
@@ -410,25 +414,49 @@ function prevInvPage(){ if(invPage>1){ invPage--; renderInvoiceList();} }
 
 /* ===== EDIT / DELETE ===== */
 function editInvoice(id){ const inv=DB.invoices.find(x=>x.id===id); if(!inv) return; editingInvoiceId=id; invoiceDraft=JSON.parse(JSON.stringify(inv.items)); renderInvoice();}
-function deleteInvoice(id){ if(!confirm("Delete invoice?")) return; const inv=DB.invoices.find(x=>x.id===id); inv.items.forEach(r=>{ const p=DB.products.find(x=>x.id===r.productId); if(p) p.stock+=r.qty; }); DB.cash=DB.cash.filter(c=>c.ref!==id); DB.invoices=DB.invoices.filter(i=>i.id!==id); saveDB(); renderInvoiceList();}
+function deleteInvoice(id){
+  if(!confirm("Delete invoice?")) return;
+  const inv=DB.invoices.find(x=>x.id===id);
+  if(!DB.deletedInvoices) DB.deletedInvoices=[];
+  DB.deletedInvoices.push({
+    id:inv.id, dateTime:new Date().toISOString(), items:inv.items,
+    total:inv.total, discountAmt:inv.discountAmt, discountPct:inv.discountPct, who:"current_user"
+  });
+  inv.items.forEach(r=>{ const p=DB.products.find(x=>x.id===r.productId); if(p) p.stock+=r.qty; });
+  DB.cash=DB.cash.filter(c=>c.ref!==id);
+  DB.invoices=DB.invoices.filter(i=>i.id!==id);
+  saveDB(); renderInvoiceList();
+}
 
 /* ===== PRINT INVOICE PROFESSIONAL ===== */
 function printInvoice(id){
   const inv=DB.invoices.find(x=>x.id===id); if(!inv) return alert("Invoice not found");
-  const mainDiscAmt=+document.getElementById("mainDiscAmt")?.value||0; const mainDiscPct=+document.getElementById("mainDiscPct")?.value||0;
-  const subtotal=inv.items.reduce((s,r)=>s+r.qty*r.rate,0); const discountTotal=mainDiscPct>0?subtotal*mainDiscPct/100:mainDiscAmt;
-  const dt=new Date(inv.dateTime); const weekday=dt.toLocaleDateString(undefined,{weekday:'long'}); const dateStr=`${weekday}, ${dt.toLocaleDateString()}`; const timeStr=dt.toLocaleTimeString();
-  let logoTag=""; if(DB.settings&&DB.settings.logo){logoTag=`<img src="${DB.settings.logo}" style="max-width:120px;height:auto;">`;}
+  const subtotal=inv.items.reduce((s,r)=>s+r.qty*r.rate,0);
+  const discountTotal=inv.discountPct>0 ? subtotal*inv.discountPct/100 : inv.discountAmt;
+  const dt=new Date(inv.dateTime);
+  const weekday=dt.toLocaleDateString(undefined,{weekday:'long'});
+  const dateStr=`${weekday}, ${dt.toLocaleDateString()}`;
+  const timeStr=dt.toLocaleTimeString();
+  let logoTag=""; if(DB.settings&&DB.settings.logo){logoTag=`<img src="${DB.settings.logo}" style="max-width:100px;height:auto;">`;}
   let rowsHtml=""; inv.items.forEach((r,i)=>{ rowsHtml+=`<tr><td>${i+1}</td><td>${r.itemNo}</td><td>${r.desc}</td><td>${r.qty}</td><td>PKR ${formatNumber(r.rate)}</td><td>PKR ${formatNumber(r.qty*r.rate)}</td></tr>`;});
   const companyInfo=DB.settings?.company||"";
   const html=`<html><head><title>Invoice ${inv.id}</title><style>
-    body{font-family:Arial;padding:20px;box-sizing:border-box;} .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;} .header-left div{margin-bottom:4px;padding:4px;border:1px solid #000;font-weight:500;} .logo{text-align:right;} h2{text-align:center;margin:10px 0;} table{width:100%;border-collapse:collapse;margin-top:10px;} th,td{border:1px solid #000;padding:6px;text-align:left;font-weight:400;} th{background:#eee;font-weight:600;} .subtotal,.discount,.totals{padding:6px;margin-top:5px;font-weight:500;} .totals{font-weight:600;} @media print{body{width:100%;} table,.totals,.subtotal,.discount{page-break-inside:avoid;}}</style></head>
+    body{font-family:Arial;padding:10px;box-sizing:border-box;} 
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;} 
+    .header-left div{margin-bottom:2px;padding:2px;border:1px solid #000;font-weight:500;} 
+    .logo{text-align:right;} h2{text-align:center;margin:5px 0;} 
+    table{width:100%;border-collapse:collapse;margin-top:5px;font-size:12px;} 
+    th,td{border:1px solid #000;padding:4px;text-align:left;} 
+    th{background:#eee;font-weight:600;} 
+    .subtotal,.discount,.totals{padding:4px;margin-top:2px;font-weight:500;} 
+    .totals{font-weight:600;} 
+    @media print{body{width:100%;} table,.totals,.subtotal,.discount{page-break-inside:avoid;}}</style></head>
     <body><div class="header"><div class="header-left"><div><b>Issued To:</b> Cash Customers</div><div><b>Invoice No:</b> ${inv.id}</div><div><b>Invoice Date:</b> ${dateStr}</div><div><b>Time:</b> ${timeStr}</div></div><div class="logo">${logoTag}</div></div>
     <h2>Invoice</h2><table><thead><tr><th>#</th><th>Item No</th><th>Description</th><th>Qty</th><th>Rate (PKR)</th><th>Total (PKR)</th></tr></thead><tbody>${rowsHtml}</tbody></table>
     <div class="subtotal">Subtotal: PKR ${formatNumber(subtotal)}</div>
-    <div class="discount">Discount: PKR ${formatNumber(discountTotal)} (${mainDiscPct}%)</div>
+    <div class="discount">Discount: PKR ${formatNumber(discountTotal)} (${inv.discountPct}%)</div>
     <div class="totals">Total: PKR ${formatNumber(inv.total)}</div>
-    <div style="margin-top:50px;border-top:1px solid #000;padding-top:10px;"><p>${companyInfo}</p></div></body></html>`;
+    <div style="margin-top:20px;"><p>${companyInfo}</p></div></body></html>`;
 
   const printWindow=window.open('','_blank'); printWindow.document.write(html); printWindow.document.close(); printWindow.print();
 }
