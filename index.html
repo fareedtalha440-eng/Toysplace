@@ -1023,16 +1023,27 @@ if(!DB.vendors) DB.vendors = [];
 if(!DB.purchases) DB.purchases = [];
 if(!DB.cash) DB.cash = [];
 
-/* ================= VENDOR LOGIC ================= */
-function formatNumber(x){ return Number(x).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+// Load from localStorage if available
+if(localStorage.getItem("DB")){
+  DB = JSON.parse(localStorage.getItem("DB"));
+}
 
+// Save DB function
+function saveDB(){
+  localStorage.setItem("DB", JSON.stringify(DB));
+}
+
+/* ================= HELPER ================= */
+function formatNumber(x){ 
+  return Number(x).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); 
+}
 function getNextVendorId(){
   if(!DB.vendors.length) return "V-1001";
   const nums = DB.vendors.map(v=>parseInt(v.id.replace("V-",""))||1000);
   return "V-"+(Math.max(...nums)+1);
 }
 
-/* ===== ADD VENDOR ===== */
+/* ================= VENDOR LOGIC ================= */
 function addVendor(){
   const name = document.getElementById("vendorName").value.trim();
   if(!name) return alert("Enter vendor name");
@@ -1043,7 +1054,6 @@ function addVendor(){
   renderVendors();
 }
 
-/* ===== EDIT / DELETE ===== */
 function editVendor(id){
   const v = DB.vendors.find(x=>x.id===id);
   const n = prompt("Edit vendor name", v.name);
@@ -1061,7 +1071,7 @@ function deleteVendor(id){
   }
 }
 
-/* ===== RENDER VENDORS ===== */
+/* ================= RENDER VENDORS ================= */
 function renderVendors(){
   const tbody=document.getElementById("vendorRows");
   tbody.innerHTML="";
@@ -1070,7 +1080,7 @@ function renderVendors(){
     const paymentTotal = DB.cash.filter(c=>c.vendorId===v.id && c.type==="OUT").reduce((s,c)=>s+c.amount,0);
     const balance = purchaseTotal - paymentTotal;
 
-    // Highlight overdue (>30 days) if balance>0
+    // Highlight overdue (>30 days)
     const lastPaymentDate = DB.cash.filter(c=>c.vendorId===v.id && c.type==="OUT")
                                   .map(c=>new Date(c.dateTime))
                                   .sort((a,b)=>b-a)[0];
@@ -1097,7 +1107,7 @@ function renderVendors(){
   });
 }
 
-/* ===== VENDOR LEDGER ===== */
+/* ================= VENDOR LEDGER ================= */
 function showVendorLedger(vendorId){
   const vendor = DB.vendors.find(v=>v.id===vendorId);
   if(!vendor) return;
@@ -1189,8 +1199,6 @@ data.forEach((r,i)=>{
 `);
 }
 
-// Initial render
-renderVendors();
 </script>
 
 
