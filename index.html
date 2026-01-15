@@ -187,14 +187,15 @@ function uid(prefix){
 <!-- ================= INVOICE ================= -->
 <section id="invoice">
 
-  <!-- ===== NEW INVOICE ===== -->
   <div class="card" id="newInvoiceCard">
     <h2>New Invoice</h2>
 
     <table style="width:100%; border-collapse:collapse;">
       <thead>
         <tr>
-          <th>Item</th>
+          <th>Barcode</th>
+          <th>Item No</th>
+          <th>Description</th>
           <th>Qty</th>
           <th>Rate</th>
           <th>Amount</th>
@@ -204,7 +205,7 @@ function uid(prefix){
       <tbody id="invoiceRows"></tbody>
     </table>
 
-    <button class="blue" onclick="addInvoiceRow()" style="margin-top:10px;">+ Add Item</button>
+    <button class="blue" onclick="addInvoiceRow()" style="margin-top:10px;">+ Add Product</button>
 
     <div style="margin-top:10px;">
       Discount:
@@ -218,15 +219,6 @@ function uid(prefix){
     <button onclick="printInvoice()">Print</button>
   </div>
 
-  <!-- ===== FILTER ===== -->
-  <div class="card">
-    <h3>Invoice Filter</h3>
-    From <input type="date" id="invFrom">
-    To <input type="date" id="invTo">
-    <button onclick="applyInvoiceFilter()">Apply</button>
-  </div>
-
-  <!-- ===== INVOICE LIST ===== -->
   <div class="card">
     <h3>Previous Invoices</h3>
     <table>
@@ -243,6 +235,7 @@ function uid(prefix){
       <tbody id="invoiceList"></tbody>
     </table>
   </div>
+
 </section>
 
 <script>
@@ -251,7 +244,14 @@ let editingInvoiceId=null;
 
 /* ===== ADD ROW ===== */
 function addInvoiceRow(){
-  invoiceDraft.push({product:null, qty:1});
+  invoiceDraft.push({
+    productId:null,
+    barcode:"",
+    itemNo:"",
+    desc:"",
+    qty:1,
+    rate:0
+  });
   renderInvoice();
 }
 
@@ -262,21 +262,31 @@ function renderInvoice(){
   let subtotal=0;
 
   invoiceDraft.forEach((r,i)=>{
-    const p=r.product;
-    const amount=p? p.rate*r.qty : 0;
+    const amount=r.qty*r.rate;
     subtotal+=amount;
 
     tbody.innerHTML+=`
     <tr>
       <td>
-        <input placeholder="Scan / Search product"
-          oninput="searchProduct(${i},this.value)"
-          autofocus
-        >
-        <div id="sug${i}" style="background:#fff;border:1px solid #ccc;"></div>
+        <input value="${r.barcode}" placeholder="Barcode"
+          oninput="searchProduct(${i},this.value,'barcode')">
+        <div id="sugB${i}" class="invSug"></div>
       </td>
+
+      <td>
+        <input value="${r.itemNo}" placeholder="Item No"
+          oninput="searchProduct(${i},this.value,'itemNo')">
+        <div id="sugI${i}" class="invSug"></div>
+      </td>
+
+      <td>
+        <input value="${r.desc}" placeholder="Description"
+          oninput="searchProduct(${i},this.value,'desc')">
+        <div id="sugD${i}" class="invSug"></div>
+      </td>
+
       <td><input type="number" min="1" value="${r.qty}" onchange="setQty(${i},this.value)"></td>
-      <td>${p?p.rate:0}</td>
+      <td><input type="number" value="${r.rate}" onchange="setRate(${i},this.value)"></td>
       <td>${amount.toFixed(2)}</td>
       <td><button class="red" onclick="delRow(${i})">X</button></td>
     </tr>`;
@@ -285,41 +295,49 @@ function renderInvoice(){
   applyMainDiscount(subtotal);
 }
 
-/* ===== SEARCH WITH DROPDOWN ===== */
-function searchProduct(i,val){
-  const box=document.getElementById("sug"+i);
+/* ===== SEARCH (REAL, WORKING) ===== */
+function searchProduct(i,val,field){
+  const q=val.toLowerCase();
+  const box=document.getElementById(
+    field==="barcode"?"sugB"+i:field==="itemNo"?"sugI"+i:"sugD"+i
+  );
   box.innerHTML="";
-  if(!val) return;
+  if(!q) return;
 
-  const matches=DB.products.filter(p=>
+  const results=DB.products.filter(p=>
     p.stock>0 &&
     (
-      p.barcode===val ||
-      p.barcode?.includes(val) ||
-      p.itemNo?.includes(val) ||
-      p.desc?.toLowerCase().includes(val.toLowerCase())
+      (field==="barcode" && (p.barcode||"").toLowerCase().includes(q)) ||
+      (field==="itemNo" && (p.itemNo||"").toLowerCase().includes(q)) ||
+      (field==="desc" && (p.desc||"").toLowerCase().includes(q))
     )
   );
 
-  if(!matches.length){
-    box.innerHTML="<div style='color:red;padding:5px;'>No product / No stock</div>";
+  if(!results.length){
+    box.innerHTML="<div style='color:red;padding:4px;'>No product / No stock</div>";
     return;
   }
 
-  matches.forEach(p=>{
+  results.forEach(p=>{
     const d=document.createElement("div");
+    d.style.padding="4px";
+    d.style.cursor="pointer";
     d.innerText=`${p.itemNo} - ${p.desc}`;
-    d.style.padding="5px";
     d.onclick=()=>{
-      invoiceDraft[i].product=p;
+      invoiceDraft[i].productId=p.id;
+      invoiceDraft[i].barcode=p.barcode||"";
+      invoiceDraft[i].itemNo=p.itemNo;
+      invoiceDraft[i].desc=p.desc;
+      invoiceDraft[i].rate=p.rate;
       renderInvoice();
     };
     box.appendChild(d);
   });
 }
 
-/* ===== QTY ===== */
+/* ===== SETTERS ===== */
 function setQty(i,v){invoiceDraft[i].qty=+v;renderInvoice();}
+function setRate(i,v){invoiceDraft[i].rate=+v;renderInvoice();}
 function delRow(i){invoiceDraft.splice(i,1);renderInvoice();}
 
 /* ===== DISCOUNT ===== */
@@ -335,9 +353,7 @@ function syncMainDiscPct(){
   mainDiscAmt.value=(sub*pct/100).toFixed(2);
   applyMainDiscount(sub);
 }
-function getSub(){
-  return invoiceDraft.reduce((s,r)=>s+(r.product?r.product.rate*r.qty:0),0);
-}
+function getSub(){return invoiceDraft.reduce((s,r)=>s+(r.qty*r.rate),0);}
 function applyMainDiscount(sub){
   const d=+mainDiscAmt.value||0;
   invTotal.innerText=(sub-d).toFixed(2);
@@ -345,20 +361,21 @@ function applyMainDiscount(sub){
 
 /* ===== SAVE ===== */
 function saveInvoice(){
-  if(!invoiceDraft.length) return alert("Empty");
+  if(!invoiceDraft.length) return alert("Empty invoice");
 
-  const invId=editingInvoiceId||uid("INV");
+  const id=editingInvoiceId||uid("INV");
   const date=new Date().toISOString().slice(0,10);
   const total=+invTotal.innerText;
 
   invoiceDraft.forEach(r=>{
-    r.product.stock-=r.qty;
+    const p=DB.products.find(x=>x.id===r.productId);
+    if(p) p.stock-=r.qty;
   });
 
-  DB.invoices=DB.invoices.filter(i=>i.id!==invId);
-  DB.invoices.push({id:invId,date,total,items:invoiceDraft});
+  DB.invoices=DB.invoices.filter(i=>i.id!==id);
+  DB.invoices.push({id,date,total,items:JSON.parse(JSON.stringify(invoiceDraft))});
 
-  DB.cash.push({id:uid("C"),type:"IN",amount:total,ref:invId,date});
+  DB.cash.push({id:uid("C"),type:"IN",amount:total,ref:id,date});
   saveDB();
 
   invoiceDraft=[];
@@ -384,38 +401,70 @@ function renderInvoiceList(){
   });
 }
 
-/* ===== FILTER ===== */
-function applyInvoiceFilter(){
-  const f=invFrom.value, t=invTo.value;
-  const list=f||t?DB.invoices.filter(i=>
-    (!f||i.date>=f)&&(!t||i.date<=t)
-  ):DB.invoices;
-  invoiceList.innerHTML="";
-  list.forEach((i,idx)=>{
-    invoiceList.innerHTML+=`<tr><td>${idx+1}</td><td>${i.date}</td><td>${i.total}</td></tr>`;
+/* ===== EDIT / DELETE ===== */
+function editInvoice(id){
+  const inv=DB.invoices.find(x=>x.id===id);
+  editingInvoiceId=id;
+  invoiceDraft=JSON.parse(JSON.stringify(inv.items));
+  renderInvoice();
+}
+function deleteInvoice(id){
+  if(!confirm("Delete invoice?")) return;
+  const inv=DB.invoices.find(i=>i.id===id);
+  inv.items.forEach(r=>{
+    const p=DB.products.find(x=>x.id===r.productId);
+    if(p) p.stock+=r.qty;
   });
+  DB.cash=DB.cash.filter(c=>c.ref!==id);
+  DB.invoices=DB.invoices.filter(i=>i.id!==id);
+  saveDB();
+  renderInvoiceList();
 }
 
 /* ===== PRINT ===== */
 function printInvoice(id){
-  const inv=id?DB.invoices.find(x=>x.id===id):{items:invoiceDraft,total:invTotal.innerText,date:new Date().toISOString().slice(0,10),id:"DRAFT"};
-  let html=`<h2 style="text-align:center;">Invoice</h2>
+  const inv=id?DB.invoices.find(x=>x.id===id):{
+    id:"DRAFT",
+    date:new Date().toISOString().slice(0,10),
+    items:invoiceDraft,
+    total:invTotal.innerText
+  };
+
+  let html=`
   <h1>${inv.id}</h1>
   <small>${inv.date}</small>
-  <table border=1 width=100%>
-  <tr><th>#</th><th>Item</th><th>Rate</th><th>Qty</th><th>Amount</th></tr>`;
+  <table border="1" width="100%">
+    <tr><th>#</th><th>Item</th><th>Rate</th><th>Qty</th><th>Amount</th></tr>`;
+
   inv.items.forEach((r,i)=>{
-    html+=`<tr><td>${i+1}</td><td>${r.product.desc}</td><td>${r.product.rate}</td><td>${r.qty}</td><td>${r.product.rate*r.qty}</td></tr>`;
+    html+=`<tr><td>${i+1}</td><td>${r.desc}</td><td>${r.rate}</td><td>${r.qty}</td><td>${r.rate*r.qty}</td></tr>`;
   });
-  html+=`</table><h3>Total: ${inv.total}</h3><p>Thank You For Your Kind Purchasing And Visiting Our Shop</p>`;
+
+  html+=`</table><h3>Total: ${inv.total}</h3>
+  <p>Thank You For Your Kind Purchasing And Visiting Our Shop</p>`;
+
   const w=window.open("");
   w.document.write(html);
   w.print();
 }
+
 renderInvoice();
 renderInvoiceList();
 </script>
 
+<style>
+.invSug{
+  position:absolute;
+  background:#fff;
+  border:1px solid #ccc;
+  max-height:150px;
+  overflow:auto;
+  z-index:20;
+}
+.invSug div:hover{
+  background:#eee;
+}
+</style>
 <!-- ================= CASH ================= -->
 <section id="cash">
 
