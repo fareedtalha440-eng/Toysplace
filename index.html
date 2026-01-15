@@ -448,32 +448,42 @@ function renderCash(){
   <div class="card">
     <h2>Products</h2>
 
-    <!-- Upload / Download / Add New -->
-    <div style="display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+    <!-- ===== FILE ACTIONS ===== -->
+    <h3>Import / Export</h3>
+    <hr>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:15px;">
       <input type="file" accept=".xlsx,.xls" onchange="uploadProductExcel(this)">
       <button class="blue" onclick="exportProductsCSV()">Download CSV</button>
-      <button class="green" onclick="showAddProductForm()">Add New Product</button>
     </div>
 
-    <!-- Add New Product Form -->
-    <div id="newProductForm" style="display:none; margin-bottom:10px; gap:10px; display:flex; flex-wrap:wrap;">
+    <!-- ===== ADD PRODUCT ===== -->
+    <h3>Add New Product</h3>
+    <hr>
+    <div style="margin-bottom:10px;">
+      <button class="green" onclick="showAddProductForm()">+ Add New Product</button>
+    </div>
+
+    <div id="newProductForm" style="display:none; gap:10px; flex-wrap:wrap; margin-bottom:20px;">
       <input placeholder="Barcode" id="newProdBarcode" style="flex:1 1 150px;">
       <input placeholder="Item No" id="newProdItemNo" style="flex:1 1 150px;">
       <input placeholder="Description" id="newProdDesc" style="flex:2 1 200px;">
       <input type="number" placeholder="Rate" id="newProdRate" style="flex:1 1 100px;">
-      <button class="green" onclick="addNewProduct()">Add Product</button>
+      <button class="green" onclick="addNewProduct()">Save</button>
       <button class="red" onclick="hideAddProductForm()">Cancel</button>
     </div>
 
-    <!-- Search -->
-    <div style="display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
-      <input placeholder="Search Barcode" oninput="searchProducts()" id="s_barcode" style="flex:1 1 150px;">
-      <input placeholder="Search Item No" oninput="searchProducts()" id="s_item" style="flex:1 1 150px;">
-      <input placeholder="Search Description" oninput="searchProducts()" id="s_desc" style="flex:2 1 200px;">
-    </div>
+    <!-- ===== SEARCH ===== -->
+    <h3>Search Products</h3>
+    <hr>
+    <input
+      id="productSearch"
+      placeholder="Search by Barcode / Item No / Description"
+      oninput="advancedProductSearch()"
+      style="width:100%; padding:8px; margin-bottom:15px;"
+    >
   </div>
 
-  <!-- Products Table -->
+  <!-- ===== PRODUCTS TABLE ===== -->
   <div class="card">
     <table>
       <thead>
@@ -492,37 +502,43 @@ function renderCash(){
     </table>
 
     <!-- Pagination -->
-    <div style="margin-top:10px;">
+    <div style="margin-top:10px; display:flex; gap:10px;">
       <button onclick="prevProdPage()">Prev</button>
       <button onclick="nextProdPage()">Next</button>
     </div>
   </div>
 </section>
+
 <script>
 let prodPage = 1;
 let prodPerPage = 100;
-let prodFiltered = DB.products;
+let prodFiltered = [];
 
-/* ===== SHOW/HIDE NEW PRODUCT FORM ===== */
-function showAddProductForm(){ document.getElementById("newProductForm").style.display="flex"; }
-function hideAddProductForm(){ document.getElementById("newProductForm").style.display="none"; }
+/* ===== SHOW / HIDE FORM ===== */
+function showAddProductForm(){
+  document.getElementById("newProductForm").style.display="flex";
+}
+function hideAddProductForm(){
+  document.getElementById("newProductForm").style.display="none";
+}
 
-/* ===== RENDER PRODUCTS ===== */
+/* ===== RENDER ===== */
 function renderProducts(){
   const tbody = document.getElementById("productRows");
   tbody.innerHTML = "";
-  const start = (prodPage-1)*prodPerPage;
-  const page = prodFiltered.slice(start,start+prodPerPage);
 
-  page.forEach((p,i)=>{
+  const start = (prodPage - 1) * prodPerPage;
+  const page = prodFiltered.slice(start, start + prodPerPage);
+
+  page.forEach((p, i) => {
     tbody.innerHTML += `
       <tr>
-        <td>${start+i+1}</td>
-        <td>${p.barcode||""}</td>
+        <td>${start + i + 1}</td>
+        <td>${p.barcode || ""}</td>
         <td>${p.itemNo}</td>
         <td>${p.desc}</td>
         <td>${p.rate}</td>
-        <td>${p.stock||0}</td>
+        <td>${p.stock || 0}</td>
         <td><button class="blue" onclick="editProduct('${p.id}')">Edit</button></td>
         <td><button class="red" onclick="deleteProduct('${p.id}')">Delete</button></td>
       </tr>
@@ -530,29 +546,28 @@ function renderProducts(){
   });
 }
 
-/* ===== SEARCH PRODUCTS ===== */
-function searchProducts(){
-  const b = document.getElementById("s_barcode").value.toLowerCase();
-  const i = document.getElementById("s_item").value.toLowerCase();
-  const d = document.getElementById("s_desc").value.toLowerCase();
+/* ===== ADVANCED REALTIME SEARCH (ALL DATA) ===== */
+function advancedProductSearch(){
+  const q = document.getElementById("productSearch").value.toLowerCase();
 
-  prodFiltered = DB.products.filter(p=>
-    (!b || p.barcode?.toLowerCase().includes(b)) &&
-    (!i || p.itemNo.toLowerCase().includes(i)) &&
-    (!d || p.desc.toLowerCase().includes(d))
+  prodFiltered = DB.products.filter(p =>
+    (p.barcode || "").toLowerCase().includes(q) ||
+    p.itemNo.toLowerCase().includes(q) ||
+    p.desc.toLowerCase().includes(q)
   );
+
   prodPage = 1;
   renderProducts();
 }
 
-/* ===== ADD NEW PRODUCT ===== */
+/* ===== ADD ===== */
 function addNewProduct(){
-  const barcode = document.getElementById("newProdBarcode").value.trim();
-  const itemNo = document.getElementById("newProdItemNo").value.trim();
-  const desc = document.getElementById("newProdDesc").value.trim();
-  const rate = +document.getElementById("newProdRate").value;
+  const barcode = newProdBarcode.value.trim();
+  const itemNo = newProdItemNo.value.trim();
+  const desc = newProdDesc.value.trim();
+  const rate = +newProdRate.value;
 
-  if(!itemNo || !desc || !rate) return alert("Fill all required fields");
+  if(!itemNo || !desc || !rate) return alert("Fill all fields");
 
   DB.products.push({
     id: uid("P"),
@@ -560,27 +575,29 @@ function addNewProduct(){
     itemNo,
     desc,
     rate,
-    stock:0
+    stock: 0
   });
+
   saveDB();
+  prodFiltered = DB.products;
   renderProducts();
   hideAddProductForm();
 
-  document.getElementById("newProdBarcode").value = "";
-  document.getElementById("newProdItemNo").value = "";
-  document.getElementById("newProdDesc").value = "";
-  document.getElementById("newProdRate").value = "";
+  newProdBarcode.value="";
+  newProdItemNo.value="";
+  newProdDesc.value="";
+  newProdRate.value="";
 }
 
-/* ===== EDIT PRODUCT ===== */
+/* ===== EDIT ===== */
 function editProduct(id){
   const p = DB.products.find(x=>x.id===id);
-  if(!p) return alert("Product not found");
+  if(!p) return;
 
-  const barcode = prompt("Edit Barcode", p.barcode);
-  const itemNo = prompt("Edit Item No", p.itemNo);
-  const desc = prompt("Edit Description", p.desc);
-  const rate = prompt("Edit Rate", p.rate);
+  const barcode = prompt("Barcode", p.barcode);
+  const itemNo = prompt("Item No", p.itemNo);
+  const desc = prompt("Description", p.desc);
+  const rate = prompt("Rate", p.rate);
 
   if(itemNo && desc && rate){
     p.barcode = barcode || "";
@@ -592,27 +609,36 @@ function editProduct(id){
   }
 }
 
-/* ===== DELETE PRODUCT ===== */
+/* ===== DELETE ===== */
 function deleteProduct(id){
   const p = DB.products.find(x=>x.id===id);
-  if(!p) return alert("Product not found");
+  if(!p) return;
+  if(p.stock !== 0) return alert("Stock exists");
 
-  if(p.stock !== 0) return alert("Cannot delete product with stock");
-
-  if(confirm("Delete this product?")){
+  if(confirm("Delete product?")){
     DB.products = DB.products.filter(x=>x.id!==id);
     saveDB();
+    prodFiltered = DB.products;
     renderProducts();
   }
 }
 
 /* ===== PAGINATION ===== */
-function nextProdPage(){ prodPage++; renderProducts(); }
-function prevProdPage(){ if(prodPage>1){ prodPage--; renderProducts(); } }
+function nextProdPage(){
+  if(prodPage * prodPerPage < prodFiltered.length){
+    prodPage++;
+    renderProducts();
+  }
+}
+function prevProdPage(){
+  if(prodPage > 1){
+    prodPage--;
+    renderProducts();
+  }
+}
 
-/* ===== UPLOAD XLSX ===== */
+/* ===== UPLOAD EXCEL ===== */
 function uploadProductExcel(input){
-  const file = input.files[0];
   const reader = new FileReader();
   reader.onload = e => {
     const wb = XLSX.read(e.target.result, {type:"binary"});
@@ -630,9 +656,9 @@ function uploadProductExcel(input){
     saveDB();
     prodFiltered = DB.products;
     renderProducts();
-    alert("Products imported!");
+    alert("Products imported");
   };
-  reader.readAsBinaryString(file);
+  reader.readAsBinaryString(input.files[0]);
 }
 
 /* ===== EXPORT CSV ===== */
@@ -647,7 +673,8 @@ function exportProductsCSV(){
   a.click();
 }
 
-/* ===== INITIAL RENDER ===== */
+/* ===== INIT ===== */
+prodFiltered = DB.products;
 renderProducts();
 </script>
 <!-- ================= VENDORS ================= -->
