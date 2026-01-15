@@ -582,8 +582,8 @@ function addCashPayment(){
     id: uid("C"),
     dateTime: new Date(date).toISOString(),
     type:"OUT",
-    vendor,
-    ref: ref || vendor,
+    vendor: vendor || "",
+    ref: ref || vendor || "",
     amount
   });
 
@@ -598,10 +598,10 @@ function resetCashForm(){
 }
 
 /* ===== APPLY FILTERS ===== */
-function applyCashFrom(){ cashFiltered = null; renderCash(); }
-function applyCashTo(){ cashFiltered = null; renderCash(); }
-function applyCashVendor(){ cashFiltered = null; renderCash(); }
-function applyCashSearch(){ cashFiltered = null; renderCash(); }
+function applyCashFrom(){ renderCash(); }
+function applyCashTo(){ renderCash(); }
+function applyCashVendor(){ renderCash(); }
+function applyCashSearch(){ renderCash(); }
 
 /* ===== RENDER CASH ===== */
 function renderCash(){
@@ -630,29 +630,37 @@ function renderCash(){
 
   cashFiltered = filtered;
 
-  // Pagination
-  const paged = filtered.slice((cashPage-1)*cashPerPage, cashPage*cashPerPage);
+  // Balance calculation (always total, not filtered)
   let bal=0;
-
-  paged.forEach(c=>{
+  DB.cash.sort((a,b)=>new Date(a.dateTime)-new Date(b.dateTime)).forEach(c=>{
     bal = c.type==="IN"?bal+c.amount:bal-c.amount;
+  });
+  const totalBalance = bal;
+
+  // Pagination display
+  const paged = filtered.slice((cashPage-1)*cashPerPage, cashPage*cashPerPage);
+
+  let runningBal=0;
+  paged.forEach(c=>{
+    runningBal = c.type==="IN"?runningBal+c.amount:runningBal-c.amount;
     const dt = new Date(c.dateTime);
+    const vendorName = c.vendor || (c.type==="IN"?"Cash Customer":"");
     tbody.innerHTML+=`
       <tr>
         <td>${dt.toLocaleDateString()}</td>
         <td>${dt.toLocaleTimeString()}</td>
         <td>${c.type}</td>
-        <td>${c.vendor||""}</td>
+        <td>${vendorName}</td>
         <td>${formatNumber(c.amount)}</td>
-        <td>${c.ref||""}</td>
-        <td>${formatNumber(bal)}</td>
+        <td>${c.ref || ""}</td>
+        <td>${formatNumber(totalBalance)}</td>
         <td>${c.type==="OUT"?`<button onclick="editCashPayment('${c.id}')">Edit</button>`:""}</td>
         <td>${c.type==="OUT"?`<button onclick="deleteCashPayment('${c.id}')">Delete</button>`:""}</td>
       </tr>
     `;
   });
 
-  document.getElementById("cashBal").innerText=formatNumber(bal);
+  document.getElementById("cashBal").innerText=formatNumber(totalBalance);
 }
 
 /* ===== PAGINATION ===== */
@@ -695,7 +703,8 @@ function downloadCashCSV(){
   DB.cash.sort((a,b)=>new Date(a.dateTime)-new Date(b.dateTime)).forEach(c=>{
     bal=c.type==="IN"?bal+c.amount:bal-c.amount;
     const dt=new Date(c.dateTime);
-    rows.push([dt.toLocaleDateString(),dt.toLocaleTimeString(),c.type,c.vendor||"",c.amount,c.ref||"",bal]);
+    const vendorName = c.vendor || (c.type==="IN"?"Cash Customer":"");
+    rows.push([dt.toLocaleDateString(),dt.toLocaleTimeString(),c.type,vendorName,c.amount,c.ref||"",bal]);
   });
   const csvContent = "data:text/csv;charset=utf-8," + rows.map(r=>r.join(",")).join("\n");
   const encodedUri = encodeURI(csvContent);
@@ -707,6 +716,7 @@ function downloadCashCSV(){
 /* ===== INITIAL LOAD ===== */
 loadVendorOptions(); renderCash();
 </script>
+
 <!-- ================= PRODUCTS ================= -->
 <section id="products">
   <div class="card">
