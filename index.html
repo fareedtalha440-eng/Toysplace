@@ -184,74 +184,98 @@ function uid(prefix){
   return prefix + "_" + Date.now() + Math.floor(Math.random()*1000); 
 }
 </script>
-<!-- ================= INVOICE ================= -->
 <script>
-let invoiceDraft=[];
-let editingInvoiceId=null;
+/* ================= INVOICE SAFE LOGIC ================= */
+
+let invoiceDraft = [];
+let editingInvoiceId = null;
 
 /* ===== ADD ROW ===== */
 function addInvoiceRow(){
   invoiceDraft.push({
-    productId:null,
-    barcode:"",
-    itemNo:"",
-    desc:"",
-    qty:1,
-    rate:0,
-    valid:false
+    productId: null,
+    barcode: "",
+    itemNo: "",
+    desc: "",
+    qty: 1,
+    rate: 0,
+    valid: false
   });
   renderInvoice();
 }
 
 /* ===== RENDER ===== */
 function renderInvoice(){
-  const tbody=document.getElementById("invoiceRows");
-  tbody.innerHTML="";
-  let subtotal=0;
+  const tbody = document.getElementById("invoiceRows");
+  if(!tbody) return;
 
-  invoiceDraft.forEach((r,i)=>{
-    if(r.valid) subtotal+=r.qty*r.rate;
+  tbody.innerHTML = "";
+  let subtotal = 0;
 
-    tbody.innerHTML+=`
-    <tr>
-      <td>
-        <input value="${r.barcode}" placeholder="Barcode"
-          oninput="searchProduct(${i},this.value,'barcode')">
-        <div id="sugB${i}" class="invSug"></div>
-      </td>
-      <td>
-        <input value="${r.itemNo}" placeholder="Item No"
-          oninput="searchProduct(${i},this.value,'itemNo')">
-        <div id="sugI${i}" class="invSug"></div>
-      </td>
-      <td>
-        <input value="${r.desc}" placeholder="Description"
-          oninput="searchProduct(${i},this.value,'desc')">
-        <div id="sugD${i}" class="invSug"></div>
-      </td>
-      <td><input type="number" min="1" value="${r.qty}" onchange="setQty(${i},this.value)"></td>
-      <td><input type="number" value="${r.rate}" onchange="setRate(${i},this.value)"></td>
-      <td>${r.valid?(r.qty*r.rate).toFixed(2):'<span style="color:red">Invalid</span>'}</td>
-      <td><button class="red" onclick="delRow(${i})">X</button></td>
-    </tr>`;
+  invoiceDraft.forEach((r, i) => {
+    if (r.valid) subtotal += r.qty * r.rate;
+
+    tbody.innerHTML += `
+      <tr>
+        <td>
+          <input value="${r.barcode}" placeholder="Barcode"
+            oninput="searchInvProduct(${i}, this.value, 'barcode')">
+          <div id="invSugB${i}" class="invSug"></div>
+        </td>
+
+        <td>
+          <input value="${r.itemNo}" placeholder="Item No"
+            oninput="searchInvProduct(${i}, this.value, 'itemNo')">
+          <div id="invSugI${i}" class="invSug"></div>
+        </td>
+
+        <td>
+          <input value="${r.desc}" placeholder="Description"
+            oninput="searchInvProduct(${i}, this.value, 'desc')">
+          <div id="invSugD${i}" class="invSug"></div>
+        </td>
+
+        <td>
+          <input type="number" min="1" value="${r.qty}"
+            onchange="setInvQty(${i}, this.value)">
+        </td>
+
+        <td>
+          <input type="number" value="${r.rate}"
+            onchange="setInvRate(${i}, this.value)">
+        </td>
+
+        <td>
+          ${r.valid ? (r.qty * r.rate).toFixed(2) : "<span style='color:red'>Invalid</span>"}
+        </td>
+
+        <td>
+          <button class="red" onclick="delInvRow(${i})">X</button>
+        </td>
+      </tr>
+    `;
   });
 
   applyMainDiscount(subtotal);
 }
 
-/* ===== SEARCH (FORCED SELECTION) ===== */
-function searchProduct(i,val,field){
-  const q=val.toLowerCase();
-  const box=document.getElementById(
-    field==="barcode"?"sugB"+i:field==="itemNo"?"sugI"+i:"sugD"+i
+/* ===== SEARCH (STRICT RULES) ===== */
+function searchInvProduct(i, val, field){
+  const q = val.trim().toLowerCase();
+  const row = invoiceDraft[i];
+  row.valid = false;
+
+  const box = document.getElementById(
+    field === "barcode" ? "invSugB"+i :
+    field === "itemNo" ? "invSugI"+i :
+    "invSugD"+i
   );
-  box.innerHTML="";
-  invoiceDraft[i].valid=false;
+  box.innerHTML = "";
 
   if(!q) return;
 
-  const matches=DB.products.filter(p=>
-    p.stock>0 &&
+  const results = DB.products.filter(p =>
+    p.stock > 0 &&
     (
       (field==="barcode" && (p.barcode||"").toLowerCase().includes(q)) ||
       (field==="itemNo" && (p.itemNo||"").toLowerCase().includes(q)) ||
@@ -259,25 +283,27 @@ function searchProduct(i,val,field){
     )
   );
 
-  if(!matches.length){
-    box.innerHTML="<div style='color:red;padding:4px;'>Product not exist / No stock</div>";
+  if(!results.length){
+    box.innerHTML = `<div style="padding:4px;color:red">
+      Product not exist or no stock
+    </div>`;
     return;
   }
 
-  matches.forEach(p=>{
-    const d=document.createElement("div");
-    d.innerText=`${p.itemNo} - ${p.desc} (Stock: ${p.stock})`;
-    d.style.padding="4px";
-    d.style.cursor="pointer";
-    d.onclick=()=>{
-      invoiceDraft[i]={
-        productId:p.id,
-        barcode:p.barcode||"",
-        itemNo:p.itemNo,
-        desc:p.desc,
-        qty:1,
-        rate:p.rate,
-        valid:true
+  results.forEach(p=>{
+    const d = document.createElement("div");
+    d.style.padding = "4px";
+    d.style.cursor = "pointer";
+    d.innerText = `${p.itemNo} - ${p.desc} (Stock: ${p.stock})`;
+    d.onclick = ()=>{
+      invoiceDraft[i] = {
+        productId: p.id,
+        barcode: p.barcode || "",
+        itemNo: p.itemNo,
+        desc: p.desc,
+        qty: 1,
+        rate: p.rate,
+        valid: true
       };
       renderInvoice();
     };
@@ -286,109 +312,118 @@ function searchProduct(i,val,field){
 }
 
 /* ===== SETTERS ===== */
-function setQty(i,v){invoiceDraft[i].qty=+v;renderInvoice();}
-function setRate(i,v){invoiceDraft[i].rate=+v;renderInvoice();}
-function delRow(i){invoiceDraft.splice(i,1);renderInvoice();}
+function setInvQty(i,v){ invoiceDraft[i].qty = +v; renderInvoice(); }
+function setInvRate(i,v){ invoiceDraft[i].rate = +v; renderInvoice(); }
+function delInvRow(i){ invoiceDraft.splice(i,1); renderInvoice(); }
 
-/* ===== DISCOUNT ===== */
-function syncMainDiscAmt(){
-  const amt=+mainDiscAmt.value;
-  const sub=getSub();
-  mainDiscPct.value=sub?((amt/sub)*100).toFixed(2):0;
-  applyMainDiscount(sub);
-}
-function syncMainDiscPct(){
-  const pct=+mainDiscPct.value;
-  const sub=getSub();
-  mainDiscAmt.value=(sub*pct/100).toFixed(2);
-  applyMainDiscount(sub);
-}
-function getSub(){
-  return invoiceDraft.reduce((s,r)=>r.valid?s+(r.qty*r.rate):s,0);
+/* ===== TOTAL / DISCOUNT ===== */
+function getSubTotal(){
+  return invoiceDraft.reduce((s,r)=> r.valid ? s+(r.qty*r.rate) : s ,0);
 }
 function applyMainDiscount(sub){
-  const d=+mainDiscAmt.value||0;
-  invTotal.innerText=(sub-d).toFixed(2);
+  const d = +document.getElementById("mainDiscAmt")?.value || 0;
+  document.getElementById("invTotal").innerText = (sub-d).toFixed(2);
 }
 
-/* ===== SAVE (STRICT VALIDATION) ===== */
+/* ===== SAVE (HARD VALIDATION) ===== */
 function saveInvoice(){
   if(!invoiceDraft.length) return alert("Invoice empty");
 
-  if(invoiceDraft.some(r=>!r.valid)){
+  if(invoiceDraft.some(r=>!r.valid))
     return alert("Invalid product exists. Select valid product only.");
-  }
 
-  const id=editingInvoiceId||uid("INV");
-  const date=new Date().toISOString().slice(0,10);
-  const total=+invTotal.innerText;
+  const id = editingInvoiceId || uid("INV");
+  const date = new Date().toISOString().slice(0,10);
+  const total = +document.getElementById("invTotal").innerText;
 
   invoiceDraft.forEach(r=>{
-    const p=DB.products.find(x=>x.id===r.productId);
-    if(!p || p.stock<r.qty){
+    const p = DB.products.find(x=>x.id===r.productId);
+    if(!p || p.stock < r.qty){
       throw alert("Stock issue detected");
     }
-    p.stock-=r.qty;
+    p.stock -= r.qty;
   });
 
-  DB.invoices=DB.invoices.filter(i=>i.id!==id);
+  DB.invoices = DB.invoices.filter(i=>i.id!==id);
   DB.invoices.push({
-    id,
-    date,
-    total,
-    items:JSON.parse(JSON.stringify(invoiceDraft))
+    id, date, total,
+    items: JSON.parse(JSON.stringify(invoiceDraft))
   });
 
-  DB.cash.push({id:uid("C"),type:"IN",amount:total,ref:id,date});
-  saveDB();
+  DB.cash.push({
+    id: uid("C"),
+    type:"IN",
+    amount: total,
+    ref: id,
+    date
+  });
 
-  invoiceDraft=[];
-  editingInvoiceId=null;
+  saveDB();
+  invoiceDraft = [];
+  editingInvoiceId = null;
+
   renderInvoice();
   renderInvoiceList();
-  alert("Invoice saved");
+  alert("Invoice saved successfully");
 }
 
-/* ===== INVOICE LIST (ALWAYS FULL DATA) ===== */
+/* ===== INVOICE LIST ===== */
 function renderInvoiceList(){
-  const tbody=document.getElementById("invoiceList");
-  tbody.innerHTML="";
+  const tbody = document.getElementById("invoiceList");
+  if(!tbody) return;
+
+  tbody.innerHTML = "";
   DB.invoices.forEach((i,idx)=>{
-    tbody.innerHTML+=`
-    <tr>
-      <td>${idx+1}</td>
-      <td>${i.date}</td>
-      <td>${i.total.toFixed(2)}</td>
-      <td><button onclick="printInvoice('${i.id}')">Print</button></td>
-      <td><button onclick="editInvoice('${i.id}')">Edit</button></td>
-      <td><button class="red" onclick="deleteInvoice('${i.id}')">Delete</button></td>
-    </tr>`;
+    tbody.innerHTML += `
+      <tr>
+        <td>${idx+1}</td>
+        <td>${i.date}</td>
+        <td>${i.total.toFixed(2)}</td>
+        <td><button onclick="printInvoice('${i.id}')">Print</button></td>
+        <td><button onclick="editInvoice('${i.id}')">Edit</button></td>
+        <td><button class="red" onclick="deleteInvoice('${i.id}')">Delete</button></td>
+      </tr>
+    `;
   });
 }
 
 /* ===== EDIT / DELETE ===== */
 function editInvoice(id){
-  const inv=DB.invoices.find(x=>x.id===id);
-  editingInvoiceId=id;
-  invoiceDraft=JSON.parse(JSON.stringify(inv.items));
+  const inv = DB.invoices.find(x=>x.id===id);
+  if(!inv) return;
+  editingInvoiceId = id;
+  invoiceDraft = JSON.parse(JSON.stringify(inv.items));
   renderInvoice();
 }
 function deleteInvoice(id){
   if(!confirm("Delete invoice?")) return;
-  const inv=DB.invoices.find(i=>i.id===id);
+  const inv = DB.invoices.find(i=>i.id===id);
   inv.items.forEach(r=>{
-    const p=DB.products.find(x=>x.id===r.productId);
-    if(p) p.stock+=r.qty;
+    const p = DB.products.find(x=>x.id===r.productId);
+    if(p) p.stock += r.qty;
   });
-  DB.cash=DB.cash.filter(c=>c.ref!==id);
-  DB.invoices=DB.invoices.filter(i=>i.id!==id);
+  DB.cash = DB.cash.filter(c=>c.ref!==id);
+  DB.invoices = DB.invoices.filter(i=>i.id!==id);
   saveDB();
   renderInvoiceList();
 }
 
+/* ===== INIT ===== */
 renderInvoice();
 renderInvoiceList();
 </script>
+
+<style>
+.invSug{
+  position:absolute;
+  background:#fff;
+  border:1px solid #ccc;
+  max-height:160px;
+  overflow:auto;
+  z-index:50;
+}
+.invSug div:hover{ background:#eee; }
+</style>
 <!-- ================= CASH ================= -->
 <section id="cash">
 
