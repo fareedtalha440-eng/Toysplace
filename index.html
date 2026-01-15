@@ -548,13 +548,19 @@ function renderProducts(){
 
 /* ===== ADVANCED REALTIME SEARCH (ALL DATA) ===== */
 function advancedProductSearch(){
-  const q = document.getElementById("productSearch").value.toLowerCase();
+  const q = document.getElementById("productSearch").value.trim().toLowerCase();
 
-  prodFiltered = DB.products.filter(p =>
-    (p.barcode || "").toLowerCase().includes(q) ||
-    p.itemNo.toLowerCase().includes(q) ||
-    p.desc.toLowerCase().includes(q)
-  );
+  prodFiltered = DB.products.filter(p => {
+    const barcode = (p.barcode ?? "").toString().toLowerCase();
+    const itemNo  = (p.itemNo  ?? "").toString().toLowerCase();
+    const desc    = (p.desc    ?? "").toString().toLowerCase();
+
+    return (
+      barcode.includes(q) ||
+      itemNo.includes(q) ||
+      desc.includes(q)
+    );
+  });
 
   prodPage = 1;
   renderProducts();
