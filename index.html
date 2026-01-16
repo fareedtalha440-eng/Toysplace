@@ -1578,92 +1578,92 @@ function generateReport(){ document.getElementById("reportOutput").innerText=JSO
 <!-- ================= SETTINGS ================= -->
 <section id="settings">
   <div class="card">
-    <h2>Admin Settings</h2>
+    <h2>Settings</h2>
 
-    <h3>Software Name</h3>
-    <input id="setSoftwareName" placeholder="Enter software name">
-    <button class="blue" onclick="saveSoftwareName()">Save Name</button>
+    <!-- ===== SOFTWARE NAME ===== -->
+    <div class="p-block">
+      <h3>Software Name</h3>
+      <input type="text" id="setSoftwareName" style="width:100%; margin-bottom:10px;">
+      <button onclick="saveSoftwareName()">Save Name</button>
+    </div>
 
-    <hr>
+    <!-- ===== SHOP LOCATION ===== -->
+    <div class="p-block">
+      <h3>Shop Location</h3>
+      <input type="text" id="shopLocation" placeholder="Enter shop location" style="width:100%; margin-bottom:10px;">
+      <button onclick="saveShopLocation()">Save Location</button>
+    </div>
 
-    <h3>Upload Logo</h3>
-    <input type="file" accept="image/*" onchange="uploadLogo(this)">
-    <p style="font-size:13px;opacity:0.7">Logo will appear in header</p>
+    <!-- ===== LOGO ===== -->
+    <div class="p-block">
+      <h3>Upload Logo</h3>
+      <input type="file" accept="image/*" onchange="uploadLogo(this)">
+    </div>
 
-    <hr>
+    <!-- ===== FONT & COLOR ===== -->
+    <div class="p-block">
+      <h3>Change Font & Color</h3>
+      <label>Font:</label>
+      <select id="softwareFont">
+        <option value="Arial">Arial</option>
+        <option value="Verdana">Verdana</option>
+        <option value="Tahoma">Tahoma</option>
+        <option value="Times New Roman">Times New Roman</option>
+        <option value="Georgia">Georgia</option>
+        <option value="Courier New">Courier New</option>
+        <option value="Helvetica">Helvetica</option>
+        <option value="Roboto">Roboto</option>
+        <option value="Lato">Lato</option>
+        <option value="Open Sans">Open Sans</option>
+      </select>
+      <br><br>
+      <label>Color:</label>
+      <input type="color" id="softwareColor" value="#1e1e1e">
+      <button onclick="saveFontAndColor()">Apply</button>
+    </div>
 
-    <h3>Backup & Restore</h3>
-    <button class="green" onclick="downloadBackup()">Download Backup</button>
-    <br><br>
-    <input type="file" accept=".json" onchange="restoreBackup(this)">
+    <!-- ===== ACCOUNTS & ROLES ===== -->
+    <div class="p-block">
+      <h3>Manage Accounts / Roles</h3>
+      <button onclick="createAccount()">Create Account</button>
+      <table style="width:100%;margin-top:10px;">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Role</th>
+            <th>Permissions</th>
+            <th>Edit</th>
+            <th>Delete</th>
+          </tr>
+        </thead>
+        <tbody id="accountsTable"></tbody>
+      </table>
+    </div>
 
-    <hr>
+    <!-- ===== BACKUP & RESET ===== -->
+    <div class="p-block">
+      <h3>Backup / Restore / Reset</h3>
+      <button onclick="downloadBackup()">Download Backup</button>
+      <input type="file" onchange="restoreBackup(this)">
+      <button onclick="resetSystem()">Reset System</button>
+    </div>
 
-    <h3 style="color:#cf222e">Danger Zone</h3>
-    <button class="red" onclick="resetSystem()">RESET COMPLETE SOFTWARE</button>
   </div>
 </section>
 
 <script>
-<!-- ===== SHOP LOCATION ===== -->
-<div class="p-block">
-  <h3>Shop Location</h3>
-  <input type="text" id="shopLocation" placeholder="Enter shop location" style="width:100%; margin-bottom:10px;">
-  <button onclick="saveShopLocation()">Save Location</button>
-</div>
-
-<!-- ===== FONT & COLOR ===== -->
-<div class="p-block">
-  <h3>Change Font & Color</h3>
-  <label>Font:</label>
-  <select id="softwareFont">
-    <option value="Arial">Arial</option>
-    <option value="Verdana">Verdana</option>
-    <option value="Tahoma">Tahoma</option>
-    <option value="Times New Roman">Times New Roman</option>
-    <option value="Georgia">Georgia</option>
-    <option value="Courier New">Courier New</option>
-    <option value="Helvetica">Helvetica</option>
-    <option value="Roboto">Roboto</option>
-    <option value="Lato">Lato</option>
-    <option value="Open Sans">Open Sans</option>
-  </select>
-  <br><br>
-  <label>Color:</label>
-  <input type="color" id="softwareColor" value="#1e1e1e">
-  <button onclick="saveFontAndColor()">Apply</button>
-</div>
-
-<!-- ===== ACCOUNTS & ROLES ===== -->
-<div class="p-block">
-  <h3>Manage Accounts / Roles</h3>
-  <button onclick="createAccount()">Create Account</button>
-  <table style="width:100%;margin-top:10px;">
-    <thead>
-      <tr>
-        <th>Username</th>
-        <th>Role</th>
-        <th>Permissions</th>
-        <th>Edit</th>
-        <th>Delete</th>
-      </tr>
-    </thead>
-    <tbody id="accountsTable"></tbody>
-  </table>
-</div>
 /* ================= SETTINGS LOGIC ================= */
-
 function applySettings(){
   if(!DB.settings) DB.settings = {};
-  
-  const name = DB.settings.softwareName || "Dani Test Software";
 
-  // Header text
+  // Software Name
+  const name = DB.settings.softwareName || "Dani Test Software";
   document.getElementById("softwareName").innerText = name;
   document.getElementById("setSoftwareName").value = name;
 
-  // Browser tab title
-  document.title = name;
+  // Font & Color
+  if(DB.settings.font) document.body.style.fontFamily = DB.settings.font;
+  if(DB.settings.color) document.documentElement.style.setProperty('--primary', DB.settings.color);
 
   // Logo
   if(DB.settings.logo){
@@ -1672,12 +1672,21 @@ function applySettings(){
     img.style.display = "block";
   }
 
-  // Apply font & color
-  if(DB.settings.font) document.body.style.fontFamily = DB.settings.font;
-  if(DB.settings.color) document.documentElement.style.setProperty('--primary', DB.settings.color);
+  // Shop Location
+  if(DB.settings.shopLocation) document.getElementById("shopLocation").value = DB.settings.shopLocation;
 }
 
-// ===== SHOP LOCATION =====
+/* ===== SOFTWARE NAME ===== */
+function saveSoftwareName(){
+  if(!DB.settings) DB.settings = {};
+  const name = document.getElementById("setSoftwareName").value.trim() || "Dani Test Software";
+  DB.settings.softwareName = name;
+  saveDB();
+  applySettings();
+  alert("Software name updated");
+}
+
+/* ===== SHOP LOCATION ===== */
 function saveShopLocation(){
   if(!DB.settings) DB.settings = {};
   const loc = document.getElementById("shopLocation").value.trim();
@@ -1685,35 +1694,44 @@ function saveShopLocation(){
   saveDB();
   alert("Shop location saved");
 }
-
 function getShopLocation(){
   return (DB.settings && DB.settings.shopLocation) || "";
 }
 
-// ===== FONT & COLOR =====
+/* ===== UPLOAD LOGO ===== */
+function uploadLogo(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    if(!DB.settings) DB.settings = {};
+    DB.settings.logo = e.target.result;
+    saveDB();
+    applySettings();
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ===== FONT & COLOR ===== */
 function saveFontAndColor(){
   if(!DB.settings) DB.settings = {};
   const font = document.getElementById("softwareFont").value;
   const color = document.getElementById("softwareColor").value;
-
   DB.settings.font = font;
   DB.settings.color = color;
   saveDB();
-
   document.body.style.fontFamily = font;
   document.documentElement.style.setProperty('--primary', color);
-
   alert("Font & color applied");
 }
 
-// ===== LOGIN SYSTEM =====
+/* ===== LOGIN SYSTEM ===== */
 if(!DB.accounts){
-  DB.accounts = [
-    {id: uid("A"), username:"Dani", password:"7525", role:"developer", fixed:true}
-  ];
+  DB.accounts = [{id: uid("A"), username:"Dani", password:"7525", role:"developer", fixed:true}];
   saveDB();
 }
 
+// Show login prompt if not logged in
 if(!sessionStorage.getItem("loggedInUser")){
   const user = prompt("Enter Username:");
   const pass = prompt("Enter Password:");
@@ -1726,20 +1744,20 @@ if(!sessionStorage.getItem("loggedInUser")){
   sessionStorage.setItem("loggedInUser", JSON.stringify(acc));
 }
 
+// Check access by feature
 function hasAccess(feature){
   const user = JSON.parse(sessionStorage.getItem("loggedInUser"));
   if(!user) return false;
-  if(user.role==="developer") return true;
+  if(user.role==="developer") return true; // full access
   return user.permissions && user.permissions.includes(feature);
 }
 
-// ===== ACCOUNTS & ROLES LOGIC =====
+/* ===== ACCOUNTS / ROLES ===== */
 function createAccount(){
   const username = prompt("Username:");
   const password = prompt("Password:");
   const role = prompt("Role (admin/staff/developer):");
   if(!username || !password || !role) return alert("Invalid input");
-
   if(DB.accounts.find(x=>x.username===username)) return alert("Username exists");
 
   DB.accounts.push({id: uid("A"), username, password, role, permissions:[]});
@@ -1785,10 +1803,52 @@ function deleteAccount(id){
   renderAccounts();
 }
 
-// INIT ACCOUNTS TABLE
-renderAccounts();
+/* ===== BACKUP / RESTORE / RESET ===== */
+function downloadBackup(){
+  const blob = new Blob([JSON.stringify(DB,null,2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "dani_backup_"+Date.now()+".json";
+  a.click();
+}
 
+function restoreBackup(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      DB = JSON.parse(e.target.result);
+      saveDB();
+      location.reload();
+    }catch{
+      alert("Invalid backup file");
+    }
+  };
+  reader.readAsText(file);
+}
+
+function resetSystem(){
+  if(!confirm("Backup will be downloaded automatically. Continue reset?")) return;
+  downloadBackup();
+  DB = {
+    products: [],
+    vendors: [],
+    purchases: [],
+    invoices: [],
+    cash: [],
+    deleted: [],
+    settings: {softwareName:"Dani Test Software", logo:""}
+  };
+  saveDB();
+  location.reload();
+}
+
+/* ===== INIT ===== */
 document.addEventListener("DOMContentLoaded", applySettings);
+renderAccounts();
+</script>
+
 
 /* ================= MENU ================= */
 
