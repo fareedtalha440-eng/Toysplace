@@ -201,8 +201,9 @@ function openTab(id){
   if(tab && underline){
     const rect = tab.getBoundingClientRect();
     const parentRect = tab.parentElement.getBoundingClientRect();
-    underline.style.width = rect.width + "px";
-    underline.style.left = (rect.left - parentRect.left) + "px";
+    const underlineWidth = rect.width * 0.6; // 60% of menu item width
+underline.style.width = underlineWidth + "px";
+underline.style.left = (rect.left - parentRect.left) + (rect.width - underlineWidth)/2 + "px";
   }
 }
 
