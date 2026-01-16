@@ -552,6 +552,7 @@ td{position:relative;}
           <th>Balance</th>
           <th>Edit</th>
           <th>Delete</th>
+          <th>Created Date</th>
         </tr>
       </thead>
       <tbody id="cashRows"></tbody>
@@ -616,6 +617,16 @@ function saveCashPayment(){
     // EDIT EXISTING PAYMENT
     const c = DB.cash.find(x=>x.id===editingCashId);
     if(!c) return alert("Payment not found");
+    DB.cash.push({
+  id,
+  dateTime: dtISO,
+  type:"OUT",
+  vendor: vendor || "",
+  ref: ref || vendor || "",
+  amount,
+  createdDate: new Date().toISOString() // ADD THIS LINE
+});
+
 
     // Adjust vendor balance
     if(c.vendor){
@@ -675,7 +686,12 @@ function renderCash(){
   const tbody = document.getElementById("cashRows");
   tbody.innerHTML="";
 
-  let filtered = DB.cash.sort((a,b)=>new Date(a.dateTime)-new Date(b.dateTime));
+  // Sort newest → oldest by createdDate
+  let filtered = [...DB.cash].sort((a,b)=>{
+    const da = new Date(a.createdDate || a.dateTime);
+    const db = new Date(b.createdDate || b.dateTime);
+    return db - da; // newest first
+  });
 
   // Filters
   const from = document.getElementById("cashFrom").value;
@@ -705,6 +721,7 @@ function renderCash(){
     else runningBal -= c.amount;
 
     const dt = new Date(c.dateTime);
+    const created = new Date(c.createdDate || c.dateTime).toLocaleString();
     const vendorName = c.vendor || (c.type==="IN"?"Cash Customer":"");
     tbody.innerHTML+=`
       <tr>
@@ -717,6 +734,7 @@ function renderCash(){
         <td>${formatNumber(runningBal)}</td>
         <td>${c.type==="OUT"?`<button onclick="editCashPayment('${c.id}')">Edit</button>`:""}</td>
         <td>${c.type==="OUT"?`<button onclick="deleteCashPayment('${c.id}')">Delete</button>`:""}</td>
+        <td>${created}</td> <!-- NEW COLUMN -->
       </tr>
     `;
   });
