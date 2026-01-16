@@ -997,7 +997,7 @@ renderProducts();
   <div class="card">
     <h2>Vendors</h2>
 
-    <div style="display:flex;gap:10px;margin-bottom:10px;">
+    <div style="display:flex;gap:10px;margin-bottom:12px;">
       <input id="vendorName" placeholder="Vendor Name" style="flex:1">
       <button onclick="addVendor()">Add Vendor</button>
     </div>
@@ -1010,8 +1010,6 @@ renderProducts();
           <th>Name</th>
           <th>Balance</th>
           <th>Ledger</th>
-          <th>Edit</th>
-          <th>Delete</th>
         </tr>
       </thead>
       <tbody id="vendorRows"></tbody>
@@ -1020,109 +1018,128 @@ renderProducts();
 </section>
 
 <script>
-/* ================= DB INIT ================= */
-if(!window.DB) DB={};
-DB.vendors ||= [];
-DB.purchases ||= [];
-DB.cash ||= [];
+/* ================= SAFE INIT ================= */
+if(!window.DB) DB = {};
+if(!DB.vendors) DB.vendors = [];
+if(!DB.purchases) DB.purchases = [];
+if(!DB.cash) DB.cash = [];
 
 function saveDB(){
-  localStorage.setItem("DB",JSON.stringify(DB));
-}
-if(localStorage.getItem("DB")){
-  Object.assign(DB,JSON.parse(localStorage.getItem("DB")));
+  localStorage.setItem("DB", JSON.stringify(DB));
 }
 
-/* ================= HELPERS ================= */
-function fmt(n){
+function money(n){
   return Number(n||0).toLocaleString("en-PK",{minimumFractionDigits:2});
 }
+
+/* ================= VENDOR ID ================= */
 function nextVendorNo(){
   if(!DB.vendors.length) return "V-1001";
-  const m=Math.max(...DB.vendors.map(v=>+v.no.slice(2)));
-  return "V-"+(m+1);
+  const nums = DB.vendors
+    .map(v=>parseInt((v.no||"").replace("V-","")))
+    .filter(n=>!isNaN(n));
+  return "V-"+(Math.max(...nums,1000)+1);
 }
 
-/* ================= VENDOR CRUD ================= */
+/* ================= ADD ================= */
 function addVendor(){
-  const name=vendorName.value.trim();
-  if(!name) return alert("Vendor name required");
-  DB.vendors.push({id:crypto.randomUUID(),no:nextVendorNo(),name});
-  vendorName.value="";
+  const name = vendorName.value.trim();
+  if(!name) return alert("Enter vendor name");
+
+  DB.vendors.push({
+    id: uid("V"),
+    no: nextVendorNo(),
+    name
+  });
+
   saveDB();
+  vendorName.value="";
   renderVendors();
 }
 
-function editVendor(id){
-  const v=DB.vendors.find(x=>x.id===id);
-  const n=prompt("Edit Vendor Name",v.name);
-  if(n){v.name=n.trim();saveDB();renderVendors();}
-}
+/* ================= BALANCE (SAFE) ================= */
+function vendorBalance(v){
+  const purchase = DB.purchases
+    .filter(p=>p.vendorId===v.id)
+    .reduce((s,p)=>s+(p.total||0),0);
 
-function deleteVendor(id){
-  const bal=getVendorBalance(id);
-  if(bal!==0) return alert("Cannot delete vendor with balance");
-  if(confirm("Delete this vendor?")){
-    DB.vendors=DB.vendors.filter(v=>v.id!==id);
-    saveDB();
-    renderVendors();
-  }
-}
+  const paid = DB.cash
+    .filter(c =>
+      c.type==="OUT" &&
+      (
+        c.vendorId===v.id ||           // new
+        c.vendor===v.name              // old / manual
+      )
+    )
+    .reduce((s,c)=>s+(c.amount||0),0);
 
-/* ================= BALANCE ================= */
-function getVendorBalance(id){
-  const p=DB.purchases.filter(x=>x.vendorId===id)
-        .reduce((s,x)=>s+(x.total||0),0);
-  const pay=DB.cash.filter(c=>c.vendorId===id && c.type==="OUT")
-        .reduce((s,x)=>s+x.amount,0);
-  return p-pay;
+  return purchase - paid;
 }
 
 /* ================= RENDER ================= */
 function renderVendors(){
-  const tb=document.getElementById("vendorRows");
-  tb.innerHTML="";
+  const tbody = document.getElementById("vendorRows");
+  tbody.innerHTML="";
+
   DB.vendors.forEach((v,i)=>{
-    const bal=getVendorBalance(v.id);
-    tb.innerHTML+=`
+    const bal = vendorBalance(v);
+
+    tbody.innerHTML+=`
       <tr>
         <td>${i+1}</td>
         <td>${v.no}</td>
         <td>${v.name}</td>
-        <td>₨ ${fmt(bal)}</td>
-        <td><button onclick="openLedger('${v.id}')">Ledger</button></td>
-        <td><button onclick="editVendor('${v.id}')">Edit</button></td>
-        <td><button class="red" onclick="deleteVendor('${v.id}')">Delete</button></td>
-      </tr>`;
+        <td>₨ ${money(bal)}</td>
+        <td>
+          <button onclick="openVendorLedger('${v.id}')">Open</button>
+        </td>
+      </tr>
+    `;
   });
 }
 
 /* ================= LEDGER ================= */
-function openLedger(vendorId){
-  const v=DB.vendors.find(x=>x.id===vendorId);
-  let rows=[],bal=0;
+function openVendorLedger(vendorId){
+  const v = DB.vendors.find(x=>x.id===vendorId);
+  if(!v) return;
 
-  DB.purchases.filter(p=>p.vendorId===vendorId)
-    .forEach(p=>rows.push({
-      d:p.dateTime||p.date,
-      t:"Purchase",
-      r:p.id,
-      dr:p.total,
-      cr:0
-    }));
+  const rows = [];
 
-  DB.cash.filter(c=>c.vendorId===vendorId && c.type==="OUT")
-    .forEach(c=>rows.push({
-      d:c.dateTime,
-      t:"Payment",
-      r:c.ref,
-      dr:0,
-      cr:c.amount
-    }));
+  DB.purchases
+    .filter(p=>p.vendorId===v.id)
+    .forEach(p=>{
+      rows.push({
+        date:p.dateTime||p.date,
+        type:"Purchase",
+        ref:p.id,
+        debit:p.total,
+        credit:0
+      });
+    });
 
-  rows.sort((a,b)=>new Date(a.d)-new Date(b.d));
+  DB.cash
+    .filter(c =>
+      c.type==="OUT" &&
+      (
+        c.vendorId===v.id ||
+        c.vendor===v.name
+      )
+    )
+    .forEach(c=>{
+      rows.push({
+        date:c.dateTime||c.date,
+        type:"Payment",
+        ref:c.ref||c.id,
+        debit:0,
+        credit:c.amount
+      });
+    });
 
-  const w=window.open("");
+  rows.sort((a,b)=>new Date(a.date)-new Date(b.date));
+
+  let balance=0;
+
+  const w = window.open("","_blank");
   w.document.write(`
 <html>
 <head>
@@ -1130,50 +1147,55 @@ function openLedger(vendorId){
 <style>
 body{font-family:Segoe UI;padding:30px}
 h1{margin:0;font-size:26px}
-h2{margin:0;color:#666}
-table{width:100%;border-collapse:collapse;margin-top:15px}
+h2{margin:0;color:#666;font-size:14px}
+table{width:100%;border-collapse:collapse;margin-top:20px}
 th,td{border:1px solid #ccc;padding:8px;text-align:center}
 th{background:#f2f2f2}
-.r{text-align:right}
-.total{margin-top:20px;font-size:26px;font-weight:bold;text-align:right}
+.right{text-align:right}
+.total{font-size:24px;font-weight:bold;margin-top:20px;text-align:right}
+@media print{button{display:none}}
 </style>
 </head>
 <body>
 
-<div style="display:flex;justify-content:space-between;">
-  <div>
-    <h1>${v.name}</h1>
-    <h2>${v.no}</h2>
-  </div>
-</div>
+<h1>${v.name}</h1>
+<h2>${v.no}</h2>
 
 <table>
 <thead>
 <tr>
-<th>S No</th><th>Date</th><th>Type</th><th>Ref</th>
-<th>Debit</th><th>Credit</th><th>Balance</th>
+<th>S No</th>
+<th>Date</th>
+<th>Type</th>
+<th>Ref</th>
+<th>Debit</th>
+<th>Credit</th>
+<th>Balance</th>
 </tr>
 </thead>
 <tbody>
 ${rows.map((r,i)=>{
-  bal+=r.dr-r.cr;
-  return `<tr>
-    <td>${i+1}</td>
-    <td>${new Date(r.d).toLocaleString()}</td>
-    <td>${r.t}</td>
-    <td>${r.r}</td>
-    <td class="r">${fmt(r.dr)}</td>
-    <td class="r">${fmt(r.cr)}</td>
-    <td class="r">${fmt(bal)}</td>
-  </tr>`;
+  balance+=r.debit-r.credit;
+  const d=new Date(r.date);
+  return `
+<tr>
+<td>${i+1}</td>
+<td>${d.toLocaleDateString()} ${d.toLocaleTimeString()}</td>
+<td>${r.type}</td>
+<td>${r.ref}</td>
+<td class="right">${money(r.debit)}</td>
+<td class="right">${money(r.credit)}</td>
+<td class="right">${money(balance)}</td>
+</tr>`;
 }).join("")}
 </tbody>
 </table>
 
-<div class="total">Balance: ₨ ${fmt(bal)}</div>
+<div class="total">Present Balance: ₨ ${money(balance)}</div>
 
 </body>
-</html>`);
+</html>
+`);
 }
 
 /* ================= INIT ================= */
