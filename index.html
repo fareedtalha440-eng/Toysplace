@@ -178,7 +178,10 @@ button{
 }
 
 #mainMenu .menuItem {
-  outline: none; /* remove focus outline */
+  user-select: none;  /* Prevent text selection */
+  -webkit-user-select: none; /* Safari/Chrome */
+  -moz-user-select: none;    /* Firefox */
+  -ms-user-select: none;     /* IE/Edge */
 }
 
 </style>
