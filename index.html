@@ -1023,15 +1023,6 @@ if(!DB.vendors) DB.vendors = [];
 if(!DB.purchases) DB.purchases = [];
 if(!DB.cash) DB.cash = [];
 
-// Load from localStorage if available
-if(localStorage.getItem("DB")){
-  DB = JSON.parse(localStorage.getItem("DB"));
-}
-
-// Save DB function
-function saveDB(){
-  localStorage.setItem("DB", JSON.stringify(DB));
-}
 
 /* ================= HELPER ================= */
 function formatNumber(x){ 
@@ -1198,9 +1189,6 @@ data.forEach((r,i)=>{
 </html>
 `);
 }
-
-</script>
-
 
 <!-- ================= PURCHASE ================= -->
 
