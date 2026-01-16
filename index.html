@@ -152,27 +152,89 @@ button{
   <div id="dateTime"></div>
 </header>
 
-<!-- ================= MENU ================= -->
-<nav id="mainMenu" style="display:flex; gap:20px; padding:10px 20px; border-bottom:2px solid #ccc; position:relative; font-weight:bold; font-family:Segoe UI,Arial;">
-  <div id="tab-invoice" onclick="openTab('invoice')" class="menuItem">Invoice</div>
-  <div id="tab-vendors" onclick="openTab('vendors')" class="menuItem">Vendors</div>
-  <div id="tab-cash" onclick="openTab('cash')" class="menuItem">Cash In Hand</div>
-  <div id="tab-products" onclick="openTab('products')" class="menuItem">Products</div>
-  <div id="tab-reports" onclick="openTab('reports')" class="menuItem">Reports</div>
-  <div id="tab-settings" onclick="openTab('settings')" class="menuItem">Settings</div>
-  <!-- Underline -->
-  <div id="menuUnderline" style="position:absolute; bottom:0; height:3px; width:0; background:#1e1e1e; transition:all 0.3s ease;"></div>
+<!-- ================= TOP MENU ================= -->
+<nav id="mainMenu" style="position:relative; display:flex; gap:20px; border-bottom:2px solid #ccc; padding:10px 20px; background:#fff; z-index:100;">
+  <div id="tab-invoice" class="menuItem" onclick="openTab('invoice')">Invoice</div>
+  <div id="tab-products" class="menuItem" onclick="openTab('products')">Products</div>
+  <div id="tab-vendors" class="menuItem" onclick="openTab('vendors')">Vendors</div>
+  <div id="tab-purchase" class="menuItem" onclick="openTab('purchase')">Purchase</div>
+  <div id="tab-cash" class="menuItem" onclick="openTab('cash')">Cash In Hand</div>
+  <div id="tab-reports" class="menuItem" onclick="openTab('reports')">Reports</div>
+  <div id="tab-settings" class="menuItem" onclick="openTab('settings')">Settings</div>
+
+  <!-- Animated underline -->
+  <div id="menuUnderline" style="position:absolute; bottom:0; height:3px; width:0; left:0; background:var(--primary,#1e1e1e); transition:all 0.3s ease;"></div>
 </nav>
+
 <style>
-.menuItem {
+#mainMenu .menuItem {
   cursor:pointer;
-  padding:5px 0;
+  padding:5px 10px;
   position:relative;
+  font-weight:600;
 }
-.menuItem.active {
-  color:#1e1e1e;
+#mainMenu .menuItem.active {
+  color: var(--primary,#1e1e1e);
 }
-<style>
+</style>
+
+<script>
+/* ===== OPEN TAB FUNCTION WITH UNDERLINE ANIMATION ===== */
+function openTab(id){
+  // Hide all sections first
+  document.querySelectorAll("section").forEach(s => s.style.display = "none");
+
+  // Show selected section if user has permission
+  const sec = document.getElementById(id);
+  const user = JSON.parse(sessionStorage.getItem("loggedInUser") || "{}");
+  if(sec && (user.role === "developer" || (user.permissions || []).includes(id))){
+    sec.style.display = "block";
+  }
+
+  // Update menu active state
+  document.querySelectorAll("#mainMenu .menuItem").forEach(d => d.classList.remove("active"));
+  const tab = document.getElementById("tab-" + id);
+  if(tab) tab.classList.add("active");
+
+  // Animate underline
+  const underline = document.getElementById("menuUnderline");
+  if(tab && underline){
+    const rect = tab.getBoundingClientRect();
+    const parentRect = tab.parentElement.getBoundingClientRect();
+    underline.style.width = rect.width + "px";
+    underline.style.left = (rect.left - parentRect.left) + "px";
+  }
+}
+
+/* ===== ADJUST UNDERLINE ON WINDOW RESIZE ===== */
+window.addEventListener("resize", () => {
+  const active = document.querySelector("#mainMenu .menuItem.active");
+  const underline = document.getElementById("menuUnderline");
+  if(active && underline){
+    const rect = active.getBoundingClientRect();
+    const parentRect = active.parentElement.getBoundingClientRect();
+    underline.style.width = rect.width + "px";
+    underline.style.left = (rect.left - parentRect.left) + "px";
+  }
+});
+
+/* ===== OPEN DEFAULT TAB AFTER LOGIN ===== */
+document.addEventListener("DOMContentLoaded", () => {
+  const acc = sessionStorage.getItem("loggedInUser");
+  if(acc){
+    const user = JSON.parse(acc);
+    // Show first permitted tab
+    const tabs = ["invoice","products","vendors","purchase","cash","reports","settings"];
+    for(const t of tabs){
+      if(user.role==="developer" || (user.permissions||[]).includes(t)){
+        document.getElementById("tab-" + t).click();
+        break;
+      }
+    }
+  }
+});
+</script>
+
 <!-- ================= DATABASE ================= -->
 <script>
 let DB = {
