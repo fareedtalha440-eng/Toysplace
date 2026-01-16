@@ -1073,6 +1073,32 @@ function addVendor(){
   renderVendors();
 }
 
+/* ================= EDIT ================= */
+function editVendor(id){
+  const v = DB.vendors.find(x=>x.id===id);
+  if(!v) return;
+  const name = prompt("Edit vendor name", v.name);
+  if(!name) return;
+  v.name = name.trim();
+  saveDB();
+  renderVendors();
+}
+
+/* ================= DELETE ================= */
+function deleteVendor(id){
+  const v = DB.vendors.find(x=>x.id===id);
+  if(!v) return;
+  const bal = vendorBalance(v);
+  if(bal !== 0){
+    alert("Cannot delete vendor. Balance must be zero.");
+    return;
+  }
+  if(!confirm("Delete this vendor?")) return;
+  DB.vendors = DB.vendors.filter(x=>x.id!==id);
+  saveDB();
+  renderVendors();
+}
+
 /* ================= BALANCE ================= */
 function vendorBalance(v){
   const purchase = DB.purchases
@@ -1097,11 +1123,17 @@ function renderVendors(){
     tbody.innerHTML += `
       <tr>
         <td>${i+1}</td>
-        <td>${v.no}</td>
+        <td>${v.no || "Unknown"}</td>
         <td>${v.name}</td>
         <td>₨ ${money(bal)}</td>
         <td>
           <button onclick="openVendorLedger('${v.id}')">Open</button>
+        </td>
+        <td>
+          <button onclick="editVendor('${v.id}')">Edit</button>
+        </td>
+        <td>
+          <button onclick="deleteVendor('${v.id}')">Delete</button>
         </td>
       </tr>
     `;
@@ -1206,6 +1238,7 @@ ${rows.map((r,i)=>{
 /* ================= INIT ================= */
 renderVendors();
 </script>
+
 <!-- ================= PURCHASE ================= -->
 
 <style>
