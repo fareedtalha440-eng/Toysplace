@@ -996,19 +996,20 @@ renderProducts();
 <section id="vendors">
   <div class="card">
     <h2>Vendors</h2>
+
     <div style="display:flex; gap:10px; margin-bottom:10px;">
-      <input placeholder="Vendor Name" id="vendorName" style="flex:1">
+      <input id="vendorName" placeholder="Vendor Name" style="flex:1">
       <button onclick="addVendor()">Add Vendor</button>
     </div>
 
     <table style="width:100%; border-collapse:collapse;">
       <thead>
-        <tr style="background:#f6f8fa">
+        <tr>
           <th>#</th>
-          <th>Vendor ID</th>
+          <th>Vendor No</th>
           <th>Name</th>
-          <th>Balance</th>
-          <th>Actions</th>
+          <th>Balance (PKR)</th>
+          <th>Ledger</th>
         </tr>
       </thead>
       <tbody id="vendorRows"></tbody>
@@ -1017,138 +1018,132 @@ renderProducts();
 </section>
 
 <script>
-/* ================= INIT DB ================= */
-if(!window.DB) window.DB = {};
+/* ================= SAFE DB INIT ================= */
+if(!window.DB) DB = {};
 if(!DB.vendors) DB.vendors = [];
-if(!DB.purchases) DB.purchases = [];
 if(!DB.cash) DB.cash = [];
+if(!DB.purchases) DB.purchases = [];
 
-
-/* ================= HELPER ================= */
-function formatNumber(x){ 
-  return Number(x).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); 
+function saveDB(){
+  localStorage.setItem("DB", JSON.stringify(DB));
 }
-function getNextVendorId(){
+
+/* ================= HELPERS ================= */
+function fmt(n){
+  return Number(n).toLocaleString("en-PK",{minimumFractionDigits:2});
+}
+
+function nextVendorNo(){
   if(!DB.vendors.length) return "V-1001";
-  const nums = DB.vendors.map(v=>parseInt(v.id.replace("V-",""))||1000);
+  const nums = DB.vendors.map(v=>parseInt(v.no.replace("V-","")));
   return "V-"+(Math.max(...nums)+1);
 }
 
-/* ================= VENDOR LOGIC ================= */
+/* ================= VENDOR CRUD ================= */
 function addVendor(){
-  const name = document.getElementById("vendorName").value.trim();
-  if(!name) return alert("Enter vendor name");
-  const id = getNextVendorId();
-  DB.vendors.push({ id, name });
+  const name = vendorName.value.trim();
+  if(!name) return alert("Vendor name required");
+
+  DB.vendors.push({
+    id: crypto.randomUUID(),
+    no: nextVendorNo(),
+    name
+  });
+
+  vendorName.value="";
   saveDB();
-  document.getElementById("vendorName").value="";
   renderVendors();
-}
-
-function editVendor(id){
-  const v = DB.vendors.find(x=>x.id===id);
-  const n = prompt("Edit vendor name", v.name);
-  if(n){ v.name=n.trim(); saveDB(); renderVendors(); }
-}
-
-function deleteVendor(id){
-  const purchaseTotal = DB.purchases.filter(p=>p.vendorId===id).reduce((s,p)=>s+(p.total||0),0);
-  const paymentTotal = DB.cash.filter(c=>c.vendorId===id && c.type==="OUT").reduce((s,c)=>s+c.amount,0);
-  if(purchaseTotal-paymentTotal !==0) return alert("Cannot delete vendor with balance");
-  if(confirm("Delete this vendor?")){
-    DB.vendors = DB.vendors.filter(v=>v.id!==id);
-    saveDB();
-    renderVendors();
-  }
 }
 
 /* ================= RENDER VENDORS ================= */
 function renderVendors(){
-  const tbody=document.getElementById("vendorRows");
-  tbody.innerHTML="";
-  DB.vendors.forEach((v,idx)=>{
-    const purchaseTotal = DB.purchases.filter(p=>p.vendorId===v.id).reduce((s,p)=>s+(p.total||0),0);
-    const paymentTotal = DB.cash.filter(c=>c.vendorId===v.id && c.type==="OUT").reduce((s,c)=>s+c.amount,0);
-    const balance = purchaseTotal - paymentTotal;
+  const tbody = document.getElementById("vendorRows");
+  tbody.innerHTML = "";
 
-    // Highlight overdue (>30 days)
-    const lastPaymentDate = DB.cash.filter(c=>c.vendorId===v.id && c.type==="OUT")
-                                  .map(c=>new Date(c.dateTime))
-                                  .sort((a,b)=>b-a)[0];
-    const today = new Date();
-    let overdue=false;
-    if(balance>0 && lastPaymentDate){
-      const diffDays = Math.floor((today-lastPaymentDate)/(1000*60*60*24));
-      if(diffDays>30) overdue=true;
-    }
+  DB.vendors.forEach((v,i)=>{
+    const purchases = DB.purchases
+      .filter(p=>p.vendorId===v.id)
+      .reduce((s,p)=>s+(p.total||0),0);
 
-    tbody.innerHTML+=`
-      <tr style="${overdue?'background:#fff3cd':''}">
-        <td>${idx+1}</td>
-        <td>${v.id}</td>
+    const payments = DB.cash
+      .filter(c=>c.vendorId===v.id && c.type==="OUT")
+      .reduce((s,c)=>s+c.amount,0);
+
+    const bal = purchases - payments;
+
+    tbody.innerHTML += `
+      <tr>
+        <td>${i+1}</td>
+        <td>${v.no}</td>
         <td>${v.name}</td>
-        <td>₨ ${formatNumber(balance)}</td>
+        <td>₨ ${fmt(bal)}</td>
         <td>
-          <button onclick="showVendorLedger('${v.id}')">Open Ledger</button>
-          <button onclick="editVendor('${v.id}')">Edit</button>
-          <button onclick="deleteVendor('${v.id}')">Delete</button>
+          <button onclick="openVendorLedger('${v.id}')">Open</button>
         </td>
       </tr>
     `;
   });
 }
 
-/* ================= VENDOR LEDGER ================= */
-function showVendorLedger(vendorId){
-  const vendor = DB.vendors.find(v=>v.id===vendorId);
-  if(!vendor) return;
+/* ================= LEDGER ================= */
+function openVendorLedger(vendorId){
+  const v = DB.vendors.find(x=>x.id===vendorId);
+  if(!v) return;
 
-  const ledgerRows=[];
-  DB.purchases.filter(p=>p.vendorId===vendorId).forEach(p=>{
-    ledgerRows.push({
-      date:p.dateTime || p.date,
-      type:"Purchase",
-      ref:p.id,
-      debit:p.total,
-      credit:0
+  const rows = [];
+
+  DB.purchases
+    .filter(p=>p.vendorId===vendorId)
+    .forEach(p=>{
+      rows.push({
+        date:p.dateTime || p.date,
+        type:"Purchase",
+        ref:p.id,
+        debit:p.total,
+        credit:0
+      });
     });
-  });
-  DB.cash.filter(c=>c.vendorId===vendorId && c.type==="OUT").forEach(c=>{
-    ledgerRows.push({
-      date:c.dateTime,
-      type:"Payment",
-      ref:c.ref || c.id,
-      debit:0,
-      credit:c.amount
+
+  DB.cash
+    .filter(c=>c.vendorId===vendorId && c.type==="OUT")
+    .forEach(c=>{
+      rows.push({
+        date:c.dateTime,
+        type:"Payment",
+        ref:c.ref || c.id,
+        debit:0,
+        credit:c.amount
+      });
     });
-  });
-  ledgerRows.sort((a,b)=>new Date(a.date)-new Date(b.date));
+
+  rows.sort((a,b)=>new Date(a.date)-new Date(b.date));
 
   const win = window.open("","_blank");
   win.document.write(`
+<!DOCTYPE html>
 <html>
 <head>
-<title>Ledger - ${vendor.name}</title>
+<title>Vendor Ledger</title>
 <style>
 body{font-family:Segoe UI,Arial;padding:30px}
-h1{font-size:26px;font-weight:bold;margin:0}
-h2{font-size:16px;color:#555;margin:0 0 20px 0;}
-table{width:100%;border-collapse:collapse;margin-top:10px}
-th,td{border:1px solid #d0d7de;padding:8px;text-align:center}
-th{background:#f6f8fa}
+h1{margin:0}
+h3{margin:0;color:#666}
+table{width:100%;border-collapse:collapse;margin-top:20px}
+th,td{border:1px solid #ccc;padding:8px;text-align:center}
+th{background:#f3f3f3}
 .right{text-align:right}
-.totBal{font-size:24px;font-weight:bold;margin-top:15px;text-align:right}
+.total{margin-top:20px;font-size:22px;font-weight:bold;text-align:right}
 </style>
 </head>
 <body>
 
-<h1>${vendor.name}</h1>
-<h2>Vendor No: ${vendor.id}</h2>
+<h1>${v.name}</h1>
+<h3>Vendor No: ${v.no}</h3>
 
 <table>
 <thead>
 <tr>
-<th>S.No</th>
+<th>S No</th>
 <th>Date</th>
 <th>Type</th>
 <th>Ref</th>
@@ -1157,39 +1152,44 @@ th{background:#f6f8fa}
 <th>Balance</th>
 </tr>
 </thead>
-<tbody></tbody>
+<tbody id="rows"></tbody>
 </table>
 
-<div class="totBal">Present Balance: ₨ ${formatNumber(DB.purchases.filter(p=>p.vendorId===vendorId).reduce((s,p)=>s+(p.total||0),0) -
-DB.cash.filter(c=>c.vendorId===vendorId && c.type==="OUT").reduce((s,c)=>s+c.amount,0))}</div>
+<div class="total" id="finalBal"></div>
 
 <script>
-const data=${JSON.stringify(ledgerRows)};
-const tbody=document.querySelector("tbody");
-let runningBal=0;
+const data = ${JSON.stringify(rows)};
+const tbody = document.getElementById("rows");
+let bal = 0;
 
 data.forEach((r,i)=>{
-  runningBal+=r.debit-r.credit;
-  const dt=new Date(r.date);
-  const tr=document.createElement("tr");
-  tr.innerHTML=\`
-    <td>\${i+1}</td>
-    <td>\${dt.toLocaleDateString()} \${dt.toLocaleTimeString()}</td>
-    <td>\${r.type}</td>
-    <td>\${r.ref}</td>
-    <td class="right">\${r.debit.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-    <td class="right">\${r.credit.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-    <td class="right">\${runningBal.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+  bal += r.debit - r.credit;
+  const d = new Date(r.date);
+  tbody.innerHTML += \`
+    <tr>
+      <td>\${i+1}</td>
+      <td>\${d.toLocaleDateString()} \${d.toLocaleTimeString()}</td>
+      <td>\${r.type}</td>
+      <td>\${r.ref}</td>
+      <td class="right">\${r.debit.toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
+      <td class="right">\${r.credit.toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
+      <td class="right">\${bal.toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
+    </tr>
   \`;
-  tbody.appendChild(tr);
 });
-</script>
+
+document.getElementById("finalBal").innerText =
+  "Present Balance: ₨ " + bal.toLocaleString("en-PK",{minimumFractionDigits:2});
+<\/script>
 
 </body>
 </html>
 `);
 }
 
+/* ================= INITIAL ================= */
+renderVendors();
+</script>
 <!-- ================= PURCHASE ================= -->
 
 <style>
