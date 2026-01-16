@@ -1907,16 +1907,6 @@ function updateTime(){
 setInterval(updateTime,1000);
 updateTime();
 </script>
-<!-- ================= MENU ================= -->
-<nav style="display:flex; gap:10px; background:#eee; padding:10px;">
-  <div id="tab-invoice" onclick="openTab('invoice')" style="cursor:pointer; padding:5px 10px;">Invoice</div>
-  <div id="tab-vendors" onclick="openTab('vendors')" style="cursor:pointer; padding:5px 10px;">Vendors</div>
-  <div id="tab-products" onclick="openTab('products')" style="cursor:pointer; padding:5px 10px;">Products</div>
-  <div id="tab-cash" onclick="openTab('cash')" style="cursor:pointer; padding:5px 10px;">Cash In Hand</div>
-  <div id="tab-reports" onclick="openTab('reports')" style="cursor:pointer; padding:5px 10px;">Reports</div>
-  <div id="tab-settings" onclick="openTab('settings')" style="cursor:pointer; padding:5px 10px;">Settings</div>
-</nav>
-
 <script>
 /* ================= MENU LOGIC ================= */
 function openTab(id){
@@ -1948,4 +1938,39 @@ document.addEventListener("DOMContentLoaded", ()=>{
     openTab("invoice");
   }
 });
+  /* ===== animated underline for menu tabs ===== */
+nav div.menu-tab {
+  position: relative;
+  padding: 8px 16px;
+  cursor: pointer;
+  background: none;             /* remove blue highlight */
+  color: #000;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+/* base underline is hidden (scaleX 0) */
+nav div.menu-tab::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 2px;
+  background-color: #000;       /* underline color */
+  transform: scaleX(0);
+  transform-origin: left;       /* animate from left to right */
+  transition: transform 0.25s ease; /* smooth animation */
+}
+
+/* show underline on hover */
+nav div.menu-tab:hover::before {
+  transform: scaleX(1);
+}
+
+/* keep underline visible on active tab */
+nav div.menu-tab.active::before {
+  transform: scaleX(1);
+}
+
 </script>
