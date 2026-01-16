@@ -1349,21 +1349,30 @@ function renderPurchaseRows(){
 
 /* ===== SEARCH ===== */
 function searchProduct(inp,i){
-  closeSuggest();
-  if(!inp.value)return;
+  document.querySelectorAll(".suggest-box").forEach(x=>x.remove());
+  const val=inp.value.trim();
+  purchaseDraft[i].productId=null;   // IMPORTANT: reset
+
+  if(!val)return;
 
   const list=DB.products.filter(p=>
-    p.barcode.includes(inp.value)||
-    p.itemNo.includes(inp.value)||
-    p.desc.toLowerCase().includes(inp.value.toLowerCase())
+    p.barcode.toLowerCase().includes(val.toLowerCase()) ||
+    p.itemNo.toLowerCase().includes(val.toLowerCase()) ||
+    p.desc.toLowerCase().includes(val.toLowerCase())
   ).slice(0,5);
-
-  if(!list.length)return;
 
   const box=document.createElement("div");
   box.className="suggest-box";
   inp.parentNode.style.position="relative";
   inp.parentNode.appendChild(box);
+
+  if(!list.length){
+    const d=document.createElement("div");
+    d.innerText="❌ No match found";
+    d.style.color="red";
+    box.appendChild(d);
+    return;
+  }
 
   list.forEach(p=>{
     const d=document.createElement("div");
@@ -1396,12 +1405,15 @@ function savePurchase(){
   if(!purchaseVendor.value)return alert("Select vendor");
   let total=0;
 
-  purchaseDraft.forEach(r=>{
-    if(!r.productId)return;
-    const p=DB.products.find(x=>x.id===r.productId);
-    p.stock+=r.qty;
-    total+=r.qty*r.cost;
-  });
+  for(const r of purchaseDraft){
+  if(!r.productId){
+    alert("Invalid product detected. Please select from list.");
+    return;
+  }
+  const p=DB.products.find(x=>x.id===r.productId);
+  p.stock+=r.qty;
+  total+=r.qty*r.cost;
+}
 
   DB.purchases.push({
     id:uid("PUR"),
