@@ -1576,16 +1576,7 @@ renderPurchaseHistory();
 function generateReport(){ document.getElementById("reportOutput").innerText=JSON.stringify(DB,null,2);}
 </script>
 
-<!-- ================= LOGIN ================= -->
-<section id="loginScreen" style="display:flex; align-items:center; justify-content:center; height:100vh; background:#f5f5f5; flex-direction:column;">
-  <h1>Login</h1>
-  <input type="text" id="loginUsername" placeholder="Username" style="margin:5px; padding:8px; width:200px;">
-  <input type="password" id="loginPassword" placeholder="Password" style="margin:5px; padding:8px; width:200px;">
-  <button onclick="submitLogin()" style="padding:8px 15px; margin-top:10px;">Login</button>
-  <div id="loginError" style="color:red; margin-top:10px;"></div>
-</section>
-
-<!-- ================= LOGIN & SETTINGS ================= -->
+<!-- ================= LOGIN + MENU + SETTINGS + DATE/TIME ================= -->
 
 <!-- LOGIN SCREEN -->
 <section id="loginScreen" style="display:flex; align-items:center; justify-content:center; height:100vh; background:#f5f5f5; flex-direction:column;">
@@ -1595,6 +1586,17 @@ function generateReport(){ document.getElementById("reportOutput").innerText=JSO
   <button onclick="submitLogin()" style="padding:8px 15px; margin-top:10px;">Login</button>
   <div id="loginError" style="color:red; margin-top:10px;"></div>
 </section>
+
+<!-- MENU AND DATE/TIME -->
+<nav id="mainMenu" style="display:none; background:#eee; padding:10px; display:flex; gap:10px;">
+  <div id="tab-invoice" data-feature="invoice" onclick="openTab('invoice')" style="cursor:pointer;">Invoice</div>
+  <div id="tab-cash" data-feature="cash" onclick="openTab('cash')" style="cursor:pointer;">Cash In Hand</div>
+  <div id="tab-vendors" data-feature="vendors" onclick="openTab('vendors')" style="cursor:pointer;">Vendors</div>
+  <div id="tab-products" data-feature="products" onclick="openTab('products')" style="cursor:pointer;">Products</div>
+  <div id="tab-reports" data-feature="reports" onclick="openTab('reports')" style="cursor:pointer;">Reports</div>
+  <div id="tab-settings" data-feature="settings" onclick="openTab('settings')" style="cursor:pointer;">Settings</div>
+  <div style="margin-left:auto;" id="dateTime"></div>
+</nav>
 
 <!-- SETTINGS SECTION -->
 <section id="settings" style="display:none; padding:20px;">
@@ -1679,226 +1681,125 @@ function generateReport(){ document.getElementById("reportOutput").innerText=JSO
 </section>
 
 <script>
-/* ====================== ACCOUNTS & LOGIN ====================== */
+/* ====================== INITIALIZE ====================== */
 
-// Ensure DB.accounts exists and create default developer
+// Developer account always exists
 if(!DB.accounts){
   DB.accounts=[{id: uid("A"), username:"Dani", password:"7525", role:"developer", fixed:true, permissions:[]}];
   saveDB();
 }
 
-// Check permissions
-function hasAccess(feature){
-  const user = JSON.parse(sessionStorage.getItem("loggedInUser"));
-  if(!user) return false;
-  if(user.role==="developer") return true;
-  return user.permissions && user.permissions.includes(feature);
-}
-
-// Login function
+// LOGIN SYSTEM
 function submitLogin(){
-  const user = document.getElementById("loginUsername").value.trim();
-  const pass = document.getElementById("loginPassword").value.trim();
-  const acc = DB.accounts.find(x=>x.username===user && x.password===pass);
-
+  const user=document.getElementById("loginUsername").value.trim();
+  const pass=document.getElementById("loginPassword").value.trim();
+  const acc=DB.accounts.find(x=>x.username===user && x.password===pass);
   if(!acc){
-    document.getElementById("loginError").innerText = "Invalid username or password";
+    document.getElementById("loginError").innerText="Invalid username or password";
     return;
   }
-
-  // Save login session
   sessionStorage.setItem("loggedInUser", JSON.stringify(acc));
 
-  // Hide login, show other sections
   document.getElementById("loginScreen").style.display="none";
-  document.querySelectorAll("section").forEach(s=>{
-    if(s.id!=="loginScreen") s.style.display="block";
-  });
+  document.getElementById("mainMenu").style.display="flex";
+  document.querySelectorAll("section").forEach(s=>{ if(s.id!=="loginScreen") s.style.display="block"; });
 
-  // Enable menu tabs based on permissions
-  document.querySelectorAll("nav div").forEach(tab=>{
-    const feature = tab.getAttribute("data-feature");
-    if(hasAccess(feature)){
-      tab.style.pointerEvents="auto";
-      tab.style.opacity="1";
-    } else {
-      tab.style.pointerEvents="none";
-      tab.style.opacity="0.4";
-    }
-  });
+  enableMenuTabs();
+  openDefaultTab(acc);
+}
 
-  // Open default allowed tab
-  let defaultTab = "invoice";
-  const userPerms = acc.permissions || [];
-  if(acc.role !== "developer" && !userPerms.includes(defaultTab)){
-    defaultTab = userPerms.length ? userPerms[0] : "";
+// Enable/disable menu based on permissions
+function enableMenuTabs(){
+  const user=JSON.parse(sessionStorage.getItem("loggedInUser"));
+  document.querySelectorAll("#mainMenu div[data-feature]").forEach(tab=>{
+    const feature=tab.getAttribute("data-feature");
+    if(user.role==="developer" || (user.permissions && user.permissions.includes(feature))){
+      tab.style.pointerEvents="auto"; tab.style.opacity="1";
+    } else { tab.style.pointerEvents="none"; tab.style.opacity="0.4"; }
+  });
+}
+
+// Open first allowed tab
+function openDefaultTab(user){
+  let defaultTab="invoice";
+  if(user.role!=="developer" && user.permissions.length){
+    defaultTab=user.permissions[0];
   }
-  if(defaultTab) openTab(defaultTab);
+  openTab(defaultTab);
 }
 
 // Persist login on reload
 document.addEventListener("DOMContentLoaded", ()=>{
-  const acc = sessionStorage.getItem("loggedInUser");
+  const acc=sessionStorage.getItem("loggedInUser");
   if(acc){
     document.getElementById("loginScreen").style.display="none";
-    document.querySelectorAll("section").forEach(s=>{
-      if(s.id!=="loginScreen") s.style.display="block";
-    });
-
-    // Enable menu tabs
-    document.querySelectorAll("nav div").forEach(tab=>{
-      const feature = tab.getAttribute("data-feature");
-      if(hasAccess(feature)){
-        tab.style.pointerEvents="auto";
-        tab.style.opacity="1";
-      } else {
-        tab.style.pointerEvents="none";
-        tab.style.opacity="0.4";
-      }
-    });
-
-    // Open default tab
-    openTab("invoice");
+    document.getElementById("mainMenu").style.display="flex";
+    document.querySelectorAll("section").forEach(s=>{ if(s.id!=="loginScreen") s.style.display="block"; });
+    enableMenuTabs();
+    openDefaultTab(JSON.parse(acc));
   } else {
-    document.querySelectorAll("section").forEach(s=>{
-      if(s.id!=="loginScreen") s.style.display="none";
-    });
+    document.getElementById("mainMenu").style.display="none";
+    document.querySelectorAll("section").forEach(s=>{ if(s.id!=="loginScreen") s.style.display="none"; });
   }
 });
 
-/* ====================== ACCOUNT MANAGEMENT ====================== */
+// OPEN TAB FUNCTION
+function openTab(id){
+  document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
+  const sec=document.getElementById(id);
+  if(sec) sec.classList.add("active");
+  document.querySelectorAll("#mainMenu div").forEach(d=>d.classList.remove("active"));
+  const tab=document.getElementById("tab-"+id);
+  if(tab) tab.classList.add("active");
+}
 
+// DATE & TIME
+function updateTime(){
+  const now=new Date();
+  const el=document.getElementById("dateTime");
+  if(el) el.innerText=now.toLocaleString();
+}
+setInterval(updateTime,1000);
+updateTime();
+
+/* ====================== SETTINGS FUNCTIONS ====================== */
+function saveSoftwareName(){ if(!DB.settings) DB.settings={}; DB.settings.softwareName=document.getElementById("setSoftwareName").value.trim()||"Dani Test Software"; saveDB(); alert("Software name updated"); }
+function uploadLogo(input){ const file=input.files[0]; if(!file) return; const reader=new FileReader(); reader.onload=e=>{ if(!DB.settings) DB.settings={}; DB.settings.logo=e.target.result; saveDB(); alert("Logo updated"); }; reader.readAsDataURL(file);}
+function saveShopLocation(){ if(!DB.settings) DB.settings={}; DB.settings.shopLocation=document.getElementById("shopLocation").value.trim(); saveDB(); alert("Shop location saved"); }
+function saveFontAndColor(){ if(!DB.settings) DB.settings={}; DB.settings.font=document.getElementById("softwareFont").value; DB.settings.color=document.getElementById("softwareColor").value; saveDB(); document.body.style.fontFamily=DB.settings.font; document.documentElement.style.setProperty('--primary', DB.settings.color); alert("Font & color applied"); }
+
+/* ====================== ACCOUNT MANAGEMENT ====================== */
 function createAccount(){
   const username=document.getElementById("newUsername").value.trim();
   const password=document.getElementById("newPassword").value.trim();
   const role=document.getElementById("newRole").value;
   const perms=Array.from(document.getElementById("newPermissions").selectedOptions).map(x=>x.value);
-
-  if(!username || !password || !role) return alert("Please fill all fields");
+  if(!username||!password||!role) return alert("Please fill all fields");
   if(DB.accounts.find(x=>x.username===username)) return alert("Username exists");
-
-  DB.accounts.push({id:uid("A"), username, password, role, permissions:perms});
-  saveDB();
-  renderAccounts();
-
-  document.getElementById("newUsername").value="";
-  document.getElementById("newPassword").value="";
-  document.getElementById("newRole").value="admin";
-  document.getElementById("newPermissions").selectedIndex=-1;
+  DB.accounts.push({id:uid("A"), username,password,role,permissions:perms});
+  saveDB(); renderAccounts();
+  document.getElementById("newUsername").value=""; document.getElementById("newPassword").value=""; document.getElementById("newRole").value="admin"; document.getElementById("newPermissions").selectedIndex=-1;
 }
 
 function renderAccounts(){
   const tbody=document.getElementById("accountsTable");
   tbody.innerHTML="";
-  DB.accounts.forEach(a=>{
-    tbody.innerHTML+=`
-      <tr>
-        <td>${a.username}</td>
-        <td>${a.role}</td>
-        <td>${(a.permissions||[]).join(", ")}</td>
-        <td><button onclick="editAccount('${a.id}')">Edit</button></td>
-        <td>${a.fixed?"":`<button onclick="deleteAccount('${a.id}')">Delete</button>`}</td>
-      </tr>
-    `;
-  });
+  DB.accounts.forEach(a=>{ tbody.innerHTML+=`<tr><td>${a.username}</td><td>${a.role}</td><td>${(a.permissions||[]).join(", ")}</td><td><button onclick="editAccount('${a.id}')">Edit</button></td><td>${a.fixed?"":`<button onclick="deleteAccount('${a.id}')">Delete</button>`}</td></tr>`; });
 }
 
 function editAccount(id){
-  const acc=DB.accounts.find(x=>x.id===id);
-  if(!acc) return alert("Account not found");
-  if(acc.fixed) return alert("Cannot edit developer account");
-
+  const acc=DB.accounts.find(x=>x.id===id); if(!acc) return alert("Account not found"); if(acc.fixed) return alert("Cannot edit developer account");
   const username=prompt("Username:", acc.username);
   const password=prompt("Password:", acc.password);
   const role=prompt("Role:", acc.role);
   const perms=prompt("Permissions (comma separated):", (acc.permissions||[]).join(","));
-
-  if(username) acc.username=username;
-  if(password) acc.password=password;
-  if(role) acc.role=role;
+  if(username) acc.username=username; if(password) acc.password=password; if(role) acc.role=role;
   acc.permissions=perms?perms.split(",").map(x=>x.trim()):[];
-  saveDB();
-  renderAccounts();
+  saveDB(); renderAccounts();
 }
 
-function deleteAccount(id){
-  const acc=DB.accounts.find(x=>x.id===id);
-  if(!acc || acc.fixed) return alert("Cannot delete this account");
-  if(!confirm("Delete this account?")) return;
-  DB.accounts = DB.accounts.filter(x=>x.id!==id);
-  saveDB();
-  renderAccounts();
-}
+function deleteAccount(id){ const acc=DB.accounts.find(x=>x.id===id); if(!acc||acc.fixed) return alert("Cannot delete this account"); if(!confirm("Delete this account?")) return; DB.accounts=DB.accounts.filter(x=>x.id!==id); saveDB(); renderAccounts(); }
 
-/* ====================== FONT & COLOR ====================== */
-function saveFontAndColor(){
-  if(!DB.settings) DB.settings={};
-  const font=document.getElementById("softwareFont").value;
-  const color=document.getElementById("softwareColor").value;
-  DB.settings.font=font;
-  DB.settings.color=color;
-  saveDB();
-  document.body.style.fontFamily=font;
-  document.documentElement.style.setProperty('--primary', color);
-  alert("Font & color applied");
-}
-
-document.addEventListener("DOMContentLoaded", ()=>{
-  if(DB.settings){
-    if(DB.settings.font) document.body.style.fontFamily=DB.settings.font;
-    if(DB.settings.color) document.documentElement.style.setProperty('--primary', DB.settings.color);
-  }
-});
-
-/* ====================== SHOP LOCATION ====================== */
-function saveShopLocation(){
-  if(!DB.settings) DB.settings={};
-  const loc=document.getElementById("shopLocation").value.trim();
-  DB.settings.shopLocation=loc;
-  saveDB();
-  alert("Shop location saved");
-}
-
-/* ====================== SOFTWARE NAME ====================== */
-function saveSoftwareName(){
-  if(!DB.settings) DB.settings={};
-  const name=document.getElementById("setSoftwareName").value.trim();
-  DB.settings.softwareName=name||"Dani Test Software";
-  saveDB();
-  alert("Software name updated");
-}
-
-/* ===== INITIAL RENDER ===== */
+// INIT ACCOUNTS TABLE
 renderAccounts();
 </script>
-<script>
-/* ================= MENU ================= */
-
-function openTab(id){
-  document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
-  const sec = document.getElementById(id);
-  if(sec) sec.classList.add("active");
-
-  document.querySelectorAll("nav div").forEach(d=>d.classList.remove("active"));
-  const tab = document.getElementById("tab-"+id);
-  if(tab) tab.classList.add("active");
-}
-
-/* DEFAULT OPEN */
-document.addEventListener("DOMContentLoaded", () => {
-  openTab("invoice");
-});
-
-/* ================= DATE & TIME ================= */
-
-function updateTime(){
-  const now = new Date();
-  const el = document.getElementById("dateTime");
-  if(el) el.innerText = now.toLocaleString();
-}
-setInterval(updateTime,1000);
-updateTime();
-</script>
-
-</body>
-</html>
