@@ -1908,69 +1908,68 @@ setInterval(updateTime,1000);
 updateTime();
 </script>
 <script>
-/* ================= MENU LOGIC ================= */
+<!-- ================= MENU ================= -->
+<nav id="mainMenu" style="display:flex; gap:20px; padding:10px 20px; border-bottom:2px solid #ccc; position:relative; font-weight:bold; font-family:Segoe UI,Arial;">
+  <div id="tab-invoice" onclick="openTab('invoice')" class="menuItem">Invoice</div>
+  <div id="tab-vendors" onclick="openTab('vendors')" class="menuItem">Vendors</div>
+  <div id="tab-cash" onclick="openTab('cash')" class="menuItem">Cash In Hand</div>
+  <div id="tab-products" onclick="openTab('products')" class="menuItem">Products</div>
+  <div id="tab-reports" onclick="openTab('reports')" class="menuItem">Reports</div>
+  <div id="tab-settings" onclick="openTab('settings')" class="menuItem">Settings</div>
+  <!-- Underline -->
+  <div id="menuUnderline" style="position:absolute; bottom:0; height:3px; width:0; background:#1e1e1e; transition:all 0.3s ease;"></div>
+</nav>
+
+<style>
+.menuItem {
+  cursor:pointer;
+  padding:5px 0;
+  position:relative;
+}
+.menuItem.active {
+  color:#1e1e1e;
+}
+</style>
+
+<script>
 function openTab(id){
-  // Hide all sections
-  document.querySelectorAll("section").forEach(s=>{
-    if(s.id!=="loginScreen") s.style.display = "none";
-  });
+  // Hide all sections first
+  document.querySelectorAll("section").forEach(s=>s.style.display="none");
 
   // Show selected section
-  const sec = document.getElementById(id);
-  if(sec) sec.style.display = "block";
+  const sec=document.getElementById(id);
+  if(sec) sec.style.display="block";
 
-  // Highlight active tab
-  document.querySelectorAll("nav div").forEach(d=>d.style.background="");
-  const tab = document.getElementById("tab-"+id);
-  if(tab) tab.style.background="#cce5ff";
+  // Update menu active state
+  document.querySelectorAll("#mainMenu .menuItem").forEach(d=>d.classList.remove("active"));
+  const tab=document.getElementById("tab-"+id);
+  if(tab) tab.classList.add("active");
+
+  // Animate underline
+  const underline=document.getElementById("menuUnderline");
+  if(tab && underline){
+    const rect=tab.getBoundingClientRect();
+    const parentRect=tab.parentElement.getBoundingClientRect();
+    underline.style.width=rect.width+"px";
+    underline.style.left=(rect.left-parentRect.left)+"px";
+  }
 }
 
-/* ===== DEFAULT OPEN ===== */
-document.addEventListener("DOMContentLoaded", ()=>{
-  // Show only login if not logged in
-  const acc = sessionStorage.getItem("loggedInUser");
-  if(!acc){
-    document.querySelectorAll("section").forEach(s=>{
-      if(s.id!=="loginScreen") s.style.display="none";
-    });
-  } else {
-    // Open invoice by default
-    openTab("invoice");
+// Animate on window resize to adjust underline
+window.addEventListener("resize", ()=>{
+  const active=document.querySelector("#mainMenu .menuItem.active");
+  const underline=document.getElementById("menuUnderline");
+  if(active && underline){
+    const rect=active.getBoundingClientRect();
+    const parentRect=active.parentElement.getBoundingClientRect();
+    underline.style.width=rect.width+"px";
+    underline.style.left=(rect.left-parentRect.left)+"px";
   }
 });
-  /* ===== animated underline for menu tabs ===== */
-nav div.menu-tab {
-  position: relative;
-  padding: 8px 16px;
-  cursor: pointer;
-  background: none;             /* remove blue highlight */
-  color: #000;
-  text-decoration: none;
-  font-weight: 500;
-}
 
-/* base underline is hidden (scaleX 0) */
-nav div.menu-tab::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 100%;
-  height: 2px;
-  background-color: #000;       /* underline color */
-  transform: scaleX(0);
-  transform-origin: left;       /* animate from left to right */
-  transition: transform 0.25s ease; /* smooth animation */
-}
-
-/* show underline on hover */
-nav div.menu-tab:hover::before {
-  transform: scaleX(1);
-}
-
-/* keep underline visible on active tab */
-nav div.menu-tab.active::before {
-  transform: scaleX(1);
-}
-
+// Default open
+document.addEventListener("DOMContentLoaded", ()=>{
+  const firstTab=document.querySelector("#mainMenu .menuItem");
+  if(firstTab) firstTab.click();
+});
 </script>
