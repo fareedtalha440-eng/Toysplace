@@ -22,6 +22,15 @@ body{
   background:white;
   color:#0b1c2d;
 }
+<!-- ================= LOGIN ================= -->
+<section id="loginScreen" style="display:flex; align-items:center; justify-content:center; height:100vh; background:#f5f5f5; flex-direction:column;">
+  <h1>Login</h1>
+  <input type="text" id="loginUsername" placeholder="Username" style="margin:5px; padding:8px;">
+  <input type="password" id="loginPassword" placeholder="Password" style="margin:5px; padding:8px;">
+  <button onclick="submitLogin()" style="padding:8px 15px; margin-top:10px;">Login</button>
+  <div id="loginError" style="color:red; margin-top:10px;"></div>
+</section>
+
 
 /* ===== HEADER ===== */
 header{
@@ -1848,6 +1857,43 @@ function resetSystem(){
 document.addEventListener("DOMContentLoaded", applySettings);
 renderAccounts();
 </script>
+<script>
+// ================= LOGIN =================
+
+// Initialize default developer account if not exists
+if(!DB.accounts){
+  DB.accounts = [{id: uid("A"), username:"Dani", password:"7525", role:"developer", fixed:true}];
+  saveDB();
+}
+
+// Login function
+function submitLogin(){
+  const user = document.getElementById("loginUsername").value.trim();
+  const pass = document.getElementById("loginPassword").value.trim();
+  const acc = DB.accounts.find(x=>x.username===user && x.password===pass);
+  if(!acc){
+    document.getElementById("loginError").innerText = "Invalid username or password";
+    return;
+  }
+
+  // Save login in sessionStorage
+  sessionStorage.setItem("loggedInUser", JSON.stringify(acc));
+
+  // Hide login screen and show main software
+  document.getElementById("loginScreen").style.display = "none";
+  document.querySelectorAll("section").forEach(s=>s.style.display = "none");
+  // Open default tab
+  openTab("invoice");
+}
+
+// On page load, check if already logged in
+document.addEventListener("DOMContentLoaded", ()=>{
+  const acc = sessionStorage.getItem("loggedInUser");
+  if(acc){
+    document.getElementById("loginScreen").style.display = "none";
+    openTab("invoice");
+  }
+});
 
 
 /* ================= MENU ================= */
