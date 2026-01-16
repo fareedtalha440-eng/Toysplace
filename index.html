@@ -1585,7 +1585,18 @@ function generateReport(){ document.getElementById("reportOutput").innerText=JSO
   <div id="loginError" style="color:red; margin-top:10px;"></div>
 </section>
 
-<!-- ================= SETTINGS ================= -->
+<!-- ================= LOGIN & SETTINGS ================= -->
+
+<!-- LOGIN SCREEN -->
+<section id="loginScreen" style="display:flex; align-items:center; justify-content:center; height:100vh; background:#f5f5f5; flex-direction:column;">
+  <h1>Login</h1>
+  <input type="text" id="loginUsername" placeholder="Username" style="margin:5px; padding:8px; width:200px;">
+  <input type="password" id="loginPassword" placeholder="Password" style="margin:5px; padding:8px; width:200px;">
+  <button onclick="submitLogin()" style="padding:8px 15px; margin-top:10px;">Login</button>
+  <div id="loginError" style="color:red; margin-top:10px;"></div>
+</section>
+
+<!-- SETTINGS SECTION -->
 <section id="settings" style="display:none; padding:20px;">
   <h2>Settings</h2>
 
@@ -1668,56 +1679,95 @@ function generateReport(){ document.getElementById("reportOutput").innerText=JSO
 </section>
 
 <script>
-/* ===== INIT DEFAULT DEVELOPER ACCOUNT ===== */
+/* ====================== ACCOUNTS & LOGIN ====================== */
+
+// Ensure DB.accounts exists and create default developer
 if(!DB.accounts){
   DB.accounts=[{id: uid("A"), username:"Dani", password:"7525", role:"developer", fixed:true, permissions:[]}];
   saveDB();
 }
 
-/* ===== LOGIN SYSTEM ===== */
+// Check permissions
+function hasAccess(feature){
+  const user = JSON.parse(sessionStorage.getItem("loggedInUser"));
+  if(!user) return false;
+  if(user.role==="developer") return true;
+  return user.permissions && user.permissions.includes(feature);
+}
+
+// Login function
 function submitLogin(){
-  const user=document.getElementById("loginUsername").value.trim();
-  const pass=document.getElementById("loginPassword").value.trim();
-  const acc=DB.accounts.find(x=>x.username===user && x.password===pass);
+  const user = document.getElementById("loginUsername").value.trim();
+  const pass = document.getElementById("loginPassword").value.trim();
+  const acc = DB.accounts.find(x=>x.username===user && x.password===pass);
+
   if(!acc){
-    document.getElementById("loginError").innerText="Invalid username or password";
+    document.getElementById("loginError").innerText = "Invalid username or password";
     return;
   }
+
+  // Save login session
   sessionStorage.setItem("loggedInUser", JSON.stringify(acc));
 
+  // Hide login, show other sections
   document.getElementById("loginScreen").style.display="none";
   document.querySelectorAll("section").forEach(s=>{
     if(s.id!=="loginScreen") s.style.display="block";
   });
-  openTab("invoice");
+
+  // Enable menu tabs based on permissions
+  document.querySelectorAll("nav div").forEach(tab=>{
+    const feature = tab.getAttribute("data-feature");
+    if(hasAccess(feature)){
+      tab.style.pointerEvents="auto";
+      tab.style.opacity="1";
+    } else {
+      tab.style.pointerEvents="none";
+      tab.style.opacity="0.4";
+    }
+  });
+
+  // Open default allowed tab
+  let defaultTab = "invoice";
+  const userPerms = acc.permissions || [];
+  if(acc.role !== "developer" && !userPerms.includes(defaultTab)){
+    defaultTab = userPerms.length ? userPerms[0] : "";
+  }
+  if(defaultTab) openTab(defaultTab);
 }
 
-/* ===== PERSIST LOGIN ===== */
+// Persist login on reload
 document.addEventListener("DOMContentLoaded", ()=>{
-  const acc=sessionStorage.getItem("loggedInUser");
+  const acc = sessionStorage.getItem("loggedInUser");
   if(acc){
     document.getElementById("loginScreen").style.display="none";
     document.querySelectorAll("section").forEach(s=>{
       if(s.id!=="loginScreen") s.style.display="block";
     });
+
+    // Enable menu tabs
+    document.querySelectorAll("nav div").forEach(tab=>{
+      const feature = tab.getAttribute("data-feature");
+      if(hasAccess(feature)){
+        tab.style.pointerEvents="auto";
+        tab.style.opacity="1";
+      } else {
+        tab.style.pointerEvents="none";
+        tab.style.opacity="0.4";
+      }
+    });
+
+    // Open default tab
     openTab("invoice");
   } else {
-    // hide all other sections until login
     document.querySelectorAll("section").forEach(s=>{
       if(s.id!=="loginScreen") s.style.display="none";
     });
   }
 });
 
-/* ===== CHECK PERMISSIONS ===== */
-function hasAccess(feature){
-  const user=JSON.parse(sessionStorage.getItem("loggedInUser"));
-  if(!user) return false;
-  if(user.role==="developer") return true;
-  return user.permissions && user.permissions.includes(feature);
-}
+/* ====================== ACCOUNT MANAGEMENT ====================== */
 
-/* ===== CREATE ACCOUNT ===== */
 function createAccount(){
   const username=document.getElementById("newUsername").value.trim();
   const password=document.getElementById("newPassword").value.trim();
@@ -1727,7 +1777,7 @@ function createAccount(){
   if(!username || !password || !role) return alert("Please fill all fields");
   if(DB.accounts.find(x=>x.username===username)) return alert("Username exists");
 
-  DB.accounts.push({id: uid("A"), username, password, role, permissions:perms});
+  DB.accounts.push({id:uid("A"), username, password, role, permissions:perms});
   saveDB();
   renderAccounts();
 
@@ -1737,7 +1787,6 @@ function createAccount(){
   document.getElementById("newPermissions").selectedIndex=-1;
 }
 
-/* ===== RENDER ACCOUNTS TABLE ===== */
 function renderAccounts(){
   const tbody=document.getElementById("accountsTable");
   tbody.innerHTML="";
@@ -1754,7 +1803,6 @@ function renderAccounts(){
   });
 }
 
-/* ===== EDIT ACCOUNT ===== */
 function editAccount(id){
   const acc=DB.accounts.find(x=>x.id===id);
   if(!acc) return alert("Account not found");
@@ -1773,17 +1821,16 @@ function editAccount(id){
   renderAccounts();
 }
 
-/* ===== DELETE ACCOUNT ===== */
 function deleteAccount(id){
   const acc=DB.accounts.find(x=>x.id===id);
   if(!acc || acc.fixed) return alert("Cannot delete this account");
   if(!confirm("Delete this account?")) return;
-  DB.accounts=DB.accounts.filter(x=>x.id!==id);
+  DB.accounts = DB.accounts.filter(x=>x.id!==id);
   saveDB();
   renderAccounts();
 }
 
-/* ===== FONT & COLOR ===== */
+/* ====================== FONT & COLOR ====================== */
 function saveFontAndColor(){
   if(!DB.settings) DB.settings={};
   const font=document.getElementById("softwareFont").value;
@@ -1795,6 +1842,7 @@ function saveFontAndColor(){
   document.documentElement.style.setProperty('--primary', color);
   alert("Font & color applied");
 }
+
 document.addEventListener("DOMContentLoaded", ()=>{
   if(DB.settings){
     if(DB.settings.font) document.body.style.fontFamily=DB.settings.font;
@@ -1802,7 +1850,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
   }
 });
 
-/* ===== SHOP LOCATION ===== */
+/* ====================== SHOP LOCATION ====================== */
 function saveShopLocation(){
   if(!DB.settings) DB.settings={};
   const loc=document.getElementById("shopLocation").value.trim();
@@ -1811,7 +1859,7 @@ function saveShopLocation(){
   alert("Shop location saved");
 }
 
-/* ===== SOFTWARE NAME ===== */
+/* ====================== SOFTWARE NAME ====================== */
 function saveSoftwareName(){
   if(!DB.settings) DB.settings={};
   const name=document.getElementById("setSoftwareName").value.trim();
