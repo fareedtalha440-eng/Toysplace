@@ -207,20 +207,22 @@ function uid(prefix){
     <button class="green" onclick="addInvoiceRow()">+ Add Item</button>
 
     <!-- ===== MAIN DISCOUNT & TOTAL ===== -->
-    <div style="margin-top:10px; display:flex; gap:15px; flex-wrap:wrap; align-items:center;">
-      <div>
-        <label>Main Discount Amount:</label>
-        <input type="number" id="mainDiscAmt" value="0" oninput="applyMainDiscount(getSubTotal())">
-      </div>
-      <div>
-        <label>Main Discount %:</label>
-        <input type="number" id="mainDiscPct" value="0" oninput="applyMainDiscount(getSubTotal())">
-      </div>
-      <div style="padding:5px; font-weight:bold;">
-        <label>Total:</label>
-        <b id="invTotal">0</b> PKR
-      </div>
-    </div>
+<div style="margin-top:10px; display:flex; gap:15px; flex-wrap:wrap; align-items:center; justify-content:center; border:1px solid #000; padding:10px;">
+  <div>
+    <label>Main Discount Amount:</label>
+    <input type="number" id="mainDiscAmt" value="0"
+      oninput="applyMainDiscount(getSubTotal());syncDiscFromAmt();">
+  </div>
+  <div>
+    <label>Main Discount %:</label>
+    <input type="number" id="mainDiscPct" value="0"
+      oninput="applyMainDiscount(getSubTotal());syncDiscFromPct();">
+  </div>
+  <div style="padding:10px; font-weight:bold; text-align:center; border-left:2px solid #000;">
+    <label><b>Total:</b></label><br>
+    <span style="font-size:22px;"><b id="invTotal">0</b> PKR</span>
+  </div>
+</div>
 
     <!-- ===== SAVE INVOICE ===== -->
     <div style="margin-top:10px;">
@@ -277,9 +279,9 @@ function formatNumber(x){
 
 /* ===== SEQUENTIAL INVOICE NUMBER ===== */
 function getNextInvoiceNumber(){
-  if(!DB.invoices || !DB.invoices.length) return "000001";
-  const nums = DB.invoices.map(inv=>parseInt(inv.id,10)||0);
-  return String(Math.max(...nums)+1).padStart(6,'0');
+  if(!DB.invoices || !DB.invoices.length) return "INV000001";
+  const nums = DB.invoices.map(inv=>parseInt(inv.id.replace("INV",""),10)||0);
+  return "INV" + String(Math.max(...nums)+1).padStart(6,'0');
 }
 
 /* ===== ADD ROW ===== */
@@ -451,8 +453,14 @@ function printInvoice(id){
     .subtotal,.discount,.totals{padding:4px;margin-top:2px;font-weight:500;} 
     .totals{font-weight:600;} 
     @media print{body{width:100%;} table,.totals,.subtotal,.discount{page-break-inside:avoid;}}</style></head>
-    <body><div class="header"><div class="header-left"><div><b>Issued To:</b> Cash Customers</div><div><b>Invoice No:</b> ${inv.id}</div><div><b>Invoice Date:</b> ${dateStr}</div><div><b>Time:</b> ${timeStr}</div></div><div class="logo">${logoTag}</div></div>
-    <h2>Invoice</h2><table><thead><tr><th>#</th><th>Item No</th><th>Description</th><th>Qty</th><th>Rate (PKR)</th><th>Total (PKR)</th></tr></thead><tbody>${rowsHtml}</tbody></table>
+    <body><div class="header-left">
+  <div style="font-size:20px;font-weight:bold;">Cash Customer</div>
+  <div><b>Invoice No:</b> ${inv.id}</div>
+  <div><b>Invoice Date:</b> ${dateStr}</div>
+  <div><b>Time:</b> ${timeStr}</div>
+</div>
+</div><div class="logo">${logoTag}</div></div>
+    <table><thead><tr><th>#</th><th>Item No</th><th>Description</th><th>Qty</th><th>Rate (PKR)</th><th>Total (PKR)</th></tr></thead><tbody>${rowsHtml}</tbody></table>
     <div class="subtotal">Subtotal: PKR ${formatNumber(subtotal)}</div>
     <div class="discount">Discount: PKR ${formatNumber(discountTotal)} (${inv.discountPct}%)</div>
     <div class="totals">Total: PKR ${formatNumber(inv.total)}</div>
@@ -464,6 +472,18 @@ function printInvoice(id){
 /* ===== INITIAL RENDER ===== */
 renderInvoice();
 renderInvoiceList();
+function syncDiscFromAmt(){
+  const sub=getSubTotal();
+  const amt=+document.getElementById("mainDiscAmt").value||0;
+  if(sub>0) document.getElementById("mainDiscPct").value=((amt/sub)*100).toFixed(2);
+}
+
+function syncDiscFromPct(){
+  const sub=getSubTotal();
+  const pct=+document.getElementById("mainDiscPct").value||0;
+  if(sub>0) document.getElementById("mainDiscAmt").value=((sub*pct)/100).toFixed(2);
+}
+
 </script>
 
 <style>
