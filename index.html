@@ -1605,107 +1605,190 @@ function generateReport(){ document.getElementById("reportOutput").innerText=JSO
 </section>
 
 <script>
+<!-- ===== SHOP LOCATION ===== -->
+<div class="p-block">
+  <h3>Shop Location</h3>
+  <input type="text" id="shopLocation" placeholder="Enter shop location" style="width:100%; margin-bottom:10px;">
+  <button onclick="saveShopLocation()">Save Location</button>
+</div>
+
+<!-- ===== FONT & COLOR ===== -->
+<div class="p-block">
+  <h3>Change Font & Color</h3>
+  <label>Font:</label>
+  <select id="softwareFont">
+    <option value="Arial">Arial</option>
+    <option value="Verdana">Verdana</option>
+    <option value="Tahoma">Tahoma</option>
+    <option value="Times New Roman">Times New Roman</option>
+    <option value="Georgia">Georgia</option>
+    <option value="Courier New">Courier New</option>
+    <option value="Helvetica">Helvetica</option>
+    <option value="Roboto">Roboto</option>
+    <option value="Lato">Lato</option>
+    <option value="Open Sans">Open Sans</option>
+  </select>
+  <br><br>
+  <label>Color:</label>
+  <input type="color" id="softwareColor" value="#1e1e1e">
+  <button onclick="saveFontAndColor()">Apply</button>
+</div>
+
+<!-- ===== ACCOUNTS & ROLES ===== -->
+<div class="p-block">
+  <h3>Manage Accounts / Roles</h3>
+  <button onclick="createAccount()">Create Account</button>
+  <table style="width:100%;margin-top:10px;">
+    <thead>
+      <tr>
+        <th>Username</th>
+        <th>Role</th>
+        <th>Permissions</th>
+        <th>Edit</th>
+        <th>Delete</th>
+      </tr>
+    </thead>
+    <tbody id="accountsTable"></tbody>
+  </table>
+</div>
 /* ================= SETTINGS LOGIC ================= */
 
 function applySettings(){
   if(!DB.settings) DB.settings = {};
-
+  
   const name = DB.settings.softwareName || "Dani Test Software";
 
-  /* Header text */
+  // Header text
   document.getElementById("softwareName").innerText = name;
   document.getElementById("setSoftwareName").value = name;
 
-  /* Browser tab title */
+  // Browser tab title
   document.title = name;
 
-  /* Logo */
+  // Logo
   if(DB.settings.logo){
     const img = document.getElementById("header-logo");
     img.src = DB.settings.logo;
     img.style.display = "block";
   }
-}
-document.addEventListener("DOMContentLoaded", applySettings);
 
-/* ===== SAVE SOFTWARE NAME ===== */
-function saveSoftwareName(){
+  // Apply font & color
+  if(DB.settings.font) document.body.style.fontFamily = DB.settings.font;
+  if(DB.settings.color) document.documentElement.style.setProperty('--primary', DB.settings.color);
+}
+
+// ===== SHOP LOCATION =====
+function saveShopLocation(){
   if(!DB.settings) DB.settings = {};
-
-  const name =
-    document.getElementById("setSoftwareName").value.trim() ||
-    "Dani Test Software";
-
-  DB.settings.softwareName = name;
+  const loc = document.getElementById("shopLocation").value.trim();
+  DB.settings.shopLocation = loc;
   saveDB();
-  applySettings();
-  alert("Software name updated");
+  alert("Shop location saved");
 }
 
-/* ===== UPLOAD LOGO ===== */
-function uploadLogo(input){
-  const file = input.files[0];
-  if(!file) return;
-
-  const reader = new FileReader();
-  reader.onload = e => {
-    if(!DB.settings) DB.settings = {};
-    DB.settings.logo = e.target.result;
-    saveDB();
-    applySettings();
-  };
-  reader.readAsDataURL(file);
+function getShopLocation(){
+  return (DB.settings && DB.settings.shopLocation) || "";
 }
 
-/* ===== DOWNLOAD BACKUP ===== */
-function downloadBackup(){
-  const blob = new Blob([JSON.stringify(DB,null,2)], {type:"application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "dani_backup_"+Date.now()+".json";
-  a.click();
-}
+// ===== FONT & COLOR =====
+function saveFontAndColor(){
+  if(!DB.settings) DB.settings = {};
+  const font = document.getElementById("softwareFont").value;
+  const color = document.getElementById("softwareColor").value;
 
-/* ===== RESTORE BACKUP ===== */
-function restoreBackup(input){
-  const file = input.files[0];
-  if(!file) return;
-
-  const reader = new FileReader();
-  reader.onload = e => {
-    try{
-      DB = JSON.parse(e.target.result);
-      saveDB();
-      location.reload();
-    }catch{
-      alert("Invalid backup file");
-    }
-  };
-  reader.readAsText(file);
-}
-
-/* ===== RESET SYSTEM (AUTO BACKUP) ===== */
-function resetSystem(){
-  if(!confirm("Backup will be downloaded automatically. Continue reset?")) return;
-
-  downloadBackup();
-
-  DB = {
-    products: [],
-    vendors: [],
-    purchases: [],
-    invoices: [],
-    cash: [],
-    deleted: [],
-    settings: {
-      softwareName: "Dani Test Software",
-      logo: ""
-    }
-  };
-
+  DB.settings.font = font;
+  DB.settings.color = color;
   saveDB();
-  location.reload();
+
+  document.body.style.fontFamily = font;
+  document.documentElement.style.setProperty('--primary', color);
+
+  alert("Font & color applied");
 }
+
+// ===== LOGIN SYSTEM =====
+if(!DB.accounts){
+  DB.accounts = [
+    {id: uid("A"), username:"Dani", password:"7525", role:"developer", fixed:true}
+  ];
+  saveDB();
+}
+
+if(!sessionStorage.getItem("loggedInUser")){
+  const user = prompt("Enter Username:");
+  const pass = prompt("Enter Password:");
+  const acc = DB.accounts.find(x=>x.username===user && x.password===pass);
+  if(!acc){
+    alert("Invalid credentials. Software will exit.");
+    document.body.innerHTML = "<h1 style='text-align:center;margin-top:50px;'>Access Denied</h1>";
+    throw new Error("Access Denied");
+  }
+  sessionStorage.setItem("loggedInUser", JSON.stringify(acc));
+}
+
+function hasAccess(feature){
+  const user = JSON.parse(sessionStorage.getItem("loggedInUser"));
+  if(!user) return false;
+  if(user.role==="developer") return true;
+  return user.permissions && user.permissions.includes(feature);
+}
+
+// ===== ACCOUNTS & ROLES LOGIC =====
+function createAccount(){
+  const username = prompt("Username:");
+  const password = prompt("Password:");
+  const role = prompt("Role (admin/staff/developer):");
+  if(!username || !password || !role) return alert("Invalid input");
+
+  if(DB.accounts.find(x=>x.username===username)) return alert("Username exists");
+
+  DB.accounts.push({id: uid("A"), username, password, role, permissions:[]});
+  saveDB();
+  renderAccounts();
+}
+
+function renderAccounts(){
+  const tbody = document.getElementById("accountsTable");
+  tbody.innerHTML="";
+  DB.accounts.forEach(a=>{
+    tbody.innerHTML+=`
+      <tr>
+        <td>${a.username}</td>
+        <td>${a.role}</td>
+        <td>${(a.permissions||[]).join(", ")}</td>
+        <td><button onclick="editAccount('${a.id}')">Edit</button></td>
+        <td>${a.fixed?"":`<button onclick="deleteAccount('${a.id}')">Delete</button>`}</td>
+      </tr>
+    `;
+  });
+}
+
+function editAccount(id){
+  const acc = DB.accounts.find(x=>x.id===id);
+  if(!acc) return alert("Account not found");
+  if(acc.fixed) return alert("Cannot edit developer account");
+
+  const role = prompt("Role:", acc.role);
+  const perms = prompt("Permissions (comma separated):", (acc.permissions||[]).join(","));
+  acc.role = role || acc.role;
+  acc.permissions = perms ? perms.split(",").map(x=>x.trim()) : [];
+  saveDB();
+  renderAccounts();
+}
+
+function deleteAccount(id){
+  const acc = DB.accounts.find(x=>x.id===id);
+  if(!acc || acc.fixed) return alert("Cannot delete this account");
+  if(!confirm("Delete this account?")) return;
+  DB.accounts = DB.accounts.filter(x=>x.id!==id);
+  saveDB();
+  renderAccounts();
+}
+
+// INIT ACCOUNTS TABLE
+renderAccounts();
+
+document.addEventListener("DOMContentLoaded", applySettings);
 
 /* ================= MENU ================= */
 
