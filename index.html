@@ -1576,9 +1576,7 @@ renderPurchaseHistory();
 function generateReport(){ document.getElementById("reportOutput").innerText=JSON.stringify(DB,null,2);}
 </script>
 
-<!-- ================= LOGIN + MENU + SETTINGS + DATE/TIME ================= -->
-
-<!-- LOGIN SCREEN -->
+<!-- ================= LOGIN ================= -->
 <section id="loginScreen" style="display:flex; align-items:center; justify-content:center; height:100vh; background:#f5f5f5; flex-direction:column;">
   <h1>Login</h1>
   <input type="text" id="loginUsername" placeholder="Username" style="margin:5px; padding:8px; width:200px;">
@@ -1587,18 +1585,7 @@ function generateReport(){ document.getElementById("reportOutput").innerText=JSO
   <div id="loginError" style="color:red; margin-top:10px;"></div>
 </section>
 
-<!-- MENU AND DATE/TIME -->
-<nav id="mainMenu" style="display:none; background:#eee; padding:10px; display:flex; gap:10px;">
-  <div id="tab-invoice" data-feature="invoice" onclick="openTab('invoice')" style="cursor:pointer;">Invoice</div>
-  <div id="tab-cash" data-feature="cash" onclick="openTab('cash')" style="cursor:pointer;">Cash In Hand</div>
-  <div id="tab-vendors" data-feature="vendors" onclick="openTab('vendors')" style="cursor:pointer;">Vendors</div>
-  <div id="tab-products" data-feature="products" onclick="openTab('products')" style="cursor:pointer;">Products</div>
-  <div id="tab-reports" data-feature="reports" onclick="openTab('reports')" style="cursor:pointer;">Reports</div>
-  <div id="tab-settings" data-feature="settings" onclick="openTab('settings')" style="cursor:pointer;">Settings</div>
-  <div style="margin-left:auto;" id="dateTime"></div>
-</nav>
-
-<!-- SETTINGS SECTION -->
+<!-- ================= SETTINGS ================= -->
 <section id="settings" style="display:none; padding:20px;">
   <h2>Settings</h2>
 
@@ -1655,12 +1642,13 @@ function generateReport(){ document.getElementById("reportOutput").innerText=JSO
         <option value="staff">Staff</option>
         <option value="developer">Developer</option>
       </select>
-      <select id="newPermissions" multiple style="height:80px;">
+      <select id="newPermissions" multiple style="height:100px;">
         <option value="invoice">Invoice</option>
         <option value="cash">Cash In Hand</option>
         <option value="vendors">Vendors</option>
         <option value="products">Products</option>
         <option value="settings">Settings</option>
+        <option value="reports">Reports</option>
       </select>
       <button onclick="createAccount()">Create Account</button>
     </div>
@@ -1678,18 +1666,24 @@ function generateReport(){ document.getElementById("reportOutput").innerText=JSO
       <tbody id="accountsTable"></tbody>
     </table>
   </div>
+
+  <!-- Backup / Restore / Reset -->
+  <div class="p-block">
+    <h3>Backup / Restore / Reset</h3>
+    <button onclick="downloadBackup()">Download Backup</button>
+    <input type="file" onchange="restoreBackup(this)">
+    <button onclick="resetSystem()">Reset System</button>
+  </div>
 </section>
 
 <script>
-/* ====================== INITIALIZE ====================== */
-
-// Developer account always exists
+/* ===== INIT DEFAULT DEVELOPER ACCOUNT ===== */
 if(!DB.accounts){
   DB.accounts=[{id: uid("A"), username:"Dani", password:"7525", role:"developer", fixed:true, permissions:[]}];
   saveDB();
 }
 
-// LOGIN SYSTEM
+/* ===== LOGIN SYSTEM ===== */
 function submitLogin(){
   const user=document.getElementById("loginUsername").value.trim();
   const pass=document.getElementById("loginPassword").value.trim();
@@ -1699,61 +1693,205 @@ function submitLogin(){
     return;
   }
   sessionStorage.setItem("loggedInUser", JSON.stringify(acc));
-
   document.getElementById("loginScreen").style.display="none";
-  document.getElementById("mainMenu").style.display="flex";
-  document.querySelectorAll("section").forEach(s=>{ if(s.id!=="loginScreen") s.style.display="block"; });
-
-  enableMenuTabs();
-  openDefaultTab(acc);
+  renderSectionsByPermission();
+  openTab("invoice");
 }
 
-// Enable/disable menu based on permissions
-function enableMenuTabs(){
-  const user=JSON.parse(sessionStorage.getItem("loggedInUser"));
-  document.querySelectorAll("#mainMenu div[data-feature]").forEach(tab=>{
-    const feature=tab.getAttribute("data-feature");
-    if(user.role==="developer" || (user.permissions && user.permissions.includes(feature))){
-      tab.style.pointerEvents="auto"; tab.style.opacity="1";
-    } else { tab.style.pointerEvents="none"; tab.style.opacity="0.4"; }
-  });
-}
-
-// Open first allowed tab
-function openDefaultTab(user){
-  let defaultTab="invoice";
-  if(user.role!=="developer" && user.permissions.length){
-    defaultTab=user.permissions[0];
-  }
-  openTab(defaultTab);
-}
-
-// Persist login on reload
+/* ===== PERSIST LOGIN ===== */
 document.addEventListener("DOMContentLoaded", ()=>{
   const acc=sessionStorage.getItem("loggedInUser");
   if(acc){
     document.getElementById("loginScreen").style.display="none";
-    document.getElementById("mainMenu").style.display="flex";
-    document.querySelectorAll("section").forEach(s=>{ if(s.id!=="loginScreen") s.style.display="block"; });
-    enableMenuTabs();
-    openDefaultTab(JSON.parse(acc));
+    renderSectionsByPermission();
+    openTab("invoice");
   } else {
-    document.getElementById("mainMenu").style.display="none";
-    document.querySelectorAll("section").forEach(s=>{ if(s.id!=="loginScreen") s.style.display="none"; });
+    document.querySelectorAll("section").forEach(s=>{
+      if(s.id!=="loginScreen") s.style.display="none";
+    });
   }
 });
 
-// OPEN TAB FUNCTION
-function openTab(id){
-  document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
-  const sec=document.getElementById(id);
-  if(sec) sec.classList.add("active");
-  document.querySelectorAll("#mainMenu div").forEach(d=>d.classList.remove("active"));
-  const tab=document.getElementById("tab-"+id);
-  if(tab) tab.classList.add("active");
+/* ===== RENDER SECTIONS BASED ON PERMISSIONS ===== */
+function renderSectionsByPermission(){
+  const user=JSON.parse(sessionStorage.getItem("loggedInUser"));
+  document.querySelectorAll("section").forEach(s=>{
+    if(s.id==="loginScreen") return;
+    if(!hasAccessSection(user,s.id)) s.style.display="none";
+    else s.style.display="block";
+  });
 }
 
-// DATE & TIME
+function hasAccessSection(user,sectionId){
+  if(user.role==="developer") return true;
+  switch(sectionId){
+    case "invoice": return user.permissions.includes("invoice");
+    case "cash": return user.permissions.includes("cash");
+    case "vendors": return user.permissions.includes("vendors");
+    case "products": return user.permissions.includes("products");
+    case "settings": return user.permissions.includes("settings");
+    case "reports": return user.permissions.includes("reports");
+    default: return true;
+  }
+}
+
+/* ===== CHECK PERMISSIONS ===== */
+function hasAccess(feature){
+  const user=JSON.parse(sessionStorage.getItem("loggedInUser"));
+  if(!user) return false;
+  if(user.role==="developer") return true;
+  return user.permissions && user.permissions.includes(feature);
+}
+
+/* ===== CREATE ACCOUNT ===== */
+function createAccount(){
+  const username=document.getElementById("newUsername").value.trim();
+  const password=document.getElementById("newPassword").value.trim();
+  const role=document.getElementById("newRole").value;
+  const perms=Array.from(document.getElementById("newPermissions").selectedOptions).map(x=>x.value);
+
+  if(!username || !password || !role) return alert("Please fill all fields");
+  if(DB.accounts.find(x=>x.username===username)) return alert("Username exists");
+
+  DB.accounts.push({id: uid("A"), username, password, role, permissions:perms});
+  saveDB();
+  renderAccounts();
+
+  document.getElementById("newUsername").value="";
+  document.getElementById("newPassword").value="";
+  document.getElementById("newRole").value="admin";
+  document.getElementById("newPermissions").selectedIndex=-1;
+}
+
+/* ===== RENDER ACCOUNTS TABLE ===== */
+function renderAccounts(){
+  const tbody=document.getElementById("accountsTable");
+  tbody.innerHTML="";
+  DB.accounts.forEach(a=>{
+    tbody.innerHTML+=`
+      <tr>
+        <td>${a.username}</td>
+        <td>${a.role}</td>
+        <td>${(a.permissions||[]).join(", ")}</td>
+        <td><button onclick="editAccount('${a.id}')">Edit</button></td>
+        <td>${a.fixed?"":`<button onclick="deleteAccount('${a.id}')">Delete</button>`}</td>
+      </tr>
+    `;
+  });
+}
+
+/* ===== EDIT ACCOUNT ===== */
+function editAccount(id){
+  const acc=DB.accounts.find(x=>x.id===id);
+  if(!acc) return alert("Account not found");
+  if(acc.fixed) return alert("Cannot edit developer account");
+
+  const username=prompt("Username:", acc.username);
+  const password=prompt("Password:", acc.password);
+  const role=prompt("Role:", acc.role);
+  const perms=prompt("Permissions (comma separated):", (acc.permissions||[]).join(","));
+
+  if(username) acc.username=username;
+  if(password) acc.password=password;
+  if(role) acc.role=role;
+  acc.permissions=perms?perms.split(",").map(x=>x.trim()):[];
+  saveDB();
+  renderAccounts();
+}
+
+/* ===== DELETE ACCOUNT ===== */
+function deleteAccount(id){
+  const acc=DB.accounts.find(x=>x.id===id);
+  if(!acc || acc.fixed) return alert("Cannot delete this account");
+  if(!confirm("Delete this account?")) return;
+  DB.accounts=DB.accounts.filter(x=>x.id!==id);
+  saveDB();
+  renderAccounts();
+}
+
+/* ===== FONT & COLOR ===== */
+function saveFontAndColor(){
+  if(!DB.settings) DB.settings={};
+  const font=document.getElementById("softwareFont").value;
+  const color=document.getElementById("softwareColor").value;
+  DB.settings.font=font;
+  DB.settings.color=color;
+  saveDB();
+  document.body.style.fontFamily=font;
+  document.documentElement.style.setProperty('--primary', color);
+  alert("Font & color applied");
+}
+document.addEventListener("DOMContentLoaded", ()=>{
+  if(DB.settings){
+    if(DB.settings.font) document.body.style.fontFamily=DB.settings.font;
+    if(DB.settings.color) document.documentElement.style.setProperty('--primary', DB.settings.color);
+  }
+});
+
+/* ===== SHOP LOCATION ===== */
+function saveShopLocation(){
+  if(!DB.settings) DB.settings={};
+  const loc=document.getElementById("shopLocation").value.trim();
+  DB.settings.shopLocation=loc;
+  saveDB();
+  alert("Shop location saved");
+}
+
+/* ===== SOFTWARE NAME ===== */
+function saveSoftwareName(){
+  if(!DB.settings) DB.settings={};
+  const name=document.getElementById("setSoftwareName").value.trim();
+  DB.settings.softwareName=name||"Dani Test Software";
+  saveDB();
+  alert("Software name updated");
+}
+
+/* ===== BACKUP / RESTORE / RESET ===== */
+function downloadBackup(){
+  const blob=new Blob([JSON.stringify(DB,null,2)], {type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="dani_backup_"+Date.now()+".json";
+  a.click();
+}
+
+function restoreBackup(input){
+  const file=input.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      DB=JSON.parse(e.target.result);
+      saveDB();
+      location.reload();
+    }catch{
+      alert("Invalid backup file");
+    }
+  };
+  reader.readAsText(file);
+}
+
+function resetSystem(){
+  if(!confirm("Backup will be downloaded automatically. Continue reset?")) return;
+  downloadBackup();
+  DB={
+    products:[],
+    vendors:[],
+    purchases:[],
+    invoices:[],
+    cash:[],
+    deleted:[],
+    accounts:DB.accounts,
+    settings:{softwareName:"Dani Test Software", logo:""}
+  };
+  saveDB();
+  location.reload();
+}
+
+/* ===== INITIAL RENDER ===== */
+renderAccounts();
+
+/* ===== DATE & TIME ===== */
 function updateTime(){
   const now=new Date();
   const el=document.getElementById("dateTime");
@@ -1761,45 +1899,4 @@ function updateTime(){
 }
 setInterval(updateTime,1000);
 updateTime();
-
-/* ====================== SETTINGS FUNCTIONS ====================== */
-function saveSoftwareName(){ if(!DB.settings) DB.settings={}; DB.settings.softwareName=document.getElementById("setSoftwareName").value.trim()||"Dani Test Software"; saveDB(); alert("Software name updated"); }
-function uploadLogo(input){ const file=input.files[0]; if(!file) return; const reader=new FileReader(); reader.onload=e=>{ if(!DB.settings) DB.settings={}; DB.settings.logo=e.target.result; saveDB(); alert("Logo updated"); }; reader.readAsDataURL(file);}
-function saveShopLocation(){ if(!DB.settings) DB.settings={}; DB.settings.shopLocation=document.getElementById("shopLocation").value.trim(); saveDB(); alert("Shop location saved"); }
-function saveFontAndColor(){ if(!DB.settings) DB.settings={}; DB.settings.font=document.getElementById("softwareFont").value; DB.settings.color=document.getElementById("softwareColor").value; saveDB(); document.body.style.fontFamily=DB.settings.font; document.documentElement.style.setProperty('--primary', DB.settings.color); alert("Font & color applied"); }
-
-/* ====================== ACCOUNT MANAGEMENT ====================== */
-function createAccount(){
-  const username=document.getElementById("newUsername").value.trim();
-  const password=document.getElementById("newPassword").value.trim();
-  const role=document.getElementById("newRole").value;
-  const perms=Array.from(document.getElementById("newPermissions").selectedOptions).map(x=>x.value);
-  if(!username||!password||!role) return alert("Please fill all fields");
-  if(DB.accounts.find(x=>x.username===username)) return alert("Username exists");
-  DB.accounts.push({id:uid("A"), username,password,role,permissions:perms});
-  saveDB(); renderAccounts();
-  document.getElementById("newUsername").value=""; document.getElementById("newPassword").value=""; document.getElementById("newRole").value="admin"; document.getElementById("newPermissions").selectedIndex=-1;
-}
-
-function renderAccounts(){
-  const tbody=document.getElementById("accountsTable");
-  tbody.innerHTML="";
-  DB.accounts.forEach(a=>{ tbody.innerHTML+=`<tr><td>${a.username}</td><td>${a.role}</td><td>${(a.permissions||[]).join(", ")}</td><td><button onclick="editAccount('${a.id}')">Edit</button></td><td>${a.fixed?"":`<button onclick="deleteAccount('${a.id}')">Delete</button>`}</td></tr>`; });
-}
-
-function editAccount(id){
-  const acc=DB.accounts.find(x=>x.id===id); if(!acc) return alert("Account not found"); if(acc.fixed) return alert("Cannot edit developer account");
-  const username=prompt("Username:", acc.username);
-  const password=prompt("Password:", acc.password);
-  const role=prompt("Role:", acc.role);
-  const perms=prompt("Permissions (comma separated):", (acc.permissions||[]).join(","));
-  if(username) acc.username=username; if(password) acc.password=password; if(role) acc.role=role;
-  acc.permissions=perms?perms.split(",").map(x=>x.trim()):[];
-  saveDB(); renderAccounts();
-}
-
-function deleteAccount(id){ const acc=DB.accounts.find(x=>x.id===id); if(!acc||acc.fixed) return alert("Cannot delete this account"); if(!confirm("Delete this account?")) return; DB.accounts=DB.accounts.filter(x=>x.id!==id); saveDB(); renderAccounts(); }
-
-// INIT ACCOUNTS TABLE
-renderAccounts();
 </script>
