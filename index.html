@@ -1018,27 +1018,17 @@ renderProducts();
 </section>
 
 <script>
-/* ================= SAFE INIT ================= */
-if(!window.DB) DB = {};
-if(!DB.vendors) DB.vendors = [];
-if(!DB.purchases) DB.purchases = [];
-if(!DB.cash) DB.cash = [];
-
-function saveDB(){
-  localStorage.setItem("DB", JSON.stringify(DB));
+/* ================= HELPERS ================= */
+function money(v){
+  return Number(v||0).toLocaleString("en-PK",{minimumFractionDigits:2});
 }
 
-function money(n){
-  return Number(n||0).toLocaleString("en-PK",{minimumFractionDigits:2});
-}
-
-/* ================= VENDOR ID ================= */
 function nextVendorNo(){
   if(!DB.vendors.length) return "V-1001";
   const nums = DB.vendors
-    .map(v=>parseInt((v.no||"").replace("V-","")))
-    .filter(n=>!isNaN(n));
-  return "V-"+(Math.max(...nums,1000)+1);
+    .map(v => parseInt(String(v.no||"").replace("V-","")))
+    .filter(n => !isNaN(n));
+  return "V-" + (Math.max(...nums,1000) + 1);
 }
 
 /* ================= ADD ================= */
@@ -1057,20 +1047,14 @@ function addVendor(){
   renderVendors();
 }
 
-/* ================= BALANCE (SAFE) ================= */
+/* ================= BALANCE ================= */
 function vendorBalance(v){
   const purchase = DB.purchases
-    .filter(p=>p.vendorId===v.id)
+    .filter(p => p.vendorId === v.id)
     .reduce((s,p)=>s+(p.total||0),0);
 
   const paid = DB.cash
-    .filter(c =>
-      c.type==="OUT" &&
-      (
-        c.vendorId===v.id ||           // new
-        c.vendor===v.name              // old / manual
-      )
-    )
+    .filter(c => c.type==="OUT" && c.vendorId===v.id)
     .reduce((s,c)=>s+(c.amount||0),0);
 
   return purchase - paid;
@@ -1079,12 +1063,12 @@ function vendorBalance(v){
 /* ================= RENDER ================= */
 function renderVendors(){
   const tbody = document.getElementById("vendorRows");
-  tbody.innerHTML="";
+  tbody.innerHTML = "";
 
   DB.vendors.forEach((v,i)=>{
     const bal = vendorBalance(v);
 
-    tbody.innerHTML+=`
+    tbody.innerHTML += `
       <tr>
         <td>${i+1}</td>
         <td>${v.no}</td>
@@ -1109,50 +1093,45 @@ function openVendorLedger(vendorId){
     .filter(p=>p.vendorId===v.id)
     .forEach(p=>{
       rows.push({
-        date:p.dateTime||p.date,
-        type:"Purchase",
-        ref:p.id,
-        debit:p.total,
-        credit:0
+        date: p.dateTime || p.date,
+        type: "Purchase",
+        ref: p.id,
+        debit: p.total,
+        credit: 0
       });
     });
 
   DB.cash
-    .filter(c =>
-      c.type==="OUT" &&
-      (
-        c.vendorId===v.id ||
-        c.vendor===v.name
-      )
-    )
+    .filter(c=>c.type==="OUT" && c.vendorId===v.id)
     .forEach(c=>{
       rows.push({
-        date:c.dateTime||c.date,
-        type:"Payment",
-        ref:c.ref||c.id,
-        debit:0,
-        credit:c.amount
+        date: c.dateTime,
+        type: "Payment",
+        ref: c.ref || c.id,
+        debit: 0,
+        credit: c.amount
       });
     });
 
   rows.sort((a,b)=>new Date(a.date)-new Date(b.date));
 
-  let balance=0;
+  let runBal = 0;
 
   const w = window.open("","_blank");
   w.document.write(`
+<!DOCTYPE html>
 <html>
 <head>
 <title>Vendor Ledger</title>
 <style>
-body{font-family:Segoe UI;padding:30px}
+body{font-family:Segoe UI,Arial;padding:30px}
 h1{margin:0;font-size:26px}
-h2{margin:0;color:#666;font-size:14px}
-table{width:100%;border-collapse:collapse;margin-top:20px}
+h2{margin:0 0 15px;color:#666;font-size:14px}
+table{width:100%;border-collapse:collapse}
 th,td{border:1px solid #ccc;padding:8px;text-align:center}
-th{background:#f2f2f2}
+th{background:#f3f3f3}
 .right{text-align:right}
-.total{font-size:24px;font-weight:bold;margin-top:20px;text-align:right}
+.total{font-size:26px;font-weight:bold;margin-top:20px;text-align:right}
 @media print{button{display:none}}
 </style>
 </head>
@@ -1175,8 +1154,8 @@ th{background:#f2f2f2}
 </thead>
 <tbody>
 ${rows.map((r,i)=>{
-  balance+=r.debit-r.credit;
-  const d=new Date(r.date);
+  runBal += r.debit - r.credit;
+  const d = new Date(r.date);
   return `
 <tr>
 <td>${i+1}</td>
@@ -1185,13 +1164,13 @@ ${rows.map((r,i)=>{
 <td>${r.ref}</td>
 <td class="right">${money(r.debit)}</td>
 <td class="right">${money(r.credit)}</td>
-<td class="right">${money(balance)}</td>
+<td class="right">${money(runBal)}</td>
 </tr>`;
 }).join("")}
 </tbody>
 </table>
 
-<div class="total">Present Balance: ₨ ${money(balance)}</div>
+<div class="total">Present Balance: ₨ ${money(runBal)}</div>
 
 </body>
 </html>
