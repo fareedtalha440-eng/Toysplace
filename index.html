@@ -1586,15 +1586,17 @@ function generateReport(){ document.getElementById("reportOutput").innerText=JSO
 </section>
 
 <!-- ================= SETTINGS ================= -->
-<section id="settings" style="display:none;">
+<section id="settings" style="display:none; padding:20px;">
   <h2>Settings</h2>
 
-  <!-- Software Name & Logo -->
+  <!-- Software Name -->
   <div class="p-block">
     <h3>Software Name</h3>
     <input type="text" id="setSoftwareName" placeholder="Software Name" style="width:100%; margin-bottom:10px;">
     <button onclick="saveSoftwareName()">Save Name</button>
   </div>
+
+  <!-- Upload Logo -->
   <div class="p-block">
     <h3>Upload Logo</h3>
     <input type="file" onchange="uploadLogo(this)">
@@ -1632,7 +1634,7 @@ function generateReport(){ document.getElementById("reportOutput").innerText=JSO
   <!-- Account Management -->
   <div class="p-block">
     <h3>Manage Accounts / Roles</h3>
-    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
       <input type="text" id="newUsername" placeholder="Username">
       <input type="password" id="newPassword" placeholder="Password">
       <select id="newRole">
@@ -1666,48 +1668,50 @@ function generateReport(){ document.getElementById("reportOutput").innerText=JSO
 </section>
 
 <script>
-/* ===== INIT ACCOUNTS ===== */
+/* ===== INIT DEFAULT DEVELOPER ACCOUNT ===== */
 if(!DB.accounts){
-  DB.accounts = [{id: uid("A"), username:"Dani", password:"7525", role:"developer", fixed:true, permissions:[]}];
+  DB.accounts=[{id: uid("A"), username:"Dani", password:"7525", role:"developer", fixed:true, permissions:[]}];
   saveDB();
 }
 
 /* ===== LOGIN SYSTEM ===== */
 function submitLogin(){
-  const user = document.getElementById("loginUsername").value.trim();
-  const pass = document.getElementById("loginPassword").value.trim();
-  const acc = DB.accounts.find(x=>x.username===user && x.password===pass);
+  const user=document.getElementById("loginUsername").value.trim();
+  const pass=document.getElementById("loginPassword").value.trim();
+  const acc=DB.accounts.find(x=>x.username===user && x.password===pass);
   if(!acc){
-    document.getElementById("loginError").innerText = "Invalid username or password";
+    document.getElementById("loginError").innerText="Invalid username or password";
     return;
   }
-
   sessionStorage.setItem("loggedInUser", JSON.stringify(acc));
 
-  // Hide login & show sections
   document.getElementById("loginScreen").style.display="none";
   document.querySelectorAll("section").forEach(s=>{
     if(s.id!=="loginScreen") s.style.display="block";
   });
-
   openTab("invoice");
 }
 
 /* ===== PERSIST LOGIN ===== */
 document.addEventListener("DOMContentLoaded", ()=>{
-  const acc = sessionStorage.getItem("loggedInUser");
+  const acc=sessionStorage.getItem("loggedInUser");
   if(acc){
     document.getElementById("loginScreen").style.display="none";
     document.querySelectorAll("section").forEach(s=>{
       if(s.id!=="loginScreen") s.style.display="block";
     });
     openTab("invoice");
+  } else {
+    // hide all other sections until login
+    document.querySelectorAll("section").forEach(s=>{
+      if(s.id!=="loginScreen") s.style.display="none";
+    });
   }
 });
 
 /* ===== CHECK PERMISSIONS ===== */
 function hasAccess(feature){
-  const user = JSON.parse(sessionStorage.getItem("loggedInUser"));
+  const user=JSON.parse(sessionStorage.getItem("loggedInUser"));
   if(!user) return false;
   if(user.role==="developer") return true;
   return user.permissions && user.permissions.includes(feature);
@@ -1715,10 +1719,10 @@ function hasAccess(feature){
 
 /* ===== CREATE ACCOUNT ===== */
 function createAccount(){
-  const username = document.getElementById("newUsername").value.trim();
-  const password = document.getElementById("newPassword").value.trim();
-  const role = document.getElementById("newRole").value;
-  const perms = Array.from(document.getElementById("newPermissions").selectedOptions).map(x=>x.value);
+  const username=document.getElementById("newUsername").value.trim();
+  const password=document.getElementById("newPassword").value.trim();
+  const role=document.getElementById("newRole").value;
+  const perms=Array.from(document.getElementById("newPermissions").selectedOptions).map(x=>x.value);
 
   if(!username || !password || !role) return alert("Please fill all fields");
   if(DB.accounts.find(x=>x.username===username)) return alert("Username exists");
@@ -1726,6 +1730,7 @@ function createAccount(){
   DB.accounts.push({id: uid("A"), username, password, role, permissions:perms});
   saveDB();
   renderAccounts();
+
   document.getElementById("newUsername").value="";
   document.getElementById("newPassword").value="";
   document.getElementById("newRole").value="admin";
@@ -1734,7 +1739,7 @@ function createAccount(){
 
 /* ===== RENDER ACCOUNTS TABLE ===== */
 function renderAccounts(){
-  const tbody = document.getElementById("accountsTable");
+  const tbody=document.getElementById("accountsTable");
   tbody.innerHTML="";
   DB.accounts.forEach(a=>{
     tbody.innerHTML+=`
@@ -1751,34 +1756,34 @@ function renderAccounts(){
 
 /* ===== EDIT ACCOUNT ===== */
 function editAccount(id){
-  const acc = DB.accounts.find(x=>x.id===id);
+  const acc=DB.accounts.find(x=>x.id===id);
   if(!acc) return alert("Account not found");
   if(acc.fixed) return alert("Cannot edit developer account");
 
-  const username = prompt("Username:", acc.username);
-  const password = prompt("Password:", acc.password);
-  const role = prompt("Role:", acc.role);
-  const perms = prompt("Permissions (comma separated):", (acc.permissions||[]).join(","));
+  const username=prompt("Username:", acc.username);
+  const password=prompt("Password:", acc.password);
+  const role=prompt("Role:", acc.role);
+  const perms=prompt("Permissions (comma separated):", (acc.permissions||[]).join(","));
 
   if(username) acc.username=username;
   if(password) acc.password=password;
   if(role) acc.role=role;
-  acc.permissions = perms ? perms.split(",").map(x=>x.trim()) : [];
+  acc.permissions=perms?perms.split(",").map(x=>x.trim()):[];
   saveDB();
   renderAccounts();
 }
 
 /* ===== DELETE ACCOUNT ===== */
 function deleteAccount(id){
-  const acc = DB.accounts.find(x=>x.id===id);
+  const acc=DB.accounts.find(x=>x.id===id);
   if(!acc || acc.fixed) return alert("Cannot delete this account");
   if(!confirm("Delete this account?")) return;
-  DB.accounts = DB.accounts.filter(x=>x.id!==id);
+  DB.accounts=DB.accounts.filter(x=>x.id!==id);
   saveDB();
   renderAccounts();
 }
 
-/* ===== APPLY FONT & COLOR ===== */
+/* ===== FONT & COLOR ===== */
 function saveFontAndColor(){
   if(!DB.settings) DB.settings={};
   const font=document.getElementById("softwareFont").value;
@@ -1818,7 +1823,6 @@ function saveSoftwareName(){
 /* ===== INITIAL RENDER ===== */
 renderAccounts();
 </script>
-<script>
 
 /* ================= MENU ================= */
 
