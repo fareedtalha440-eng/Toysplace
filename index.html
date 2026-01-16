@@ -152,16 +152,27 @@ button{
   <div id="dateTime"></div>
 </header>
 
-<nav id="menu">
-  <div onclick="openTab('invoice')" id="tab-invoice">Invoice</div>
-  <div onclick="openTab('cash')" id="tab-cash">Cash In Hand</div>
-  <div onclick="openTab('purchase')" id="tab-purchase">Purchase</div>
-  <div onclick="openTab('products')" id="tab-products">Products</div>
-  <div onclick="openTab('vendors')" id="tab-vendors">Vendor</div>
-  <div onclick="openTab('reports')" id="tab-reports">Reports</div>
-  <div onclick="openTab('settings')" id="tab-settings">Settings</div>
+<!-- ================= MENU ================= -->
+<nav id="mainMenu" style="display:flex; gap:20px; padding:10px 20px; border-bottom:2px solid #ccc; position:relative; font-weight:bold; font-family:Segoe UI,Arial;">
+  <div id="tab-invoice" onclick="openTab('invoice')" class="menuItem">Invoice</div>
+  <div id="tab-vendors" onclick="openTab('vendors')" class="menuItem">Vendors</div>
+  <div id="tab-cash" onclick="openTab('cash')" class="menuItem">Cash In Hand</div>
+  <div id="tab-products" onclick="openTab('products')" class="menuItem">Products</div>
+  <div id="tab-reports" onclick="openTab('reports')" class="menuItem">Reports</div>
+  <div id="tab-settings" onclick="openTab('settings')" class="menuItem">Settings</div>
+  <!-- Underline -->
+  <div id="menuUnderline" style="position:absolute; bottom:0; height:3px; width:0; background:#1e1e1e; transition:all 0.3s ease;"></div>
 </nav>
-
+<style>
+.menuItem {
+  cursor:pointer;
+  padding:5px 0;
+  position:relative;
+}
+.menuItem.active {
+  color:#1e1e1e;
+}
+<style>
 <!-- ================= DATABASE ================= -->
 <script>
 let DB = {
@@ -1908,68 +1919,48 @@ setInterval(updateTime,1000);
 updateTime();
 </script>
 <script>
-<!-- ================= MENU ================= -->
-<nav id="mainMenu" style="display:flex; gap:20px; padding:10px 20px; border-bottom:2px solid #ccc; position:relative; font-weight:bold; font-family:Segoe UI,Arial;">
-  <div id="tab-invoice" onclick="openTab('invoice')" class="menuItem">Invoice</div>
-  <div id="tab-vendors" onclick="openTab('vendors')" class="menuItem">Vendors</div>
-  <div id="tab-cash" onclick="openTab('cash')" class="menuItem">Cash In Hand</div>
-  <div id="tab-products" onclick="openTab('products')" class="menuItem">Products</div>
-  <div id="tab-reports" onclick="openTab('reports')" class="menuItem">Reports</div>
-  <div id="tab-settings" onclick="openTab('settings')" class="menuItem">Settings</div>
-  <!-- Underline -->
-  <div id="menuUnderline" style="position:absolute; bottom:0; height:3px; width:0; background:#1e1e1e; transition:all 0.3s ease;"></div>
-</nav>
-
-<style>
-.menuItem {
-  cursor:pointer;
-  padding:5px 0;
-  position:relative;
-}
-.menuItem.active {
-  color:#1e1e1e;
-}
-</style>
-
+<!-- ================= MENU LOGIC ================= -->
 <script>
+/* ===== OPEN TAB FUNCTION WITH UNDERLINE ANIMATION ===== */
 function openTab(id){
-  // Hide all sections first
-  document.querySelectorAll("section").forEach(s=>s.style.display="none");
+  // Hide all sections
+  document.querySelectorAll("section").forEach(s => s.style.display = "none");
 
-  // Show selected section
-  const sec=document.getElementById(id);
-  if(sec) sec.style.display="block";
+  // Show the selected section
+  const sec = document.getElementById(id);
+  if(sec) sec.style.display = "block";
 
   // Update menu active state
-  document.querySelectorAll("#mainMenu .menuItem").forEach(d=>d.classList.remove("active"));
-  const tab=document.getElementById("tab-"+id);
+  document.querySelectorAll("#mainMenu .menuItem").forEach(d => d.classList.remove("active"));
+  const tab = document.getElementById("tab-" + id);
   if(tab) tab.classList.add("active");
 
   // Animate underline
-  const underline=document.getElementById("menuUnderline");
+  const underline = document.getElementById("menuUnderline");
   if(tab && underline){
-    const rect=tab.getBoundingClientRect();
-    const parentRect=tab.parentElement.getBoundingClientRect();
-    underline.style.width=rect.width+"px";
-    underline.style.left=(rect.left-parentRect.left)+"px";
+    const rect = tab.getBoundingClientRect();
+    const parentRect = tab.parentElement.getBoundingClientRect();
+    underline.style.width = rect.width + "px";
+    underline.style.left = (rect.left - parentRect.left) + "px";
   }
 }
 
-// Animate on window resize to adjust underline
-window.addEventListener("resize", ()=>{
-  const active=document.querySelector("#mainMenu .menuItem.active");
-  const underline=document.getElementById("menuUnderline");
+/* ===== ADJUST UNDERLINE ON WINDOW RESIZE ===== */
+window.addEventListener("resize", () => {
+  const active = document.querySelector("#mainMenu .menuItem.active");
+  const underline = document.getElementById("menuUnderline");
   if(active && underline){
-    const rect=active.getBoundingClientRect();
-    const parentRect=active.parentElement.getBoundingClientRect();
-    underline.style.width=rect.width+"px";
-    underline.style.left=(rect.left-parentRect.left)+"px";
+    const rect = active.getBoundingClientRect();
+    const parentRect = active.parentElement.getBoundingClientRect();
+    underline.style.width = rect.width + "px";
+    underline.style.left = (rect.left - parentRect.left) + "px";
   }
 });
 
-// Default open
-document.addEventListener("DOMContentLoaded", ()=>{
-  const firstTab=document.querySelector("#mainMenu .menuItem");
-  if(firstTab) firstTab.click();
+/* ===== OPEN DEFAULT TAB ON PAGE LOAD ===== */
+document.addEventListener("DOMContentLoaded", () => {
+  const activeTab = document.querySelector("#mainMenu .menuItem.active");
+  if(!activeTab) document.getElementById("tab-invoice").click();
 });
 </script>
+
