@@ -1049,31 +1049,35 @@ function money(v){
   return Number(v||0).toLocaleString("en-PK",{minimumFractionDigits:2});
 }
 
+// Vendor No VEN1001, VEN1002 ...
 function nextVendorNo(){
-  if(!DB.vendors.length) return "V-1001";
+  if(!DB.vendors.length) return "VEN1001";
   const nums = DB.vendors
-    .map(v => parseInt(String(v.no||"").replace("V-","")))
+    .map(v => parseInt(String(v.no||"").replace("VEN","")))
     .filter(n => !isNaN(n));
-  return "V-" + (Math.max(...nums,1000) + 1);
+  return "VEN" + (Math.max(...nums,1000) + 1);
 }
 
-/* ================= ADD ================= */
+/* ================= ADD VENDOR ================= */
 function addVendor(){
   const name = vendorName.value.trim();
   if(!name) return alert("Enter vendor name");
+  const createdDate = new Date().toISOString();
 
   DB.vendors.push({
     id: uid("V"),
     no: nextVendorNo(),
-    name
+    name,
+    createdDate
   });
 
   saveDB();
   vendorName.value="";
   renderVendors();
+  loadVendorOptions(); // refresh cash dropdown
 }
 
-/* ================= EDIT ================= */
+/* ================= EDIT VENDOR ================= */
 function editVendor(id){
   const v = DB.vendors.find(x=>x.id===id);
   if(!v) return;
@@ -1082,9 +1086,10 @@ function editVendor(id){
   v.name = name.trim();
   saveDB();
   renderVendors();
+  loadVendorOptions();
 }
 
-/* ================= DELETE ================= */
+/* ================= DELETE VENDOR ================= */
 function deleteVendor(id){
   const v = DB.vendors.find(x=>x.id===id);
   if(!v) return;
@@ -1097,50 +1102,50 @@ function deleteVendor(id){
   DB.vendors = DB.vendors.filter(x=>x.id!==id);
   saveDB();
   renderVendors();
+  loadVendorOptions();
 }
 
-/* ================= BALANCE ================= */
+/* ================= VENDOR BALANCE ================= */
 function vendorBalance(v){
   const purchase = DB.purchases
     .filter(p => p.vendorId === v.id)
     .reduce((s,p)=>s+(p.total||0),0);
 
   const paid = DB.cash
-    .filter(c => c.type==="OUT" && c.vendorId===v.id)
+    .filter(c => c.type==="OUT" && c.vendor === v.name)
     .reduce((s,c)=>s+(c.amount||0),0);
 
   return purchase - paid;
 }
 
-/* ================= RENDER ================= */
+/* ================= RENDER VENDORS ================= */
 function renderVendors(){
   const tbody = document.getElementById("vendorRows");
   tbody.innerHTML = "";
 
-  DB.vendors.forEach((v,i)=>{
+  // Sort newest to oldest
+  const vendorsSorted = [...DB.vendors].sort((a,b)=>new Date(b.createdDate)-new Date(a.createdDate));
+
+  vendorsSorted.forEach((v,i)=>{
     const bal = vendorBalance(v);
+    const created = new Date(v.createdDate).toLocaleString();
 
     tbody.innerHTML += `
       <tr>
         <td>${i+1}</td>
-        <td>${v.no || "Unknown"}</td>
+        <td>${v.no}</td>
         <td>${v.name}</td>
         <td>₨ ${money(bal)}</td>
-        <td>
-          <button onclick="openVendorLedger('${v.id}')">Open</button>
-        </td>
-        <td>
-          <button onclick="editVendor('${v.id}')">Edit</button>
-        </td>
-        <td>
-          <button onclick="deleteVendor('${v.id}')">Delete</button>
-        </td>
+        <td><button onclick="openVendorLedger('${v.id}')">Open</button></td>
+        <td><button onclick="editVendor('${v.id}')">Edit</button></td>
+        <td><button onclick="deleteVendor('${v.id}')">Delete</button></td>
+        <td>${created}</td>
       </tr>
     `;
   });
 }
 
-/* ================= LEDGER ================= */
+/* ================= VENDOR LEDGER ================= */
 function openVendorLedger(vendorId){
   const v = DB.vendors.find(x=>x.id===vendorId);
   if(!v) return;
@@ -1160,7 +1165,7 @@ function openVendorLedger(vendorId){
     });
 
   DB.cash
-    .filter(c=>c.type==="OUT" && c.vendorId===v.id)
+    .filter(c=>c.type==="OUT" && c.vendor === v.name)
     .forEach(c=>{
       rows.push({
         date: c.dateTime,
@@ -1235,8 +1240,21 @@ ${rows.map((r,i)=>{
 `);
 }
 
+/* ================= CASH IN HAND LINK ================= */
+function loadVendorOptions(){
+  const selectAdd = document.getElementById("payVendor");
+  const selectFilter = document.getElementById("cashVendorFilter");
+  selectAdd.innerHTML='<option value="">Select Vendor</option>';
+  selectFilter.innerHTML='<option value="">All Vendors</option>';
+  DB.vendors.forEach(v=>{
+    selectAdd.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
+    selectFilter.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
+  });
+}
+
 /* ================= INIT ================= */
 renderVendors();
+loadVendorOptions();
 </script>
 
 <!-- ================= PURCHASE ================= -->
