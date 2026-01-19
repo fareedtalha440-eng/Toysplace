@@ -1,5 +1,4 @@
-
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -203,7 +202,6 @@ function openTab(id){
   if(tab) tab.classList.add("active");
 
   // Animate underline
-  /*
 const underline = document.getElementById("menuUnderline");
 if(tab && underline){
   const rect = tab.getBoundingClientRect();
@@ -213,8 +211,6 @@ if(tab && underline){
   underline.style.left =
     (rect.left - parentRect.left) + (rect.width - underlineWidth)/2 + "px";
 }
-*/
-
 
 /* ===== ADJUST UNDERLINE ON WINDOW RESIZE ===== */
 window.addEventListener("resize", () => {
