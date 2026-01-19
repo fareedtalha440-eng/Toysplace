@@ -1,3 +1,4 @@
+
   <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -153,7 +154,7 @@ button{
 </header>
 
 <!-- ================= TOP MENU ================= -->
-<nav id="mainMenu" style="position:relative; display:flex; gap:20px; border-bottom:2px solid #ccc; padding:10px 20px; background:#fff; z-index:100;">
+<nav id="mainMenu" style="position:relative; display:flex; flex-wrap:nowrap; white-space:nowrap; align-items:center; gap:20px; border-bottom:2px solid #ccc; padding:10px 20px; background:#fff; z-index:100;">
   <div id="tab-invoice" class="menuItem" onclick="openTab('invoice')">Invoice</div>
   <div id="tab-products" class="menuItem" onclick="openTab('products')">Products</div>
   <div id="tab-vendors" class="menuItem" onclick="openTab('vendors')">Vendors</div>
@@ -162,6 +163,7 @@ button{
   <div id="tab-reports" class="menuItem" onclick="openTab('reports')">Reports</div>
   <div id="tab-settings" class="menuItem" onclick="openTab('settings')">Settings</div>
 
+  
 <style>
 #mainMenu .menuItem {
   cursor:pointer;
@@ -199,7 +201,32 @@ function openTab(id){
   document.querySelectorAll("#mainMenu .menuItem").forEach(d => d.classList.remove("active"));
   const tab = document.getElementById("tab-" + id);
   if(tab) tab.classList.add("active");
+
+  // Animate underline
+  /*
+const underline = document.getElementById("menuUnderline");
+if(tab && underline){
+  const rect = tab.getBoundingClientRect();
+  const parentRect = tab.parentElement.getBoundingClientRect();
+  const underlineWidth = rect.width * 0.6;
+  underline.style.width = underlineWidth + "px";
+  underline.style.left =
+    (rect.left - parentRect.left) + (rect.width - underlineWidth)/2 + "px";
 }
+*/
+
+
+/* ===== ADJUST UNDERLINE ON WINDOW RESIZE ===== */
+window.addEventListener("resize", () => {
+  const active = document.querySelector("#mainMenu .menuItem.active");
+  const underline = document.getElementById("menuUnderline");
+  if(active && underline){
+    const rect = active.getBoundingClientRect();
+    const parentRect = active.parentElement.getBoundingClientRect();
+    underline.style.width = rect.width + "px";
+    underline.style.left = (rect.left - parentRect.left) + "px";
+  }
+});
 
 /* ===== OPEN DEFAULT TAB AFTER LOGIN ===== */
 document.addEventListener("DOMContentLoaded", () => {
