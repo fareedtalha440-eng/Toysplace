@@ -162,10 +162,6 @@ button{
   <div id="tab-reports" class="menuItem" onclick="openTab('reports')">Reports</div>
   <div id="tab-settings" class="menuItem" onclick="openTab('settings')">Settings</div>
 
-  <!-- Animated underline -->
-  <div id="menuUnderline" style="position:absolute; bottom:0; height:3px; width:0; left:0; background:var(--primary,#1e1e1e); transition:all 0.3s ease;"></div>
-</nav>
-
 <style>
 #mainMenu .menuItem {
   cursor:pointer;
@@ -203,29 +199,7 @@ function openTab(id){
   document.querySelectorAll("#mainMenu .menuItem").forEach(d => d.classList.remove("active"));
   const tab = document.getElementById("tab-" + id);
   if(tab) tab.classList.add("active");
-
-  // Animate underline
-  const underline = document.getElementById("menuUnderline");
-  if(tab && underline){
-    const rect = tab.getBoundingClientRect();
-    const parentRect = tab.parentElement.getBoundingClientRect();
-    const underlineWidth = rect.width * 0.6; // 60% of menu item width
-underline.style.width = underlineWidth + "px";
-underline.style.left = (rect.left - parentRect.left) + (rect.width - underlineWidth)/2 + "px";
-  }
 }
-
-/* ===== ADJUST UNDERLINE ON WINDOW RESIZE ===== */
-window.addEventListener("resize", () => {
-  const active = document.querySelector("#mainMenu .menuItem.active");
-  const underline = document.getElementById("menuUnderline");
-  if(active && underline){
-    const rect = active.getBoundingClientRect();
-    const parentRect = active.parentElement.getBoundingClientRect();
-    underline.style.width = rect.width + "px";
-    underline.style.left = (rect.left - parentRect.left) + "px";
-  }
-});
 
 /* ===== OPEN DEFAULT TAB AFTER LOGIN ===== */
 document.addEventListener("DOMContentLoaded", () => {
