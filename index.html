@@ -2034,22 +2034,28 @@ document.addEventListener("DOMContentLoaded", () => {
   const activeTab = document.querySelector("#mainMenu .menuItem.active");
   if(!activeTab) document.getElementById("tab-invoice").click();
 });
-/* ===== FORCE HIDE MENU UNDERLINE (NO LAYOUT CHANGE) ===== */
-#menuUnderline{
-  display:none !important;
-  width:0 !important;
-  height:0 !important;
-  left:0 !important;
-  top:auto !important;
-  bottom:0 !important;
-  position:absolute !important;
-}
+/* ================= MENU UNDERLINE HARD LOCK ================= */
 
-/* ===== PREVENT MENU HEIGHT JUMP ===== */
+/* Lock menu height so nothing can push it */
 #mainMenu{
-  flex-wrap:nowrap !important;
-  white-space:nowrap !important;
-  overflow-x:auto !important;
+  height:52px !important;
+  align-items:center !important;
+  overflow:hidden !important;
 }
 
+/* Freeze underline so JS cannot affect layout */
+#menuUnderline{
+  position:absolute !important;
+  bottom:0 !important;
+  height:3px !important;
+
+  /* HARD FREEZE */
+  max-width:0 !important;
+  min-width:0 !important;
+  width:0 !important;
+
+  overflow:hidden !important;
+  pointer-events:none !important;
+  background:transparent !important;
+}
 </script>
