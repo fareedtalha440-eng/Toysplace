@@ -194,6 +194,28 @@ section.active{
   opacity:1;
   transform:translateY(0);
 }
+/* ================= LAYOUT SAFETY FIX ================= */
+#app{
+  position:relative;
+}
+
+section{
+  position:relative;
+  z-index:1;
+}
+
+#mainMenu{
+  position:sticky;
+  top:0;
+  z-index:1000;
+}
+section{
+  pointer-events:auto;
+}
+
+#mainMenu{
+  pointer-events:auto;
+}
 
 
 /* ================= MAIN MENU (FINAL FIX) ================= */
@@ -2201,10 +2223,31 @@ window.addEventListener("resize", () => {
 });
 
 /* ===== OPEN DEFAULT TAB ON PAGE LOAD ===== */
-document.addEventListener("DOMContentLoaded", () => {
-  const activeTab = document.querySelector("#mainMenu .menuItem.active");
-  if(!activeTab) document.getElementById("tab-invoice").click();
+document.addEventListener("DOMContentLoaded", ()=>{
+  const acc = sessionStorage.getItem("loggedInUser");
+
+  if(!acc){
+    // NO LOGIN → show login screen only
+    document.getElementById("loginBox").style.display = "block";
+    document.getElementById("app").style.display = "none";
+    return;
+  }
+
+  // LOGIN EXISTS → show app
+  document.getElementById("loginBox").style.display = "none";
+  document.getElementById("app").style.display = "block";
+
+  const user = JSON.parse(acc);
+  const order = ["invoice","products","vendors","purchase","cash","reports","settings"];
+
+  for(const t of order){
+    if(user.role==="developer" || (user.permissions||[]).includes(t)){
+      openTab(t);
+      break;
+    }
+  }
 });
+
 /* ================= MENU UNDERLINE HARD LOCK ================= */
 
 /* Lock menu height so nothing can push it */
