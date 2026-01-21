@@ -164,6 +164,21 @@ button{
 </nav>
 
 <style>
+
+/* ================= SECTION LAYOUT FIX ================= */
+section{
+  display:none;
+  opacity:0;
+  transform:translateY(6px);
+  transition:opacity 0.18s ease, transform 0.18s ease;
+  height:auto;
+  min-height:auto;
+}
+section.active{
+  display:block;
+  opacity:1;
+  transform:translateY(0);
+}  
 /* ================= SMOOTH SECTION ANIMATION ================= */
 section{
   display:none;
@@ -232,14 +247,24 @@ function openTab(id){
 
   // Permission check
   const user = JSON.parse(sessionStorage.getItem("loggedInUser") || "{}");
-  if(user.role!=="developer" && !(user.permissions||[]).includes(id)){
-    return;
-  }
+  const allowed =
+  user.role === "developer" ||
+  (user.permissions || []).includes(id);
+
+if(!allowed){
+  ruleMessage("Access denied");
+  return;
+}
+
 
   // Show section
   const sec = document.getElementById(id);
-  if(sec){
-  sec.classList.add("active");
+if(!sec){
+  ruleMessage("Section not found");
+  return;
+}
+sec.classList.add("active");
+
 }
 
   // Active menu highlight
@@ -1496,7 +1521,7 @@ loadVendorOptions();
 <!-- ================= PURCHASE ================= -->
 
 <style>
-#purchase{width:100%;min-height:100vh;padding:30px}
+#purchase{width:100%;padding:30px;}
 #purchase h3{color:var(--primary);margin:20px 0}
 .p-block{border:1px solid var(--border);padding:20px;margin-bottom:30px;border-radius:12px}
 .p-table{width:100%;border-collapse:collapse}
