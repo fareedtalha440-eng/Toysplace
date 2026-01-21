@@ -143,6 +143,37 @@ button{
 </style>
 </head>
 <body>
+<!-- ================= LOGIN BOX ================= -->
+<div id="loginBox" style="display:none; padding:40px; text-align:center;">
+  <h2>Login</h2>
+  <input id="loginUser" placeholder="User ID"><br><br>
+  <input id="loginPass" type="password" placeholder="Password"><br><br>
+  <button onclick="doLogin()">Login</button>
+</div>
+
+<!-- ================= MAIN APP ================= -->
+<div id="app" style="display:none;">
+  <!-- TOP MENU -->
+  <nav id="mainMenu">
+    <div id="tab-invoice" class="menuItem" onclick="openTab('invoice')">Invoice</div>
+    <div id="tab-products" class="menuItem" onclick="openTab('products')">Products</div>
+    <div id="tab-vendors" class="menuItem" onclick="openTab('vendors')">Vendors</div>
+    <div id="tab-purchase" class="menuItem" onclick="openTab('purchase')">Purchase</div>
+    <div id="tab-cash" class="menuItem" onclick="openTab('cash')">Cash</div>
+    <div id="tab-reports" class="menuItem" onclick="openTab('reports')">Reports</div>
+    <div id="tab-settings" class="menuItem" onclick="openTab('settings')">Settings</div>
+  </nav>
+
+  <!-- ================= SECTIONS ================= -->
+  <section id="invoice"><h3>Invoice</h3></section>
+  <section id="products"><h3>Products</h3></section>
+  <section id="vendors"><h3>Vendors</h3></section>
+  <section id="purchase"><h3>Purchase</h3></section>
+  <section id="cash"><h3>Cash</h3></section>
+  <section id="reports"><h3>Reports</h3></section>
+  <section id="settings"><h3>Settings</h3></section>
+</div>
+
 
 <header>
   <div id="header-left">
@@ -269,9 +300,32 @@ button{
 #menuUnderline{
   display:none !important;
 }
+/* ================= HARD STABILITY FIX ================= */
+#mainMenu{
+  position:fixed;
+  top:0;
+  left:0;
+  right:0;
+  height:52px;
+  display:flex;
+  align-items:center;
+  background:#fff;
+  z-index:9999;
+}
+
+#app{
+  margin-top:52px;
+}
+
+section{
+  display:none;
+  position:relative;
+  z-index:1;
+}
 
 </style>
 <script>
+
 /* ================= TAB SWITCHING (CLEAN) ================= */
 function openTab(id){
   // Hide all sections
@@ -324,6 +378,22 @@ document.addEventListener("DOMContentLoaded", ()=>{
     }
   }
 });
+function doLogin(){
+  const user = document.getElementById("loginUser").value;
+  if(!user){
+    alert("Enter User ID");
+    return;
+  }
+
+  sessionStorage.setItem("loggedInUser", JSON.stringify({
+    username:user,
+    role:"developer",
+    permissions:["invoice","products","vendors","purchase","cash","reports","settings"]
+  }));
+
+  location.reload();
+}
+
 </script>
 
 <!-- ================= DATABASE ================= -->
@@ -2235,27 +2305,40 @@ window.addEventListener("resize", () => {
 });
 
 <script>
-/* ===== OPEN DEFAULT TAB ON PAGE LOAD ===== */
+/* ================= CORE APP CONTROL ================= */
+
+function openTab(id){
+  document.querySelectorAll("section").forEach(s=>{
+    s.style.display="none";
+  });
+
+  const sec = document.getElementById(id);
+  if(sec) sec.style.display="block";
+
+  document.querySelectorAll("#mainMenu .menuItem").forEach(m=>{
+    m.classList.remove("active");
+  });
+
+  const tab = document.getElementById("tab-"+id);
+  if(tab) tab.classList.add("active");
+}
+
 document.addEventListener("DOMContentLoaded", ()=>{
   const acc = sessionStorage.getItem("loggedInUser");
 
+  const loginBox = document.getElementById("loginBox");
+  const app = document.getElementById("app");
+
   if(!acc){
-    document.getElementById("loginBox").style.display = "block";
-    document.getElementById("app").style.display = "none";
+    loginBox.style.display="block";
+    app.style.display="none";
     return;
   }
 
-  document.getElementById("loginBox").style.display = "none";
-  document.getElementById("app").style.display = "block";
+  loginBox.style.display="none";
+  app.style.display="block";
 
-  const user = JSON.parse(acc);
-  const order = ["invoice","products","vendors","purchase","cash","reports","settings"];
-
-  for(const t of order){
-    if(user.role==="developer" || (user.permissions||[]).includes(t)){
-      openTab(t);
-      break;
-    }
-  }
+  // ALWAYS OPEN INVOICE FIRST (SAFE)
+  openTab("invoice");
 });
 </script>
