@@ -173,29 +173,7 @@ button{
   <section id="reports"><h3>Reports</h3></section>
   <section id="settings"><h3>Settings</h3></section>
 </div>
-
-
-<header>
-  <div id="header-left">
-    <img id="header-logo">
-    <span id="softwareName">Dani Test Software</span>
-  </div>
-  <div id="dateTime"></div>
-</header>
-
-<!-- ================= TOP MENU ================= -->
-<nav id="mainMenu">
-  <div id="tab-invoice" class="menuItem" onclick="openTab('invoice')">Invoice</div>
-  <div id="tab-products" class="menuItem" onclick="openTab('products')">Products</div>
-  <div id="tab-vendors" class="menuItem" onclick="openTab('vendors')">Vendors</div>
-  <div id="tab-purchase" class="menuItem" onclick="openTab('purchase')">Purchase</div>
-  <div id="tab-cash" class="menuItem" onclick="openTab('cash')">Cash In Hand</div>
-  <div id="tab-reports" class="menuItem" onclick="openTab('reports')">Reports</div>
-  <div id="tab-settings" class="menuItem" onclick="openTab('settings')">Settings</div>
-</nav>
-
 <style>
-
 /* ================= SECTION LAYOUT FIX ================= */
 section{
   display:none;
@@ -327,24 +305,6 @@ section{
 <script>
 
 /* ================= TAB SWITCHING (CLEAN) ================= */
-function openTab(id){
-  // Hide all sections
-  document.querySelectorAll("section").forEach(s=>{
-  s.classList.remove("active");
-});
-
-  // Permission check
-  const user = JSON.parse(sessionStorage.getItem("loggedInUser") || "{}");
-  const allowed =
-  user.role === "developer" ||
-  (user.permissions || []).includes(id);
-
-if(!allowed){
-  ruleMessage("Access denied");
-  return;
-}
-
-
   // Show section
   const sec = document.getElementById(id);
 if(!sec){
@@ -378,12 +338,32 @@ document.addEventListener("DOMContentLoaded", ()=>{
     }
   }
 });
+<script>
 function doLogin(){
-  const user = document.getElementById("loginUser").value;
-  if(!user){
-    alert("Enter User ID");
+  const username = document.getElementById("loginUser").value.trim();
+  const password = document.getElementById("loginPass").value.trim();
+
+  if(!username || !password){
+    alert("Enter User ID and Password");
     return;
   }
+
+  const acc = DB.accounts.find(a =>
+    a.username === username && a.password === password
+  );
+
+  if(!acc){
+    alert("Invalid login");
+    return;
+  }
+
+  sessionStorage.setItem("loggedInUser", JSON.stringify(acc));
+
+  document.getElementById("loginBox").style.display = "none";
+  document.getElementById("app").style.display = "block";
+
+  openFirstAllowedTab();
+}
 </script>
 
 <!-- ================= DATABASE ================= -->
@@ -2254,30 +2234,6 @@ updateTime();
 <script>
 <!-- ================= MENU LOGIC ================= -->
 <script>
-/* ===== OPEN TAB FUNCTION WITH UNDERLINE ANIMATION ===== */
-function openTab(id){
-  // Hide all sections
-  document.querySelectorAll("section").forEach(s => s.style.display = "none");
-
-  // Show the selected section
-  const sec = document.getElementById(id);
-  if(sec) sec.style.display = "block";
-
-  // Update menu active state
-  document.querySelectorAll("#mainMenu .menuItem").forEach(d => d.classList.remove("active"));
-  const tab = document.getElementById("tab-" + id);
-  if(tab) tab.classList.add("active");
-
-  // Animate underline
-  const underline = document.getElementById("menuUnderline");
-  if(tab && underline){
-    const rect = tab.getBoundingClientRect();
-    const parentRect = tab.parentElement.getBoundingClientRect();
-    underline.style.width = rect.width + "px";
-    underline.style.left = (rect.left - parentRect.left) + "px";
-  }
-}
-
 /* ===== ADJUST UNDERLINE ON WINDOW RESIZE ===== */
 window.addEventListener("resize", () => {
   const active = document.querySelector("#mainMenu .menuItem.active");
@@ -2292,22 +2248,6 @@ window.addEventListener("resize", () => {
 
 <script>
 /* ================= CORE APP CONTROL ================= */
-
-function openTab(id){
-  document.querySelectorAll("section").forEach(s=>{
-    s.style.display="none";
-  });
-
-  const sec = document.getElementById(id);
-  if(sec) sec.style.display="block";
-
-  document.querySelectorAll("#mainMenu .menuItem").forEach(m=>{
-    m.classList.remove("active");
-  });
-
-  const tab = document.getElementById("tab-"+id);
-  if(tab) tab.classList.add("active");
-}
 
 document.addEventListener("DOMContentLoaded", ()=>{
   const acc = sessionStorage.getItem("loggedInUser");
@@ -2327,4 +2267,50 @@ document.addEventListener("DOMContentLoaded", ()=>{
   // ALWAYS OPEN INVOICE FIRST (SAFE)
   openTab("invoice");
 });
+</script>
+<script>
+/* ========= TAB CONTROLLER (SINGLE SOURCE OF TRUTH) ========= */
+function openTab(id){
+  // Hide all sections
+  document.querySelectorAll("section").forEach(s=>{
+    s.classList.remove("active");
+  });
+
+  // Remove active menu highlight
+  document.querySelectorAll("#mainMenu .menuItem").forEach(m=>{
+    m.classList.remove("active");
+  });
+
+  // Permission check
+  const user = JSON.parse(sessionStorage.getItem("loggedInUser") || "{}");
+  const allowed =
+    user.role === "developer" ||
+    (user.permissions || []).includes(id);
+
+  if(!allowed){
+    ruleMessage("Access denied");
+    return;
+  }
+
+  // Show section
+  const sec = document.getElementById(id);
+  const tab = document.getElementById("tab-" + id);
+
+  if(sec) sec.classList.add("active");
+  if(tab) tab.classList.add("active");
+}
+
+/* ========= AUTO OPEN FIRST TAB ========= */
+function openFirstAllowedTab(){
+  const user = JSON.parse(sessionStorage.getItem("loggedInUser"));
+  if(!user) return;
+
+  const order = ["invoice","products","vendors","purchase","cash","reports","settings"];
+  for(const t of order){
+    if(user.role==="developer" || (user.permissions||[]).includes(t)){
+      openTab(t);
+      break;
+    }
+  }
+}
 </script>
