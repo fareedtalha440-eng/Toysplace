@@ -164,6 +164,23 @@ button{
 </nav>
 
 <style>
+/* ================= SMOOTH SECTION ANIMATION ================= */
+section{
+  display:none;
+  opacity:0;
+  transform:translateY(6px);
+  transition:
+    opacity 0.18s ease-out,
+    transform 0.18s ease-out;
+}
+
+section.active{
+  display:block;
+  opacity:1;
+  transform:translateY(0);
+}
+
+
 /* ================= MAIN MENU (FINAL FIX) ================= */
 #mainMenu{
   display:flex;
@@ -194,6 +211,15 @@ button{
   background:#eef2f7;
   color:var(--primary,#1e1e1e);
 }
+/* ================= BUTTON FEEDBACK ================= */
+button:active{
+  transform:scale(0.96);
+}
+
+button{
+  transition:transform 0.08s ease;
+}
+
 </style>
 
 <script>
@@ -201,8 +227,8 @@ button{
 function openTab(id){
   // Hide all sections
   document.querySelectorAll("section").forEach(s=>{
-    s.style.display="none";
-  });
+  s.classList.remove("active");
+});
 
   // Permission check
   const user = JSON.parse(sessionStorage.getItem("loggedInUser") || "{}");
@@ -212,7 +238,9 @@ function openTab(id){
 
   // Show section
   const sec = document.getElementById(id);
-  if(sec) sec.style.display="block";
+  if(sec){
+  sec.classList.add("active");
+}
 
   // Active menu highlight
   document.querySelectorAll("#mainMenu .menuItem").forEach(m=>{
@@ -315,6 +343,23 @@ function logAction(action, ref=""){
     dateTime: new Date().toISOString()
   });
   saveDB();
+}
+</script>
+<script>
+/* ================= PERFORMANCE HELPERS ================= */
+
+// Batch DOM updates
+function fastRender(fn){
+  requestAnimationFrame(()=>fn());
+}
+
+// Lightweight debounce (prevents over-render)
+function debounce(fn, delay=80){
+  let t;
+  return (...args)=>{
+    clearTimeout(t);
+    t = setTimeout(()=>fn(...args), delay);
+  };
 }
 </script>
 
@@ -421,7 +466,7 @@ function getNextInvoiceNumber(){
 /* ===== ADD ROW ===== */
 function addInvoiceRow(){
   invoiceDraft.push({ productId:"", barcode:"", itemNo:"", desc:"", qty:1, rate:0, valid:false });
-  renderInvoice();
+  fastRender(renderInvoice);
 }
 
 /* ===== RENDER INVOICE ROWS ===== */
