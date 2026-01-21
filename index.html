@@ -161,35 +161,28 @@ button{
   <div id="tab-cash" class="menuItem" onclick="openTab('cash')">Cash In Hand</div>
   <div id="tab-reports" class="menuItem" onclick="openTab('reports')">Reports</div>
   <div id="tab-settings" class="menuItem" onclick="openTab('settings')">Settings</div>
-
-<!-- Animated underline DISABLED (caused layout jump)
-<div id="menuUnderline"
-     style="position:absolute; bottom:0; height:3px; width:0; left:0;
-     background:var(--primary,#1e1e1e); transition:all 0.3s ease;">
-</div>
--->
+</nav>
 
 <style>
-/* ================= MAIN MENU FIX ================= */
+/* ================= MAIN MENU (FINAL FIX) ================= */
 #mainMenu{
   display:flex;
   align-items:center;
-  gap:18px;
+  gap:14px;
   padding:8px 16px;
   background:#fff;
   border-bottom:2px solid #ccc;
   position:sticky;
   top:0;
   z-index:100;
-  height:auto;
 }
 
 #mainMenu .menuItem{
   padding:6px 14px;
-  line-height:1.2;
-  cursor:pointer;
   font-weight:600;
+  cursor:pointer;
   border-radius:6px;
+  user-select:none;
   white-space:nowrap;
 }
 
@@ -198,65 +191,49 @@ button{
 }
 
 #mainMenu .menuItem.active{
-  color:var(--accent);
   background:#eef2f7;
+  color:var(--primary,#1e1e1e);
 }
-
-#mainMenu .menuItem.active {
-  color: var(--primary,#1e1e1e);
-}
-
-#mainMenu .menuItem {
-  user-select: none;  /* Prevent text selection */
-  -webkit-user-select: none; /* Safari/Chrome */
-  -moz-user-select: none;    /* Firefox */
-  -ms-user-select: none;     /* IE/Edge */
-}
-
 </style>
 
 <script>
-/* ===== OPEN TAB FUNCTION WITH UNDERLINE ANIMATION ===== */
+/* ================= TAB SWITCHING (CLEAN) ================= */
 function openTab(id){
-  // Hide all sections first
-  document.querySelectorAll("section").forEach(s => s.style.display = "none");
+  // Hide all sections
+  document.querySelectorAll("section").forEach(s=>{
+    s.style.display="none";
+  });
 
-  // Show selected section if user has permission
-  const sec = document.getElementById(id);
+  // Permission check
   const user = JSON.parse(sessionStorage.getItem("loggedInUser") || "{}");
-  if(sec && (user.role === "developer" || (user.permissions || []).includes(id))){
-    sec.style.display = "block";
+  if(user.role!=="developer" && !(user.permissions||[]).includes(id)){
+    return;
   }
 
-  // Update menu active state
-  document.querySelectorAll("#mainMenu .menuItem").forEach(d => d.classList.remove("active"));
-  const tab = document.getElementById("tab-" + id);
+  // Show section
+  const sec = document.getElementById(id);
+  if(sec) sec.style.display="block";
+
+  // Active menu highlight
+  document.querySelectorAll("#mainMenu .menuItem").forEach(m=>{
+    m.classList.remove("active");
+  });
+  const tab = document.getElementById("tab-"+id);
   if(tab) tab.classList.add("active");
+}
 
-/* ===== ADJUST UNDERLINE ON WINDOW RESIZE ===== */
-window.addEventListener("resize", () => {
-  const active = document.querySelector("#mainMenu .menuItem.active");
-  const underline = document.getElementById("menuUnderline");
-  if(active && underline){
-    const rect = active.getBoundingClientRect();
-    const parentRect = active.parentElement.getBoundingClientRect();
-    underline.style.width = rect.width + "px";
-    underline.style.left = (rect.left - parentRect.left) + "px";
-  }
-});
-
-/* ===== OPEN DEFAULT TAB AFTER LOGIN ===== */
-document.addEventListener("DOMContentLoaded", () => {
+/* ================= OPEN FIRST ALLOWED TAB ================= */
+document.addEventListener("DOMContentLoaded", ()=>{
   const acc = sessionStorage.getItem("loggedInUser");
-  if(acc){
-    const user = JSON.parse(acc);
-    // Show first permitted tab
-    const tabs = ["invoice","products","vendors","purchase","cash","reports","settings"];
-    for(const t of tabs){
-      if(user.role==="developer" || (user.permissions||[]).includes(t)){
-        document.getElementById("tab-" + t).click();
-        break;
-      }
+  if(!acc) return;
+
+  const user = JSON.parse(acc);
+  const order = ["invoice","products","vendors","purchase","cash","reports","settings"];
+
+  for(const t of order){
+    if(user.role==="developer" || (user.permissions||[]).includes(t)){
+      openTab(t);
+      break;
     }
   }
 });
