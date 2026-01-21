@@ -384,16 +384,6 @@ function doLogin(){
     alert("Enter User ID");
     return;
   }
-
-  sessionStorage.setItem("loggedInUser", JSON.stringify({
-    username:user,
-    role:"developer",
-    permissions:["invoice","products","vendors","purchase","cash","reports","settings"]
-  }));
-
-  location.reload();
-}
-
 </script>
 
 <!-- ================= DATABASE ================= -->
@@ -2051,11 +2041,7 @@ function submitLogin(){
     document.getElementById("loginError").innerText="Invalid username or password";
     return;
   }
-  sessionStorage.setItem("loggedInUser", JSON.stringify(acc));
-  document.getElementById("loginScreen").style.display="none";
-  renderSectionsByPermission();
-  openTab("invoice");
-}
+ 
 document.querySelectorAll("#mainMenu .menuItem").forEach(tab=>{
   const id = tab.id.replace("tab-","");
   if(acc.role!=="developer" && !(acc.permissions||[]).includes(id)){
