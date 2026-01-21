@@ -153,7 +153,7 @@ button{
 </header>
 
 <!-- ================= TOP MENU ================= -->
-<nav id="mainMenu" style="position:relative; display:flex; gap:20px; border-bottom:2px solid #ccc; padding:10px 20px; background:#fff; z-index:100;">
+<nav id="mainMenu">
   <div id="tab-invoice" class="menuItem" onclick="openTab('invoice')">Invoice</div>
   <div id="tab-products" class="menuItem" onclick="openTab('products')">Products</div>
   <div id="tab-vendors" class="menuItem" onclick="openTab('vendors')">Vendors</div>
@@ -170,12 +170,38 @@ button{
 -->
 
 <style>
-#mainMenu .menuItem {
-  cursor:pointer;
-  padding:5px 10px;
-  position:relative;
-  font-weight:600;
+/* ================= MAIN MENU FIX ================= */
+#mainMenu{
+  display:flex;
+  align-items:center;
+  gap:18px;
+  padding:8px 16px;
+  background:#fff;
+  border-bottom:2px solid #ccc;
+  position:sticky;
+  top:0;
+  z-index:100;
+  height:auto;
 }
+
+#mainMenu .menuItem{
+  padding:6px 14px;
+  line-height:1.2;
+  cursor:pointer;
+  font-weight:600;
+  border-radius:6px;
+  white-space:nowrap;
+}
+
+#mainMenu .menuItem:hover{
+  background:#eef2f7;
+}
+
+#mainMenu .menuItem.active{
+  color:var(--accent);
+  background:#eef2f7;
+}
+
 #mainMenu .menuItem.active {
   color: var(--primary,#1e1e1e);
 }
@@ -206,17 +232,6 @@ function openTab(id){
   document.querySelectorAll("#mainMenu .menuItem").forEach(d => d.classList.remove("active"));
   const tab = document.getElementById("tab-" + id);
   if(tab) tab.classList.add("active");
-
-  // Animate underline
-  const underline = document.getElementById("menuUnderline");
-  if(tab && underline){
-    const rect = tab.getBoundingClientRect();
-    const parentRect = tab.parentElement.getBoundingClientRect();
-    const underlineWidth = rect.width * 0.6; // 0.6% of menu item width
-underline.style.width = underlineWidth + "px";
-underline.style.left = (rect.left - parentRect.left) + (rect.width - underlineWidth)/2 + "px";
-  }
-}
 
 /* ===== ADJUST UNDERLINE ON WINDOW RESIZE ===== */
 window.addEventListener("resize", () => {
