@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -143,6 +144,14 @@ button{
 </style>
 </head>
 <body>
+<!-- ================= LOGIN BOX ================= -->
+<div id="loginBox" style="display:none; padding:40px; text-align:center;">
+  <h2>Login</h2>
+  <input id="loginUser" placeholder="User ID"><br><br>
+  <input id="loginPass" type="password" placeholder="Password"><br><br>
+  <button onclick="doLogin()">Login</button>
+</div>
+
 <!-- ================= MAIN APP ================= -->
 <div id="app" style="display:none;">
   <!-- TOP MENU -->
@@ -2305,29 +2314,27 @@ function openFirstAllowedTab(){
     }
   }
 }
-// ========= SAFE STARTUP =========
-document.addEventListener("DOMContentLoaded", function () {
-  const login = document.getElementById("loginBox");
-  const app = document.getElementById("app");
+function ruleMessage(msg){
+  alert(msg);
+}
+function openTab(id){
+  document.querySelectorAll("section").forEach(s=>{
+    s.classList.remove("active");
+  });
 
-  if (!login || !app) {
-    alert("Critical HTML missing");
-    return;
-  }
+  document.querySelectorAll("#mainMenu .menuItem").forEach(m=>{
+    m.classList.remove("active");
+  });
 
-  const acc = sessionStorage.getItem("loggedInUser");
+  const sec = document.getElementById(id);
+  const tab = document.getElementById("tab-" + id);
 
-  if (acc) {
-    login.style.display = "none";
-    app.style.display = "block";
-
-    if (typeof openFirstAllowedTab === "function") {
-      openFirstAllowedTab();
-    }
-  } else {
-    login.style.display = "block";
-    app.style.display = "none";
-  }
+  if(sec) sec.classList.add("active");
+  if(tab) tab.classList.add("active");
+}
+document.addEventListener("DOMContentLoaded", ()=>{
+  document.getElementById("loginBox").style.display = "block";
+  document.getElementById("app").style.display = "none";
 });
 
 </script>
