@@ -256,9 +256,21 @@ button:active{
 button{
   transition:transform 0.08s ease;
 }
+/* ================= MENU HARD LOCK (SAFE) ================= */
+#mainMenu{
+  height:52px;
+  display:flex;
+  align-items:center;
+  overflow:hidden;
+  z-index:1000;
+}
+
+/* Disable underline completely */
+#menuUnderline{
+  display:none !important;
+}
 
 </style>
-
 <script>
 /* ================= TAB SWITCHING (CLEAN) ================= */
 function openTab(id){
@@ -2222,18 +2234,17 @@ window.addEventListener("resize", () => {
   }
 });
 
+<script>
 /* ===== OPEN DEFAULT TAB ON PAGE LOAD ===== */
 document.addEventListener("DOMContentLoaded", ()=>{
   const acc = sessionStorage.getItem("loggedInUser");
 
   if(!acc){
-    // NO LOGIN → show login screen only
     document.getElementById("loginBox").style.display = "block";
     document.getElementById("app").style.display = "none";
     return;
   }
 
-  // LOGIN EXISTS → show app
   document.getElementById("loginBox").style.display = "none";
   document.getElementById("app").style.display = "block";
 
@@ -2247,29 +2258,4 @@ document.addEventListener("DOMContentLoaded", ()=>{
     }
   }
 });
-
-/* ================= MENU UNDERLINE HARD LOCK ================= */
-
-/* Lock menu height so nothing can push it */
-#mainMenu{
-  height:52px !important;
-  align-items:center !important;
-  overflow:hidden !important;
-}
-
-/* Freeze underline so JS cannot affect layout */
-#menuUnderline{
-  position:absolute !important;
-  bottom:0 !important;
-  height:3px !important;
-
-  /* HARD FREEZE */
-  max-width:0 !important;
-  min-width:0 !important;
-  width:0 !important;
-
-  overflow:hidden !important;
-  pointer-events:none !important;
-  background:transparent !important;
-}
 </script>
