@@ -144,7 +144,7 @@ button{
 </head>
 <body>
 <!-- ================= LOGIN BOX ================= -->
-<div id="loginBox" style="display:none; padding:40px; text-align:center;">
+<div id="loginBox">
   <h2>Login</h2>
   <input id="loginUser" placeholder="User ID"><br><br>
   <input id="loginPass" type="password" placeholder="Password"><br><br>
@@ -2313,4 +2313,29 @@ function openFirstAllowedTab(){
     }
   }
 }
+// ========= SAFE STARTUP =========
+document.addEventListener("DOMContentLoaded", function () {
+  const login = document.getElementById("loginBox");
+  const app = document.getElementById("app");
+
+  if (!login || !app) {
+    alert("Critical HTML missing");
+    return;
+  }
+
+  const acc = sessionStorage.getItem("loggedInUser");
+
+  if (acc) {
+    login.style.display = "none";
+    app.style.display = "block";
+
+    if (typeof openFirstAllowedTab === "function") {
+      openFirstAllowedTab();
+    }
+  } else {
+    login.style.display = "block";
+    app.style.display = "none";
+  }
+});
+
 </script>
