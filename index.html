@@ -426,10 +426,17 @@ function getNextInvoiceNumber(){
 
 /* ===== ADD ROW ===== */
 function addInvoiceRow(){
-  invoiceDraft.push({ productId:"", barcode:"", itemNo:"", desc:"", qty:1, rate:0, valid:false });
+  invoiceDraft.push({
+    productId:null,
+    barcode:"",
+    itemNo:"",
+    desc:"",
+    qty:1,
+    rate:0,
+    valid:false
+  });
   renderInvoice();
 }
-
 /* ===== RENDER INVOICE ROWS ===== */
 function renderInvoice(){
   const tbody = document.getElementById("invoiceRows");
@@ -637,8 +644,11 @@ function printInvoice(id){
 }
 
 /* ===== INITIAL RENDER ===== */
-renderInvoice();
+if(invoiceDraft.length === 0){
+  addInvoiceRow();
+}
 renderInvoiceList();
+
 function syncDiscFromAmt(){
   const sub=getSubTotal();
   const amt=+document.getElementById("mainDiscAmt").value||0;
@@ -654,9 +664,33 @@ function syncDiscFromPct(){
 </script>
 
 <style>
-.invSug{position:absolute;background:#fff;border:1px solid #ccc;max-height:160px;overflow:auto;z-index:50;}
-.invSug div:hover{background:#eee;}
-td{position:relative;}
+.invSug{
+  position:absolute;
+  background:#fff;
+  border:1px solid #ccc;
+  max-height:160px;
+  overflow:auto;
+  z-index:999;
+  width:100%;
+}
+
+.invSug div{
+  padding:6px;
+}
+
+.invSug div:hover{
+  background:#eee;
+}
+
+#invoiceRows tr{
+  height:auto;
+}
+
+#invoiceRows input{
+  width:100%;
+  box-sizing:border-box;
+}
+
 </style>
 
 <!-- ================= CASH ================= -->
