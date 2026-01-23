@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -163,6 +164,7 @@ button{
   <div id="tab-products" class="menuItem" onclick="openTab('products')">Products</div>
   <div id="tab-vendors" class="menuItem" onclick="openTab('vendors')">Vendors</div>
   <div id="tab-purchase" class="menuItem" onclick="openTab('purchase')">Purchase</div>
+  <div id="tab-return" class="menuItem" onclick="openTab('return')">Return</div>
   <div id="tab-cash" class="menuItem" onclick="openTab('cash')">Cash In Hand</div>
   <div id="tab-reports" class="menuItem" onclick="openTab('reports')">Reports</div>
   <div id="tab-settings" class="menuItem" onclick="openTab('settings')">Settings</div>
@@ -199,6 +201,25 @@ button{
   background:#eef2f7;
   color:var(--primary,#1e1e1e);
 }
+/* ================= RETURN UI ================= */
+#return{
+  padding:20px;
+  animation:fadeIn .25s ease;
+  min-height:auto;
+}
+
+.ret-box{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:10px;
+  margin-bottom:20px;
+}
+
+@keyframes fadeIn{
+  from{opacity:0;transform:translateY(6px)}
+  to{opacity:1;transform:none}
+}
+
 </style>
 
 <script>
@@ -323,6 +344,189 @@ function logAction(action, ref=""){
   saveDB();
 }
 </script>
+<!-- ================= RETURNS ================= -->
+<section id="returns" style="display:none;padding:30px">
+
+<h2 style="font-weight:800;font-size:26px">Return</h2>
+
+<!-- Vendor & Return No -->
+<div style="display:flex;gap:20px;align-items:center;margin:20px 0">
+  <div>
+    <label>Vendor</label><br>
+    <select id="returnVendor" onchange="resetReturnForm()">
+      <option value="">Select Vendor</option>
+    </select>
+  </div>
+
+  <div style="font-size:22px;font-weight:700">
+    Return No: <span id="returnNo">RT0001</span>
+  </div>
+</div>
+
+<!-- Return Items -->
+<table width="100%" border="1" cellpadding="6">
+<thead>
+<tr>
+<th>Item No</th>
+<th>Description</th>
+<th>Qty</th>
+<th>Cost</th>
+<th>Amount</th>
+<th></th>
+</tr>
+</thead>
+<tbody id="returnBody"></tbody>
+</table>
+
+<button onclick="addReturnRow()">Add Item</button>
+<h3>Total: <span id="returnTotal">0</span></h3>
+
+<button onclick="saveReturn()">Save Return</button>
+
+<hr>
+
+<!-- Previous Returns -->
+<h3>Previous Returns</h3>
+
+<div style="display:flex;gap:10px;margin-bottom:10px">
+  <input type="date" id="filterReturnDate">
+  <select id="filterReturnVendor"></select>
+  <button onclick="loadReturns()">Filter</button>
+</div>
+
+<table width="100%" border="1" cellpadding="6">
+<thead>
+<tr>
+<th>S No</th>
+<th>Return No</th>
+<th>Date</th>
+<th>Time</th>
+<th>Vendor</th>
+<th>Amount</th>
+<th>Print</th>
+<th>Edit</th>
+<th>Delete</th>
+</tr>
+</thead>
+<tbody id="previousReturns"></tbody>
+</table>
+
+</section>
+<script>
+let returns = JSON.parse(localStorage.getItem("returns")||"[]");
+
+function generateReturnNo(){
+  return "RT" + String(returns.length + 1).padStart(4,"0");
+}
+
+function loadReturnNo(){
+  document.getElementById("returnNo").innerText = generateReturnNo();
+}
+
+function addReturnRow(){
+  const tbody = document.getElementById("returnBody");
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><input onblur="autoCost(this)"></td>
+    <td><input></td>
+    <td><input type="number" min="1" oninput="calcReturn()"></td>
+    <td><input type="number" oninput="calcReturn()"></td>
+    <td class="amt">0</td>
+    <td><button onclick="this.closest('tr').remove();calcReturn()">X</button></td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function autoCost(inp){
+  const vendor = document.getElementById("returnVendor").value;
+  if(!vendor) return alert("Select vendor first");
+
+  const item = inp.value;
+  const purchases = JSON.parse(localStorage.getItem("purchases")||"[]");
+
+  const match = purchases
+    .filter(p=>p.vendor===vendor && p.itemNo===item)
+    .slice(-1)[0];
+
+  if(match){
+    inp.closest("tr").children[3].children[0].value = match.cost;
+  }else{
+    alert("This product does not belong to this vendor");
+  }
+}
+
+function calcReturn(){
+  let total = 0;
+  document.querySelectorAll("#returnBody tr").forEach(r=>{
+    const q = +r.children[2].children[0].value || 0;
+    const c = +r.children[3].children[0].value || 0;
+    const a = q*c;
+    r.querySelector(".amt").innerText = a;
+    total += a;
+  });
+  document.getElementById("returnTotal").innerText = total;
+}
+
+function saveReturn(){
+  const vendor = document.getElementById("returnVendor").value;
+  if(!vendor) return alert("Vendor required");
+
+  const items=[];
+  document.querySelectorAll("#returnBody tr").forEach(r=>{
+    items.push({
+      itemNo:r.children[0].children[0].value,
+      qty:+r.children[2].children[0].value,
+      cost:+r.children[3].children[0].value
+    });
+  });
+
+  const obj={
+    no:generateReturnNo(),
+    vendor,
+    date:new Date().toLocaleDateString(),
+    time:new Date().toLocaleTimeString(),
+    amount:+document.getElementById("returnTotal").innerText,
+    items
+  };
+
+  returns.push(obj);
+  localStorage.setItem("returns",JSON.stringify(returns));
+
+  loadReturnNo();
+  loadReturns();
+  resetReturnForm();
+}
+
+function resetReturnForm(){
+  document.getElementById("returnBody").innerHTML="";
+  document.getElementById("returnTotal").innerText="0";
+}
+
+function loadReturns(){
+  const tbody=document.getElementById("previousReturns");
+  tbody.innerHTML="";
+  returns.forEach((r,i)=>{
+    tbody.innerHTML+=`
+    <tr>
+      <td>${i+1}</td>
+      <td>${r.no}</td>
+      <td>${r.date}</td>
+      <td>${r.time}</td>
+      <td>${r.vendor}</td>
+      <td>${r.amount}</td>
+      <td>🖨</td>
+      <td>✏</td>
+      <td onclick="returns.splice(${i},1);localStorage.setItem('returns',JSON.stringify(returns));loadReturns()">🗑</td>
+    </tr>`;
+  });
+}
+
+document.addEventListener("DOMContentLoaded",()=>{
+  loadReturnNo();
+  loadReturns();
+});
+</script>
+
 <!-- ================= INVOICE ================= -->
 <section id="invoice">
   <div class="card" id="newInvoiceCard">
@@ -425,17 +629,10 @@ function getNextInvoiceNumber(){
 
 /* ===== ADD ROW ===== */
 function addInvoiceRow(){
-  invoiceDraft.push({
-    productId:null,
-    barcode:"",
-    itemNo:"",
-    desc:"",
-    qty:1,
-    rate:0,
-    valid:false
-  });
+  invoiceDraft.push({ productId:"", barcode:"", itemNo:"", desc:"", qty:1, rate:0, valid:false });
   renderInvoice();
 }
+
 /* ===== RENDER INVOICE ROWS ===== */
 function renderInvoice(){
   const tbody = document.getElementById("invoiceRows");
@@ -479,35 +676,28 @@ function searchInvProduct(i,val,field){
   const results=DB.products.filter(p=>((field==="barcode"&&(p.barcode||"").toLowerCase().includes(q))||(field==="itemNo"&&(p.itemNo||"").toLowerCase().includes(q))||(field==="desc"&&(p.desc||"").toLowerCase().includes(q))));
   if(!results.length){ box.innerHTML=`<div style="padding:4px;color:red">Product not exist or no stock</div>`; return; }
 
-   results.forEach(p=>{
-  const stockNote = p.stock <= 0 ? " ❌ NO STOCK" : "";
-  const d = document.createElement("div");
-  d.style.padding = "4px";
-  d.style.cursor = "pointer";
-  d.innerText = `${p.itemNo} - ${p.desc} (Stock: ${p.stock})${stockNote}`;
-
-  d.onclick = () => {
-    if (invoiceDraft.some((x, idx) => idx !== i && x.productId === p.id)) {
-      ruleMessage("This product already exists in invoice");
-      return;
-    }
-
-    invoiceDraft[i] = {
-      productId: p.id,
-      barcode: p.barcode || "",
-      itemNo: p.itemNo,
-      desc: p.desc,
-      qty: 1,
-      rate: p.rate,
-      valid: true
-    };
-
-    renderInvoice();
+  results.forEach(p=>{
+    const stockNote=p.stock<=0?" ❌ NO STOCK":"";
+    const d=document.createElement("div"); d.style.padding="4px"; d.style.cursor="pointer";
+    d.innerText=`${p.itemNo} - ${p.desc} (Stock: ${p.stock})${stockNote}`;
+   d.onclick=()=>{
+  if(invoiceDraft.some((x,idx)=>idx!==i && x.productId===p.id)){
+    ruleMessage("This product already exists in invoice");
+    return;
+  }
+  invoiceDraft[i]={
+    productId:p.id,
+    barcode:p.barcode||"",
+    itemNo:p.itemNo,
+    desc:p.desc,
+    qty:1,
+    rate:p.rate,
+    valid:true
   };
-
-  box.appendChild(d);
-});
+  renderInvoice();
+};
 }
+
 /* ===== SETTERS ===== */
 function setInvQty(i,v){
   if(v.includes(".")){
@@ -650,11 +840,8 @@ function printInvoice(id){
 }
 
 /* ===== INITIAL RENDER ===== */
-if(invoiceDraft.length === 0){
-  addInvoiceRow();
-}
+renderInvoice();
 renderInvoiceList();
-
 function syncDiscFromAmt(){
   const sub=getSubTotal();
   const amt=+document.getElementById("mainDiscAmt").value||0;
@@ -670,33 +857,9 @@ function syncDiscFromPct(){
 </script>
 
 <style>
-.invSug{
-  position:absolute;
-  background:#fff;
-  border:1px solid #ccc;
-  max-height:160px;
-  overflow:auto;
-  z-index:999;
-  width:100%;
-}
-
-.invSug div{
-  padding:6px;
-}
-
-.invSug div:hover{
-  background:#eee;
-}
-
-#invoiceRows tr{
-  height:auto;
-}
-
-#invoiceRows input{
-  width:100%;
-  box-sizing:border-box;
-}
-
+.invSug{position:absolute;background:#fff;border:1px solid #ccc;max-height:160px;overflow:auto;z-index:50;}
+.invSug div:hover{background:#eee;}
+td{position:relative;}
 </style>
 
 <!-- ================= CASH ================= -->
@@ -818,9 +981,15 @@ function saveCashPayment(){
     // EDIT EXISTING PAYMENT
     const c = DB.cash.find(x=>x.id===editingCashId);
     if(!c) return alert("Payment not found");
-  // ❌ REMOVE THAT DB.cash.push() COMPLETELY
-// Editing means update existing record, NOT push new
-
+    DB.cash.push({
+  id,
+  dateTime: dtISO,
+  type:"OUT",
+  vendor: vendor || "",
+  ref: ref || vendor || "",
+  amount,
+  createdDate: new Date().toISOString() // ADD THIS LINE
+});
 
 
     // Adjust vendor balance
@@ -1146,42 +1315,16 @@ function addNewProduct(){
   renderProducts();
   hideAddProductForm();
 }
-function addNewProduct(){
-  const barcode = newProdBarcode.value.trim();
-  const itemNo = newProdItemNo.value.trim();
-  const desc = newProdDesc.value.trim();
-  const rate = +newProdRate.value;
-
-  if(!itemNo || !desc) return alert("Item No & Description required");
-
-  if(DB.products.some(p=>p.itemNo===itemNo)){
-    ruleMessage("This Item No is Present");
-    return;
-  }
-
-  if(barcode && DB.products.some(p=>p.barcode===barcode)){
-    ruleMessage("This Barcode is Present");
-    return;
-  }
-
-  DB.products.push({
-    id: uid("P"),
-    barcode,
-    itemNo,
-    desc,
-    rate,
-    stock:0
-  });
 
   saveDB();
   prodFiltered = DB.products;
   renderProducts();
+  hideAddProductForm();
 
   newProdBarcode.value="";
   newProdItemNo.value="";
   newProdDesc.value="";
   newProdRate.value="";
-  hideAddProductForm();
 }
 
 /* ===== EDIT ===== */
@@ -1348,29 +1491,11 @@ function addVendor(){
 }
 
 
-  function addVendor(){
-  const name = vendorName.value.trim();
-  if(!name) return;
-
-  if(DB.vendors.some(v=>v.name.toLowerCase()===name.toLowerCase())){
-    ruleMessage("Vendor already exists");
-    return;
-  }
-
-  DB.vendors.push({
-    id: uid("V"),
-    no: nextVendorNo(),
-    name,
-    createdDate: new Date().toISOString(),
-    balance:0
-  });
-
   saveDB();
   vendorName.value="";
   renderVendors();
-  loadVendorOptions();
+  loadVendorOptions(); // refresh cash dropdown
 }
-
 
 /* ================= EDIT VENDOR ================= */
 function editVendor(id){
@@ -1851,47 +1976,7 @@ loadPurchaseVendors();
 addPurchaseRow();
 renderPurchaseHistory();
 </script>
-<!-- ================= RETURN SECTION ================= -->
-<section id="return" style="display:none">
-  <h3>Return (Vendor)</h3>
 
-  <div class="ret-box">
-    <label>Return No</label>
-    <input id="returnNo" disabled>
-
-    <label>Vendor</label>
-    <select id="returnVendor"></select>
-
-    <label>Product</label>
-    <select id="returnProduct"></select>
-
-    <label>Cost Rate</label>
-    <input type="number" id="returnRate">
-
-    <label>Qty</label>
-    <input type="number" id="returnQty">
-
-    <button onclick="addReturn()">Add Return</button>
-  </div>
-
-  <h4>Previous Returns</h4>
-  <select id="filterVendor" onchange="renderReturns()">
-    <option value="">All Vendors</option>
-  </select>
-
-  <table id="returnTable">
-    <thead>
-      <tr>
-        <th>No</th>
-        <th>Vendor</th>
-        <th>Product</th>
-        <th>Rate</th>
-        <th>Qty</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</section>
 
 <!-- ================= REPORTS ================= -->
 <section id="reports">
