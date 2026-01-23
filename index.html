@@ -482,24 +482,35 @@ function searchInvProduct(i,val,field){
 
   results.forEach(p=>{
     const stockNote=p.stock<=0?" ❌ NO STOCK":"";
-    const d=document.createElement("div"); d.style.padding="4px"; d.style.cursor="pointer";
-    d.innerText=`${p.itemNo} - ${p.desc} (Stock: ${p.stock})${stockNote}`;
-   d.onclick=()=>{
-  if(invoiceDraft.some((x,idx)=>idx!==i && x.productId===p.id)){
-    ruleMessage("This product already exists in invoice");
-    return;
-  }
-  invoiceDraft[i]={
-    productId:p.id,
-    barcode:p.barcode||"",
-    itemNo:p.itemNo,
-    desc:p.desc,
-    qty:1,
-    rate:p.rate,
-    valid:true
+   results.forEach(p=>{
+  const stockNote = p.stock <= 0 ? " ❌ NO STOCK" : "";
+  const d = document.createElement("div");
+  d.style.padding = "4px";
+  d.style.cursor = "pointer";
+  d.innerText = `${p.itemNo} - ${p.desc} (Stock: ${p.stock})${stockNote}`;
+
+  d.onclick = () => {
+    if (invoiceDraft.some((x, idx) => idx !== i && x.productId === p.id)) {
+      ruleMessage("This product already exists in invoice");
+      return;
+    }
+
+    invoiceDraft[i] = {
+      productId: p.id,
+      barcode: p.barcode || "",
+      itemNo: p.itemNo,
+      desc: p.desc,
+      qty: 1,
+      rate: p.rate,
+      valid: true
+    };
+
+    renderInvoice();
   };
-  renderInvoice();
+
+  box.appendChild(d);
 });
+}
 }
 
 /* ===== SETTERS ===== */
