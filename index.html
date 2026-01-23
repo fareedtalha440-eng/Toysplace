@@ -276,6 +276,56 @@ function uid(prefix){
   return prefix + "_" + Date.now() + Math.floor(Math.random()*1000); 
 }
 </script>
+<script>
+/* ================= RULE ENGINE ================= */
+const RULES = {
+  qtyIntegerOnly: true,
+  noDuplicateInvoiceProduct: true,
+  noDuplicatePurchaseProduct: true,
+  uniqueItemNo: true,
+  uniqueBarcode: true,
+  uniqueVendorName: true,
+  auditLog: true
+};
+
+/* ===== GLOBAL MESSAGE (CENTER SCREEN) ===== */
+function ruleMessage(msg){
+  let box = document.getElementById("ruleMsgBox");
+  if(!box){
+    box = document.createElement("div");
+    box.id = "ruleMsgBox";
+    box.style = `
+      position:fixed; top:50%; left:50%;
+      transform:translate(-50%,-50%);
+      background:#111; color:#fff;
+      padding:18px 26px;
+      border-radius:10px;
+      font-size:16px;
+      z-index:99999;
+      box-shadow:0 0 20px rgba(0,0,0,.4)
+    `;
+    document.body.appendChild(box);
+  }
+  box.innerText = msg;
+  box.style.display="block";
+  setTimeout(()=>box.style.display="none",2500);
+}
+
+/* ===== AUDIT LOG ===== */
+function logAction(action, ref=""){
+  if(!RULES.auditLog) return;
+  const user = JSON.parse(sessionStorage.getItem("loggedInUser")||"{}");
+  DB.logs = DB.logs || [];
+  DB.logs.push({
+    user: user.username || "unknown",
+    role: user.role || "",
+    action,
+    ref,
+    dateTime: new Date().toISOString()
+  });
+  saveDB();
+}
+</script>
 
 <!-- ================= INVOICE ================= -->
 <section id="invoice">
@@ -430,13 +480,34 @@ function searchInvProduct(i,val,field){
     const stockNote=p.stock<=0?" ❌ NO STOCK":"";
     const d=document.createElement("div"); d.style.padding="4px"; d.style.cursor="pointer";
     d.innerText=`${p.itemNo} - ${p.desc} (Stock: ${p.stock})${stockNote}`;
-    d.onclick=()=>{ invoiceDraft[i]={productId:p.id,barcode:p.barcode||"",itemNo:p.itemNo,desc:p.desc,qty:1,rate:p.rate,valid:true}; renderInvoice(); };
-    box.appendChild(d);
-  });
+   d.onclick=()=>{
+  if(invoiceDraft.some((x,idx)=>idx!==i && x.productId===p.id)){
+    ruleMessage("This product already exists in invoice");
+    return;
+  }
+  invoiceDraft[i]={
+    productId:p.id,
+    barcode:p.barcode||"",
+    itemNo:p.itemNo,
+    desc:p.desc,
+    qty:1,
+    rate:p.rate,
+    valid:true
+  };
+  renderInvoice();
+};
 }
 
 /* ===== SETTERS ===== */
-function setInvQty(i,v){ invoiceDraft[i].qty=+v; renderInvoice(); }
+function setInvQty(i,v){
+  if(v.includes(".")){
+    ruleMessage("Decimal quantity not allowed");
+    return;
+  }
+  invoiceDraft[i].qty = parseInt(v) || 1;
+  renderInvoice();
+}
+
 function setInvRate(i,v){ invoiceDraft[i].rate=+v; renderInvoice(); }
 function delInvRow(i){ invoiceDraft.splice(i,1); renderInvoice(); }
 
@@ -1019,7 +1090,15 @@ function addNewProduct(){
   const desc = newProdDesc.value.trim();
   const rate = +newProdRate.value;
 
-  if(!itemNo || !desc || !rate) return alert("Fill all fields");
+  if(DB.products.some(p=>p.itemNo===itemNo)){
+    ruleMessage("This Item No is Present");
+    return;
+  }
+
+  if(barcode && DB.products.some(p=>p.barcode===barcode)){
+    ruleMessage("This Barcode is Present");
+    return;
+  }
 
   DB.products.push({
     id: uid("P"),
@@ -1027,8 +1106,15 @@ function addNewProduct(){
     itemNo,
     desc,
     rate,
-    stock: 0
+    stock:0
   });
+
+  logAction("Product Created", itemNo);
+  saveDB();
+  prodFiltered = DB.products;
+  renderProducts();
+  hideAddProductForm();
+}
 
   saveDB();
   prodFiltered = DB.products;
@@ -1096,15 +1182,28 @@ function uploadProductExcel(input){
     const wb = XLSX.read(e.target.result, {type:"binary"});
     const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
     rows.forEach(r=>{
-      DB.products.push({
-        id: uid("P"),
-        barcode: r.Barcode || "",
-        itemNo: r["Item No"] || "",
-        desc: r.Description || "",
-        rate: +r["Retail Rate"] || 0,
-        stock:0
-      });
-    });
+  const itemNo = r["Item No"] || "";
+  const barcode = r.Barcode || "";
+
+  if(DB.products.some(p=>p.itemNo===itemNo)){
+    return;
+  }
+
+  if(barcode && DB.products.some(p=>p.barcode===barcode)){
+    ruleMessage(`${itemNo} - ${barcode} is Present`);
+    return;
+  }
+
+  DB.products.push({
+    id: uid("P"),
+    barcode,
+    itemNo,
+    desc: r.Description || "",
+    rate: +r["Retail Rate"] || 0,
+    stock:0
+  });
+});
+
     saveDB();
     prodFiltered = DB.products;
     renderProducts();
@@ -1172,15 +1271,25 @@ function nextVendorNo(){
 /* ================= ADD VENDOR ================= */
 function addVendor(){
   const name = vendorName.value.trim();
-  if(!name) return alert("Enter vendor name");
-  const createdDate = new Date().toISOString();
+  if(!name) return;
+
+  if(DB.vendors.some(v=>v.name.toLowerCase()===name.toLowerCase())){
+    ruleMessage("Vendor already exists");
+    return;
+  }
 
   DB.vendors.push({
     id: uid("V"),
     no: nextVendorNo(),
     name,
-    createdDate
+    createdDate: new Date().toISOString()
   });
+
+  logAction("Vendor Created", name);
+  saveDB();
+  renderVendors();
+}
+
 
   saveDB();
   vendorName.value="";
@@ -1545,19 +1654,33 @@ function searchProduct(inp,i){
 }
 
 function selectProduct(i,p){
+  if(purchaseDraft.some((x,idx)=>idx!==i && x.productId===p.id)){
+    ruleMessage("This product already exists in purchase");
+    return;
+  }
+
   Object.assign(purchaseDraft[i],{
     productId:p.id,
     barcode:p.barcode,
     itemNo:p.itemNo,
     desc:p.desc
   });
+
   renderPurchaseRows();
 }
+
 
 document.addEventListener("click",()=>document.querySelectorAll(".suggest-box").forEach(x=>x.remove()));
 
 /* ===== UTILS ===== */
-function setQty(i,v){purchaseDraft[i].qty=+v||0;renderPurchaseRows()}
+function setQty(i,v){
+  if(v.includes(".")){
+    ruleMessage("Decimal quantity not allowed");
+    return;
+  }
+  purchaseDraft[i].qty = parseInt(v) || 1;
+  renderPurchaseRows();
+}
 function setCost(i,v){purchaseDraft[i].cost=+v||0;renderPurchaseRows()}
 function removeRow(i){purchaseDraft.splice(i,1);renderPurchaseRows()}
 function costTab(e,i){if(e.key==="Tab"){e.preventDefault();if(i===purchaseDraft.length-1)addPurchaseRow()}}
@@ -1788,6 +1911,13 @@ function submitLogin(){
   document.getElementById("loginScreen").style.display="none";
   renderSectionsByPermission();
   openTab("invoice");
+  document.querySelectorAll("#mainMenu .menuItem").forEach(tab=>{
+  const id = tab.id.replace("tab-","");
+  if(acc.role!=="developer" && !(acc.permissions||[]).includes(id)){
+    tab.style.display="none";
+  }
+});
+
 }
 
 /* ===== PERSIST LOGIN ===== */
