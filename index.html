@@ -144,190 +144,107 @@ button{
 </head>
 <body>
 
-<!-- ================= MAIN APP ================= -->
-<div id="app" style="display:none;">
-  <!-- TOP MENU -->
-  <nav id="mainMenu">
-    <div id="tab-invoice" class="menuItem" onclick="openTab('invoice')">Invoice</div>
-    <div id="tab-products" class="menuItem" onclick="openTab('products')">Products</div>
-    <div id="tab-vendors" class="menuItem" onclick="openTab('vendors')">Vendors</div>
-    <div id="tab-purchase" class="menuItem" onclick="openTab('purchase')">Purchase</div>
-    <div id="tab-cash" class="menuItem" onclick="openTab('cash')">Cash</div>
-    <div id="tab-reports" class="menuItem" onclick="openTab('reports')">Reports</div>
-    <div id="tab-settings" class="menuItem" onclick="openTab('settings')">Settings</div>
-  </nav>
+<header>
+  <div id="header-left">
+    <img id="header-logo">
+    <span id="softwareName">Dani Test Software</span>
+  </div>
+  <div id="dateTime"></div>
+</header>
 
-  <!-- ================= SECTIONS ================= -->
-  <section id="invoice"><h3>Invoice</h3></section>
-  <section id="products"><h3>Products</h3></section>
-  <section id="vendors"><h3>Vendors</h3></section>
-  <section id="purchase"><h3>Purchase</h3></section>
-  <section id="cash"><h3>Cash</h3></section>
-  <section id="reports"><h3>Reports</h3></section>
-  <section id="settings"><h3>Settings</h3></section>
+<!-- ================= TOP MENU ================= -->
+<nav id="mainMenu" style="position:relative; display:flex; gap:20px; border-bottom:2px solid #ccc; padding:10px 20px; background:#fff; z-index:100;">
+  <div id="tab-invoice" class="menuItem" onclick="openTab('invoice')">Invoice</div>
+  <div id="tab-products" class="menuItem" onclick="openTab('products')">Products</div>
+  <div id="tab-vendors" class="menuItem" onclick="openTab('vendors')">Vendors</div>
+  <div id="tab-purchase" class="menuItem" onclick="openTab('purchase')">Purchase</div>
+  <div id="tab-cash" class="menuItem" onclick="openTab('cash')">Cash In Hand</div>
+  <div id="tab-reports" class="menuItem" onclick="openTab('reports')">Reports</div>
+  <div id="tab-settings" class="menuItem" onclick="openTab('settings')">Settings</div>
+
+<!-- Animated underline DISABLED (caused layout jump)
+<div id="menuUnderline"
+     style="position:absolute; bottom:0; height:3px; width:0; left:0;
+     background:var(--primary,#1e1e1e); transition:all 0.3s ease;">
 </div>
+-->
+
 <style>
-/* ================= SECTION LAYOUT FIX ================= */
-section{
-  display:none;
-  opacity:0;
-  transform:translateY(6px);
-  transition:opacity 0.18s ease, transform 0.18s ease;
-  height:auto;
-  min-height:auto;
-}
-section.active{
-  display:block;
-  opacity:1;
-  transform:translateY(0);
-}  
-/* ================= SMOOTH SECTION ANIMATION ================= */
-section{
-  display:none;
-  opacity:0;
-  transform:translateY(6px);
-  transition:
-    opacity 0.18s ease-out,
-    transform 0.18s ease-out;
-}
-
-section.active{
-  display:block;
-  opacity:1;
-  transform:translateY(0);
-}
-/* ================= LAYOUT SAFETY FIX ================= */
-#app{
-  position:relative;
-}
-
-section{
-  position:relative;
-  z-index:1;
-}
-
-/* ================= BUTTON FEEDBACK ================= */
-button:active{
-  transform:scale(0.96);
-}
-
-button{
-  transition:transform 0.08s ease;
-}
-/* ================= MENU HARD LOCK (SAFE) ================= */
-#mainMenu{
-  display:flex;
-  gap:12px;
-  padding:8px 16px;
-  background:#ffffff;
-  border-bottom:2px solid #ddd;
-  position:sticky;
-  top:0;
-  z-index:1000;
-}
-
-#mainMenu .menuItem{
-  padding:6px 14px;
-  font-weight:600;
+#mainMenu .menuItem {
   cursor:pointer;
-  border-radius:6px;
-}
-
-#mainMenu .menuItem.active{
-  background:#eef2f7;
-}
-
-/* Disable underline completely */
-#menuUnderline{
-  display:none !important;
-}
-/* ================= HARD STABILITY FIX ================= */
-#mainMenu{
-  position:fixed;
-  top:0;
-  left:0;
-  right:0;
-  height:52px;
-  display:flex;
-  align-items:center;
-  background:#fff;
-  z-index:9999;
-}
-
-#app{
-  margin-top:52px;
-}
-
-section{
-  display:none;
+  padding:5px 10px;
   position:relative;
-  z-index:1;
+  font-weight:600;
+}
+#mainMenu .menuItem.active {
+  color: var(--primary,#1e1e1e);
+}
+
+#mainMenu .menuItem {
+  user-select: none;  /* Prevent text selection */
+  -webkit-user-select: none; /* Safari/Chrome */
+  -moz-user-select: none;    /* Firefox */
+  -ms-user-select: none;     /* IE/Edge */
 }
 
 </style>
+
 <script>
-
+/* ===== OPEN TAB FUNCTION WITH UNDERLINE ANIMATION ===== */
 function openTab(id){
-  document.querySelectorAll("section").forEach(s=>{
-    if(s.id !== "loginScreen") s.classList.remove("active");
-  });
+  // Hide all sections first
+  document.querySelectorAll("section").forEach(s => s.style.display = "none");
 
+  // Show selected section if user has permission
   const sec = document.getElementById(id);
-  if(!sec){
-    alert("Section not found: " + id);
-    return;
+  const user = JSON.parse(sessionStorage.getItem("loggedInUser") || "{}");
+  if(sec && (user.role === "developer" || (user.permissions || []).includes(id))){
+    sec.style.display = "block";
   }
-  sec.classList.add("active");
 
-  document.querySelectorAll("#mainMenu .menuItem").forEach(m=>{
-    m.classList.remove("active");
-  });
-
-  const tab = document.getElementById("tab-"+id);
+  // Update menu active state
+  document.querySelectorAll("#mainMenu .menuItem").forEach(d => d.classList.remove("active"));
+  const tab = document.getElementById("tab-" + id);
   if(tab) tab.classList.add("active");
+
+  // Animate underline
+  const underline = document.getElementById("menuUnderline");
+  if(tab && underline){
+    const rect = tab.getBoundingClientRect();
+    const parentRect = tab.parentElement.getBoundingClientRect();
+    const underlineWidth = rect.width * 0.6; // 0.6% of menu item width
+underline.style.width = underlineWidth + "px";
+underline.style.left = (rect.left - parentRect.left) + (rect.width - underlineWidth)/2 + "px";
+  }
 }
 
-/* ================= OPEN FIRST ALLOWED TAB ================= */
-document.addEventListener("DOMContentLoaded", ()=>{
+/* ===== ADJUST UNDERLINE ON WINDOW RESIZE ===== */
+window.addEventListener("resize", () => {
+  const active = document.querySelector("#mainMenu .menuItem.active");
+  const underline = document.getElementById("menuUnderline");
+  if(active && underline){
+    const rect = active.getBoundingClientRect();
+    const parentRect = active.parentElement.getBoundingClientRect();
+    underline.style.width = rect.width + "px";
+    underline.style.left = (rect.left - parentRect.left) + "px";
+  }
+});
+
+/* ===== OPEN DEFAULT TAB AFTER LOGIN ===== */
+document.addEventListener("DOMContentLoaded", () => {
   const acc = sessionStorage.getItem("loggedInUser");
-  if(!acc) return;
-
-  const user = JSON.parse(acc);
-  const order = ["invoice","products","vendors","purchase","cash","reports","settings"];
-
-  for(const t of order){
-    if(user.role==="developer" || (user.permissions||[]).includes(t)){
-      openTab(t);
-      break;
+  if(acc){
+    const user = JSON.parse(acc);
+    // Show first permitted tab
+    const tabs = ["invoice","products","vendors","purchase","cash","reports","settings"];
+    for(const t of tabs){
+      if(user.role==="developer" || (user.permissions||[]).includes(t)){
+        document.getElementById("tab-" + t).click();
+        break;
+      }
     }
   }
 });
-<script>
-function doLogin(){
-  const username = document.getElementById("loginUser").value.trim();
-  const password = document.getElementById("loginPass").value.trim();
-
-  if(!username || !password){
-    alert("Enter User ID and Password");
-    return;
-  }
-
-  const acc = DB.accounts.find(a =>
-    a.username === username && a.password === password
-  );
-
-  if(!acc){
-    alert("Invalid login");
-    return;
-  }
-
-  sessionStorage.setItem("loggedInUser", JSON.stringify(acc));
-
-  document.getElementById("loginBox").style.display = "none";
-  document.getElementById("app").style.display = "block";
-
-  openFirstAllowedTab();
-}
 </script>
 
 <!-- ================= DATABASE ================= -->
@@ -357,72 +274,6 @@ function saveDB() {
 
 function uid(prefix){ 
   return prefix + "_" + Date.now() + Math.floor(Math.random()*1000); 
-}
-</script>
-<script>
-/* ================= RULE ENGINE ================= */
-const RULES = {
-  qtyIntegerOnly: true,
-  noDuplicateInvoiceProduct: true,
-  noDuplicatePurchaseProduct: true,
-  uniqueItemNo: true,
-  uniqueBarcode: true,
-  uniqueVendorName: true,
-  auditLog: true
-};
-
-function ruleMessage(msg){
-  let box = document.getElementById("ruleMsgBox");
-  if(!box){
-    box = document.createElement("div");
-    box.id = "ruleMsgBox";
-    box.style = `
-      position:fixed;
-      top:50%;
-      left:50%;
-      transform:translate(-50%,-50%);
-      background:#000;
-      color:#fff;
-      padding:16px 24px;
-      border-radius:10px;
-      font-size:15px;
-      z-index:99999;
-    `;
-    document.body.appendChild(box);
-  }
-  box.innerText = msg;
-  box.style.display="block";
-  setTimeout(()=>box.style.display="none",2500);
-}
-
-function logAction(action, ref=""){
-  const user = JSON.parse(sessionStorage.getItem("loggedInUser")||"{}");
-  DB.logs = DB.logs || [];
-  DB.logs.push({
-    user: user.username || "unknown",
-    role: user.role || "",
-    action,
-    ref,
-    dateTime: new Date().toISOString()
-  });
-  saveDB();
-}
-</script>
-<script>
-/* ================= PERFORMANCE HELPERS ================= */
-
-// Batch DOM updates
-function fastRender(fn){
-  requestAnimationFrame(()=>fn());
-}
-
-// Lightweight debounce (prevents over-render)
-function debounce(fn, delay=80){
-  let t;
-  return (...args)=>{
-    clearTimeout(t);
-    t = setTimeout(()=>fn(...args), delay);
-  };
 }
 </script>
 
@@ -529,7 +380,7 @@ function getNextInvoiceNumber(){
 /* ===== ADD ROW ===== */
 function addInvoiceRow(){
   invoiceDraft.push({ productId:"", barcode:"", itemNo:"", desc:"", qty:1, rate:0, valid:false });
-  fastRender(renderInvoice);
+  renderInvoice();
 }
 
 /* ===== RENDER INVOICE ROWS ===== */
@@ -579,34 +430,13 @@ function searchInvProduct(i,val,field){
     const stockNote=p.stock<=0?" ❌ NO STOCK":"";
     const d=document.createElement("div"); d.style.padding="4px"; d.style.cursor="pointer";
     d.innerText=`${p.itemNo} - ${p.desc} (Stock: ${p.stock})${stockNote}`;
-    d.onclick=()=>{
-  if(invoiceDraft.some((x,idx)=>idx!==i && x.productId===p.id)){
-    ruleMessage("This product already exists in invoice");
-    return;
-  }
-  invoiceDraft[i]={
-    productId:p.id,
-    barcode:p.barcode||"",
-    itemNo:p.itemNo,
-    desc:p.desc,
-    qty:1,
-    rate:p.rate,
-    valid:true
-  };
-  renderInvoice();
-};
-
+    d.onclick=()=>{ invoiceDraft[i]={productId:p.id,barcode:p.barcode||"",itemNo:p.itemNo,desc:p.desc,qty:1,rate:p.rate,valid:true}; renderInvoice(); };
+    box.appendChild(d);
+  });
 }
 
 /* ===== SETTERS ===== */
-function setInvQty(i,v){
-  if(v.includes(".")){
-    ruleMessage("Decimal quantity not allowed");
-    return;
-  }
-  invoiceDraft[i].qty = parseInt(v) || 1;
-  renderInvoice();
-}
+function setInvQty(i,v){ invoiceDraft[i].qty=+v; renderInvoice(); }
 function setInvRate(i,v){ invoiceDraft[i].rate=+v; renderInvoice(); }
 function delInvRow(i){ invoiceDraft.splice(i,1); renderInvoice(); }
 
@@ -1189,15 +1019,7 @@ function addNewProduct(){
   const desc = newProdDesc.value.trim();
   const rate = +newProdRate.value;
 
-  if(DB.products.some(p=>p.itemNo===itemNo)){
-    ruleMessage("This Item No is Present");
-    return;
-  }
-
-  if(barcode && DB.products.some(p=>p.barcode===barcode)){
-    ruleMessage("This Barcode is Present");
-    return;
-  }
+  if(!itemNo || !desc || !rate) return alert("Fill all fields");
 
   DB.products.push({
     id: uid("P"),
@@ -1205,14 +1027,18 @@ function addNewProduct(){
     itemNo,
     desc,
     rate,
-    stock:0
+    stock: 0
   });
 
-  logAction("Product Created", itemNo);
   saveDB();
   prodFiltered = DB.products;
   renderProducts();
   hideAddProductForm();
+
+  newProdBarcode.value="";
+  newProdItemNo.value="";
+  newProdDesc.value="";
+  newProdRate.value="";
 }
 
 /* ===== EDIT ===== */
@@ -1270,27 +1096,15 @@ function uploadProductExcel(input){
     const wb = XLSX.read(e.target.result, {type:"binary"});
     const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
     rows.forEach(r=>{
-  const itemNo = r["Item No"] || "";
-  const barcode = r.Barcode || "";
-
-  if(DB.products.some(p=>p.itemNo===itemNo)){
-    return;
-  }
-
-  if(barcode && DB.products.some(p=>p.barcode===barcode)){
-    ruleMessage(`${itemNo} - ${barcode} is Present`);
-    return;
-  }
-
-  DB.products.push({
-    id: uid("P"),
-    barcode,
-    itemNo,
-    desc: r.Description || "",
-    rate: +r["Retail Rate"] || 0,
-    stock:0
-  });
-});
+      DB.products.push({
+        id: uid("P"),
+        barcode: r.Barcode || "",
+        itemNo: r["Item No"] || "",
+        desc: r.Description || "",
+        rate: +r["Retail Rate"] || 0,
+        stock:0
+      });
+    });
     saveDB();
     prodFiltered = DB.products;
     renderProducts();
@@ -1358,24 +1172,22 @@ function nextVendorNo(){
 /* ================= ADD VENDOR ================= */
 function addVendor(){
   const name = vendorName.value.trim();
-  if(!name) return;
-
-  if(DB.vendors.some(v=>v.name.toLowerCase()===name.toLowerCase())){
-    ruleMessage("Vendor already exists");
-    return;
-  }
+  if(!name) return alert("Enter vendor name");
+  const createdDate = new Date().toISOString();
 
   DB.vendors.push({
     id: uid("V"),
     no: nextVendorNo(),
     name,
-    createdDate: new Date().toISOString()
+    createdDate
   });
 
-  logAction("Vendor Created", name);
   saveDB();
+  vendorName.value="";
   renderVendors();
+  loadVendorOptions(); // refresh cash dropdown
 }
+
 /* ================= EDIT VENDOR ================= */
 function editVendor(id){
   const v = DB.vendors.find(x=>x.id===id);
@@ -1559,7 +1371,7 @@ loadVendorOptions();
 <!-- ================= PURCHASE ================= -->
 
 <style>
-#purchase{width:100%;padding:30px;}
+#purchase{width:100%;min-height:100vh;padding:30px}
 #purchase h3{color:var(--primary);margin:20px 0}
 .p-block{border:1px solid var(--border);padding:20px;margin-bottom:30px;border-radius:12px}
 .p-table{width:100%;border-collapse:collapse}
@@ -1733,32 +1545,19 @@ function searchProduct(inp,i){
 }
 
 function selectProduct(i,p){
-  if(purchaseDraft.some((x,idx)=>idx!==i && x.productId===p.id)){
-    ruleMessage("This product already exists in purchase");
-    return;
-  }
-
   Object.assign(purchaseDraft[i],{
     productId:p.id,
     barcode:p.barcode,
     itemNo:p.itemNo,
     desc:p.desc
   });
-
   renderPurchaseRows();
 }
 
 document.addEventListener("click",()=>document.querySelectorAll(".suggest-box").forEach(x=>x.remove()));
 
 /* ===== UTILS ===== */
-function setQty(i,v){
-  if(v.includes(".")){
-    ruleMessage("Decimal quantity not allowed");
-    return;
-  }
-  purchaseDraft[i].qty = parseInt(v) || 1;
-  renderPurchaseRows();
-}
+function setQty(i,v){purchaseDraft[i].qty=+v||0;renderPurchaseRows()}
 function setCost(i,v){purchaseDraft[i].cost=+v||0;renderPurchaseRows()}
 function removeRow(i){purchaseDraft.splice(i,1);renderPurchaseRows()}
 function costTab(e,i){if(e.key==="Tab"){e.preventDefault();if(i===purchaseDraft.length-1)addPurchaseRow()}}
@@ -1870,36 +1669,12 @@ function generateReport(){ document.getElementById("reportOutput").innerText=JSO
 </script>
 
 <!-- ================= LOGIN ================= -->
-<section id="loginScreen" style="
-display:flex;
-align-items:center;
-justify-content:center;
-height:100vh;
-background:#f5f7fa;
-">
-  <div style="
-    background:white;
-    padding:30px 40px;
-    border-radius:12px;
-    box-shadow:0 10px 30px rgba(0,0,0,0.12);
-    width:320px;
-    text-align:center;
-  ">
-    <h2 style="margin-bottom:20px;">Login</h2>
-
-    <input type="text" id="loginUsername" placeholder="Username"
-      style="margin-bottom:10px; padding:10px; width:100%;">
-
-    <input type="password" id="loginPassword" placeholder="Password"
-      style="margin-bottom:15px; padding:10px; width:100%;">
-
-    <button onclick="submitLogin()"
-      style="width:100%; padding:10px; font-weight:600;">
-      Login
-    </button>
-
-    <div id="loginError" style="color:red; margin-top:10px;"></div>
-  </div>
+<section id="loginScreen" style="display:flex; align-items:center; justify-content:center; height:100vh; background:#f5f5f5; flex-direction:column;">
+  <h1>Login</h1>
+  <input type="text" id="loginUsername" placeholder="Username" style="margin:5px; padding:8px; width:200px;">
+  <input type="password" id="loginPassword" placeholder="Password" style="margin:5px; padding:8px; width:200px;">
+  <button onclick="submitLogin()" style="padding:8px 15px; margin-top:10px;">Login</button>
+  <div id="loginError" style="color:red; margin-top:10px;"></div>
 </section>
 
 <!-- ================= SETTINGS ================= -->
@@ -2009,13 +1784,11 @@ function submitLogin(){
     document.getElementById("loginError").innerText="Invalid username or password";
     return;
   }
- 
-document.querySelectorAll("#mainMenu .menuItem").forEach(tab=>{
-  const id = tab.id.replace("tab-","");
-  if(acc.role!=="developer" && !(acc.permissions||[]).includes(id)){
-    tab.style.display="none";
-  }
-});
+  sessionStorage.setItem("loggedInUser", JSON.stringify(acc));
+  document.getElementById("loginScreen").style.display="none";
+  renderSectionsByPermission();
+  openTab("invoice");
+}
 
 /* ===== PERSIST LOGIN ===== */
 document.addEventListener("DOMContentLoaded", ()=>{
@@ -2222,6 +1995,30 @@ updateTime();
 <script>
 <!-- ================= MENU LOGIC ================= -->
 <script>
+/* ===== OPEN TAB FUNCTION WITH UNDERLINE ANIMATION ===== */
+function openTab(id){
+  // Hide all sections
+  document.querySelectorAll("section").forEach(s => s.style.display = "none");
+
+  // Show the selected section
+  const sec = document.getElementById(id);
+  if(sec) sec.style.display = "block";
+
+  // Update menu active state
+  document.querySelectorAll("#mainMenu .menuItem").forEach(d => d.classList.remove("active"));
+  const tab = document.getElementById("tab-" + id);
+  if(tab) tab.classList.add("active");
+
+  // Animate underline
+  const underline = document.getElementById("menuUnderline");
+  if(tab && underline){
+    const rect = tab.getBoundingClientRect();
+    const parentRect = tab.parentElement.getBoundingClientRect();
+    underline.style.width = rect.width + "px";
+    underline.style.left = (rect.left - parentRect.left) + "px";
+  }
+}
+
 /* ===== ADJUST UNDERLINE ON WINDOW RESIZE ===== */
 window.addEventListener("resize", () => {
   const active = document.querySelector("#mainMenu .menuItem.active");
@@ -2234,129 +2031,33 @@ window.addEventListener("resize", () => {
   }
 });
 
-<script>
-/* ================= CORE APP CONTROL ================= */
-
-document.addEventListener("DOMContentLoaded", ()=>{
-  const acc = sessionStorage.getItem("loggedInUser");
-
-  const loginBox = document.getElementById("loginBox");
-  const app = document.getElementById("app");
-
-  if(!acc){
-    loginBox.style.display="block";
-    app.style.display="none";
-    return;
-  }
-
-  loginBox.style.display="none";
-  app.style.display="block";
-
-  // ALWAYS OPEN INVOICE FIRST (SAFE)
-  openTab("invoice");
+/* ===== OPEN DEFAULT TAB ON PAGE LOAD ===== */
+document.addEventListener("DOMContentLoaded", () => {
+  const activeTab = document.querySelector("#mainMenu .menuItem.active");
+  if(!activeTab) document.getElementById("tab-invoice").click();
 });
-</script>
-<script>
-/* ========= TAB CONTROLLER (SINGLE SOURCE OF TRUTH) ========= */
-function openTab(id){
-  // Hide all sections
-  document.querySelectorAll("section").forEach(s=>{
-    s.classList.remove("active");
-  });
+/* ================= MENU UNDERLINE HARD LOCK ================= */
 
-  // Remove active menu highlight
-  document.querySelectorAll("#mainMenu .menuItem").forEach(m=>{
-    m.classList.remove("active");
-  });
-
-  // Permission check
-  const user = JSON.parse(sessionStorage.getItem("loggedInUser") || "{}");
-  const allowed =
-    user.role === "developer" ||
-    (user.permissions || []).includes(id);
-
-  if(!allowed){
-    ruleMessage("Access denied");
-    return;
-  }
-
-  // Show section
-  const sec = document.getElementById(id);
-  const tab = document.getElementById("tab-" + id);
-
-  if(sec) sec.classList.add("active");
-  if(tab) tab.classList.add("active");
+/* Lock menu height so nothing can push it */
+#mainMenu{
+  height:52px !important;
+  align-items:center !important;
+  overflow:hidden !important;
 }
 
-/* ========= AUTO OPEN FIRST TAB ========= */
-function openFirstAllowedTab(){
-  const user = JSON.parse(sessionStorage.getItem("loggedInUser"));
-  if(!user) return;
+/* Freeze underline so JS cannot affect layout */
+#menuUnderline{
+  position:absolute !important;
+  bottom:0 !important;
+  height:3px !important;
 
-  const order = ["invoice","products","vendors","purchase","cash","reports","settings"];
-  for(const t of order){
-    if(user.role==="developer" || (user.permissions||[]).includes(t)){
-      openTab(t);
-      break;
-    }
-  }
+  /* HARD FREEZE */
+  max-width:0 !important;
+  min-width:0 !important;
+  width:0 !important;
+
+  overflow:hidden !important;
+  pointer-events:none !important;
+  background:transparent !important;
 }
-function ruleMessage(msg){
-  alert(msg);
-}
-function openTab(id){
-  document.querySelectorAll("section").forEach(s=>{
-    s.classList.remove("active");
-  });
-
-  document.querySelectorAll("#mainMenu .menuItem").forEach(m=>{
-    m.classList.remove("active");
-  });
-
-  const sec = document.getElementById(id);
-  const tab = document.getElementById("tab-" + id);
-
-  if(sec) sec.classList.add("active");
-  if(tab) tab.classList.add("active");
-}
-document.addEventListener("DOMContentLoaded", ()=>{
-  document.getElementById("loginBox").style.display = "block";
-  document.getElementById("app").style.display = "none";
-});
-document.addEventListener("DOMContentLoaded", ()=>{
-  const acc = sessionStorage.getItem("loggedInUser");
-  if(acc){
-    document.getElementById("loginScreen").style.display="none";
-    document.getElementById("app").style.display="block";
-    openTab("invoice");
-  } else {
-    document.getElementById("loginScreen").style.display="flex";
-    document.getElementById("app").style.display="none";
-  }
-});
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-
-  const loginScreen = document.getElementById("loginScreen");
-  const app = document.getElementById("app");
-
-  // SAFETY CHECK (prevents blank screen)
-  if (!loginScreen || !app) {
-    console.error("Critical containers missing");
-    return;
-  }
-
-  const savedUser = sessionStorage.getItem("loggedInUser");
-
-  if (savedUser) {
-    loginScreen.style.display = "none";
-    app.style.display = "block";
-    openTab("invoice");
-  } else {
-    loginScreen.style.display = "flex";
-    app.style.display = "none";
-  }
-
-});
-</script>
 </script>
