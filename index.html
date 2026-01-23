@@ -120,6 +120,12 @@ th{
   background:#f6f8fa;
   font-weight:600;
 }
+.r-filter{display:flex;gap:10px;margin:15px 0}
+.r-table{width:100%;border-collapse:collapse}
+.r-table th,.r-table td{border:1px solid #ddd;padding:8px}
+.r-table tr:hover{background:#f6f8fb;cursor:pointer}
+.profit-pos{color:green;font-weight:600}
+.profit-neg{color:red;font-weight:600}
 
 /* ===== INPUT ===== */
 input,select{
@@ -1776,11 +1782,191 @@ renderPurchaseHistory();
     <button onclick="generateReport()">Generate</button>
     <pre id="reportOutput"></pre>
   </div>
+  <h3>Invoice Wise Profit</h3>
+
+<div class="r-filter">
+  <input type="date" id="profitFrom">
+  <input type="date" id="profitTo">
+
+  <select id="profitUser">
+    <option value="">All Users</option>
+  </select>
+
+  <button onclick="applyProfitReport()">Apply</button>
+</div>
+
+<table class="r-table">
+  <thead>
+    <tr>
+      <th>Invoice</th>
+      <th>Date</th>
+      <th>Person</th>
+      <th>Invoice Amt</th>
+      <th>Cost</th>
+      <th>Profit</th>
+    </tr>
+  </thead>
+  <tbody id="profitRows"></tbody>
+</table>
+
+<div id="profitDetail"></div>
+
 </section>
 
 <script>
 function generateReport(){ document.getElementById("reportOutput").innerText=JSON.stringify(DB,null,2);}
 </script>
+<script>
+function getPurchaseCost(productId, invDate){
+  const list = DB.purchases
+    .filter(p=>p.productId===productId && new Date(p.date)<=new Date(invDate))
+    .sort((a,b)=>new Date(b.date)-new Date(a.date));
+  return list.length ? list[0].rate : 0;
+}
+</script>
+<script>
+function applyProfitReport(){
+  const from = profitFrom.value;
+  const to = profitTo.value;
+  const user = profitUser.value;
+
+  profitRows.innerHTML = "";
+  profitDetail.innerHTML = "";
+
+  DB.invoices.forEach(inv=>{
+    if(from && inv.date < from) return;
+    if(to && inv.date > to) return;
+    if(user && inv.createdBy !== user) return;
+
+    let cost=0, profit=0;
+
+    inv.items.forEach(it=>{
+      const c = getPurchaseCost(it.productId, inv.date);
+      cost += c * it.qty;
+      profit += (it.rate - c) * it.qty;
+    });
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${inv.no}</td>
+      <td>${inv.date}</td>
+      <td>${inv.createdBy}</td>
+      <td>${inv.total}</td>
+      <td>${cost}</td>
+      <td class="${profit>=0?'profit-pos':'profit-neg'}">${profit}</td>
+    `;
+    tr.onclick = ()=>showProfitDetail(inv);
+    profitRows.appendChild(tr);
+  });
+}
+</script>
+<script>
+function showProfitDetail(inv){
+  let html = `<h4>Invoice ${inv.no} Detail</h4>
+  <table class="r-table">
+  <tr><th>Product</th><th>Qty</th><th>Sale</th><th>Cost</th><th>Profit</th></tr>`;
+
+  inv.items.forEach(it=>{
+    const c = getPurchaseCost(it.productId, inv.date);
+    const p = (it.rate - c) * it.qty;
+    const prod = DB.products.find(x=>x.id===it.productId);
+
+    html += `
+      <tr>
+        <td>${prod?.desc||""}</td>
+        <td>${it.qty}</td>
+        <td>${it.rate}</td>
+        <td>${c}</td>
+        <td class="${p>=0?'profit-pos':'profit-neg'}">${p}</td>
+      </tr>`;
+  });
+
+  html += "</table>";
+  profitDetail.innerHTML = html;
+}
+</script>
+<script>
+document.addEventListener("DOMContentLoaded",()=>{
+  [...new Set(DB.logs.map(l=>l.user))].forEach(u=>{
+    profitUser.innerHTML += `<option value="${u}">${u}</option>`;
+  });
+});
+<hr style="margin:30px 0">
+
+<h3>Deleted Data Audit</h3>
+
+<div class="r-filter">
+  <input type="date" id="delFrom">
+  <input type="date" id="delTo">
+
+  <select id="delUser">
+    <option value="">All Users</option>
+  </select>
+
+  <select id="delModule">
+    <option value="">All Modules</option>
+    <option>Invoice</option>
+    <option>Product</option>
+    <option>Vendor</option>
+    <option>Purchase</option>
+    <option>Cash</option>
+  </select>
+
+  <button onclick="applyDeletedReport()">Apply</button>
+</div>
+
+<table class="r-table">
+  <thead>
+    <tr>
+      <th>Date & Time</th>
+      <th>User</th>
+      <th>Module</th>
+      <th>Action</th>
+      <th>Reference</th>
+    </tr>
+  </thead>
+  <tbody id="deletedRows"></tbody>
+</table>
+</script>
+<script>
+function applyDeletedReport(){
+  const from = delFrom.value;
+  const to = delTo.value;
+  const user = delUser.value;
+  const mod = delModule.value;
+
+  deletedRows.innerHTML = "";
+
+  (DB.logs||[]).forEach(l=>{
+    if(l.action!=="DELETE") return;
+
+    const d = l.dateTime.split("T")[0];
+    if(from && d < from) return;
+    if(to && d > to) return;
+    if(user && l.user!==user) return;
+    if(mod && !l.ref.startsWith(mod)) return;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${new Date(l.dateTime).toLocaleString()}</td>
+      <td>${l.user}</td>
+      <td>${l.ref.split(" ")[0]}</td>
+      <td>${l.action}</td>
+      <td>${l.ref}</td>
+    `;
+    deletedRows.appendChild(tr);
+  });
+}
+</script>
+<script>
+document.addEventListener("DOMContentLoaded",()=>{
+  const users = [...new Set((DB.logs||[]).map(l=>l.user))];
+  users.forEach(u=>{
+    delUser.innerHTML += `<option value="${u}">${u}</option>`;
+  });
+});
+</script>
+
 
 <!-- ================= LOGIN ================= -->
 <section id="loginScreen" style="display:flex; align-items:center; justify-content:center; height:100vh; background:#f5f5f5; flex-direction:column;">
@@ -2181,4 +2367,8 @@ document.addEventListener("DOMContentLoaded", () => {
   pointer-events:none !important;
   background:transparent !important;
 }
+logAction("DELETE", `Product ${prod.itemNo}`);
+logAction("DELETE", `Vendor ${vendor.name}`);
+logAction("DELETE", `Purchase ${purchase.id}`);
+
 </script>
