@@ -480,8 +480,6 @@ function searchInvProduct(i,val,field){
   const results=DB.products.filter(p=>((field==="barcode"&&(p.barcode||"").toLowerCase().includes(q))||(field==="itemNo"&&(p.itemNo||"").toLowerCase().includes(q))||(field==="desc"&&(p.desc||"").toLowerCase().includes(q))));
   if(!results.length){ box.innerHTML=`<div style="padding:4px;color:red">Product not exist or no stock</div>`; return; }
 
-  results.forEach(p=>{
-    const stockNote=p.stock<=0?" ❌ NO STOCK":"";
    results.forEach(p=>{
   const stockNote = p.stock <= 0 ? " ❌ NO STOCK" : "";
   const d = document.createElement("div");
@@ -511,8 +509,6 @@ function searchInvProduct(i,val,field){
   box.appendChild(d);
 });
 }
-}
-
 /* ===== SETTERS ===== */
 function setInvQty(i,v){
   if(v.includes(".")){
