@@ -144,13 +144,6 @@ button{
 </style>
 </head>
 <body>
-<!-- ================= LOGIN BOX ================= -->
-<div id="loginBox" style="display:none; padding:40px; text-align:center;">
-  <h2>Login</h2>
-  <input id="loginUser" placeholder="User ID"><br><br>
-  <input id="loginPass" type="password" placeholder="Password"><br><br>
-  <button onclick="doLogin()">Login</button>
-</div>
 
 <!-- ================= MAIN APP ================= -->
 <div id="app" style="display:none;">
@@ -305,21 +298,22 @@ section{
 </style>
 <script>
 
-/* ================= TAB SWITCHING (CLEAN) ================= */
-  // Show section
+function openTab(id){
+  document.querySelectorAll("section").forEach(s=>{
+    if(s.id !== "loginScreen") s.classList.remove("active");
+  });
+
   const sec = document.getElementById(id);
-if(!sec){
-  ruleMessage("Section not found");
-  return;
-}
-sec.classList.add("active");
+  if(!sec){
+    alert("Section not found: " + id);
+    return;
+  }
+  sec.classList.add("active");
 
-}
-
-  // Active menu highlight
   document.querySelectorAll("#mainMenu .menuItem").forEach(m=>{
     m.classList.remove("active");
   });
+
   const tab = document.getElementById("tab-"+id);
   if(tab) tab.classList.add("active");
 }
