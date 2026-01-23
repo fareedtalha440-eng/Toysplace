@@ -778,15 +778,9 @@ function saveCashPayment(){
     // EDIT EXISTING PAYMENT
     const c = DB.cash.find(x=>x.id===editingCashId);
     if(!c) return alert("Payment not found");
-    DB.cash.push({
-  id,
-  dateTime: dtISO,
-  type:"OUT",
-  vendor: vendor || "",
-  ref: ref || vendor || "",
-  amount,
-  createdDate: new Date().toISOString() // ADD THIS LINE
-});
+  // ❌ REMOVE THAT DB.cash.push() COMPLETELY
+// Editing means update existing record, NOT push new
+
 
 
     // Adjust vendor balance
@@ -1112,16 +1106,42 @@ function addNewProduct(){
   renderProducts();
   hideAddProductForm();
 }
+function addNewProduct(){
+  const barcode = newProdBarcode.value.trim();
+  const itemNo = newProdItemNo.value.trim();
+  const desc = newProdDesc.value.trim();
+  const rate = +newProdRate.value;
+
+  if(!itemNo || !desc) return alert("Item No & Description required");
+
+  if(DB.products.some(p=>p.itemNo===itemNo)){
+    ruleMessage("This Item No is Present");
+    return;
+  }
+
+  if(barcode && DB.products.some(p=>p.barcode===barcode)){
+    ruleMessage("This Barcode is Present");
+    return;
+  }
+
+  DB.products.push({
+    id: uid("P"),
+    barcode,
+    itemNo,
+    desc,
+    rate,
+    stock:0
+  });
 
   saveDB();
   prodFiltered = DB.products;
   renderProducts();
-  hideAddProductForm();
 
   newProdBarcode.value="";
   newProdItemNo.value="";
   newProdDesc.value="";
   newProdRate.value="";
+  hideAddProductForm();
 }
 
 /* ===== EDIT ===== */
@@ -1288,11 +1308,29 @@ function addVendor(){
 }
 
 
+  function addVendor(){
+  const name = vendorName.value.trim();
+  if(!name) return;
+
+  if(DB.vendors.some(v=>v.name.toLowerCase()===name.toLowerCase())){
+    ruleMessage("Vendor already exists");
+    return;
+  }
+
+  DB.vendors.push({
+    id: uid("V"),
+    no: nextVendorNo(),
+    name,
+    createdDate: new Date().toISOString(),
+    balance:0
+  });
+
   saveDB();
   vendorName.value="";
   renderVendors();
-  loadVendorOptions(); // refresh cash dropdown
+  loadVendorOptions();
 }
+
 
 /* ================= EDIT VENDOR ================= */
 function editVendor(id){
