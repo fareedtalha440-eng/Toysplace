@@ -207,50 +207,6 @@ section{
   z-index:1;
 }
 
-#mainMenu{
-  position:sticky;
-  top:0;
-  z-index:1000;
-}
-section{
-  pointer-events:auto;
-}
-
-#mainMenu{
-  pointer-events:auto;
-}
-
-
-/* ================= MAIN MENU (FINAL FIX) ================= */
-#mainMenu{
-  display:flex;
-  align-items:center;
-  gap:14px;
-  padding:8px 16px;
-  background:#fff;
-  border-bottom:2px solid #ccc;
-  position:sticky;
-  top:0;
-  z-index:100;
-}
-
-#mainMenu .menuItem{
-  padding:6px 14px;
-  font-weight:600;
-  cursor:pointer;
-  border-radius:6px;
-  user-select:none;
-  white-space:nowrap;
-}
-
-#mainMenu .menuItem:hover{
-  background:#eef2f7;
-}
-
-#mainMenu .menuItem.active{
-  background:#eef2f7;
-  color:var(--primary,#1e1e1e);
-}
 /* ================= BUTTON FEEDBACK ================= */
 button:active{
   transform:scale(0.96);
@@ -261,11 +217,25 @@ button{
 }
 /* ================= MENU HARD LOCK (SAFE) ================= */
 #mainMenu{
-  height:52px;
   display:flex;
-  align-items:center;
-  overflow:hidden;
+  gap:12px;
+  padding:8px 16px;
+  background:#ffffff;
+  border-bottom:2px solid #ddd;
+  position:sticky;
+  top:0;
   z-index:1000;
+}
+
+#mainMenu .menuItem{
+  padding:6px 14px;
+  font-weight:600;
+  cursor:pointer;
+  border-radius:6px;
+}
+
+#mainMenu .menuItem.active{
+  background:#eef2f7;
 }
 
 /* Disable underline completely */
@@ -1901,12 +1871,36 @@ function generateReport(){ document.getElementById("reportOutput").innerText=JSO
 </script>
 
 <!-- ================= LOGIN ================= -->
-<section id="loginScreen" style="display:flex; align-items:center; justify-content:center; height:100vh; background:#f5f5f5; flex-direction:column;">
-  <h1>Login</h1>
-  <input type="text" id="loginUsername" placeholder="Username" style="margin:5px; padding:8px; width:200px;">
-  <input type="password" id="loginPassword" placeholder="Password" style="margin:5px; padding:8px; width:200px;">
-  <button onclick="submitLogin()" style="padding:8px 15px; margin-top:10px;">Login</button>
-  <div id="loginError" style="color:red; margin-top:10px;"></div>
+<section id="loginScreen" style="
+display:flex;
+align-items:center;
+justify-content:center;
+height:100vh;
+background:#f5f7fa;
+">
+  <div style="
+    background:white;
+    padding:30px 40px;
+    border-radius:12px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.12);
+    width:320px;
+    text-align:center;
+  ">
+    <h2 style="margin-bottom:20px;">Login</h2>
+
+    <input type="text" id="loginUsername" placeholder="Username"
+      style="margin-bottom:10px; padding:10px; width:100%;">
+
+    <input type="password" id="loginPassword" placeholder="Password"
+      style="margin-bottom:15px; padding:10px; width:100%;">
+
+    <button onclick="submitLogin()"
+      style="width:100%; padding:10px; font-weight:600;">
+      Login
+    </button>
+
+    <div id="loginError" style="color:red; margin-top:10px;"></div>
+  </div>
 </section>
 
 <!-- ================= SETTINGS ================= -->
@@ -2330,5 +2324,15 @@ document.addEventListener("DOMContentLoaded", ()=>{
   document.getElementById("loginBox").style.display = "block";
   document.getElementById("app").style.display = "none";
 });
-
+document.addEventListener("DOMContentLoaded", ()=>{
+  const acc = sessionStorage.getItem("loggedInUser");
+  if(acc){
+    document.getElementById("loginScreen").style.display="none";
+    document.getElementById("app").style.display="block";
+    openTab("invoice");
+  } else {
+    document.getElementById("loginScreen").style.display="flex";
+    document.getElementById("app").style.display="none";
+  }
+});
 </script>
