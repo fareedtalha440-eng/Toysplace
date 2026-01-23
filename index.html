@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2335,4 +2334,29 @@ document.addEventListener("DOMContentLoaded", ()=>{
     document.getElementById("app").style.display="none";
   }
 });
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  const loginScreen = document.getElementById("loginScreen");
+  const app = document.getElementById("app");
+
+  // SAFETY CHECK (prevents blank screen)
+  if (!loginScreen || !app) {
+    console.error("Critical containers missing");
+    return;
+  }
+
+  const savedUser = sessionStorage.getItem("loggedInUser");
+
+  if (savedUser) {
+    loginScreen.style.display = "none";
+    app.style.display = "block";
+    openTab("invoice");
+  } else {
+    loginScreen.style.display = "flex";
+    app.style.display = "none";
+  }
+
+});
+</script>
 </script>
