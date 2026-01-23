@@ -163,6 +163,7 @@ button{
   <div id="tab-products" class="menuItem" onclick="openTab('products')">Products</div>
   <div id="tab-vendors" class="menuItem" onclick="openTab('vendors')">Vendors</div>
   <div id="tab-purchase" class="menuItem" onclick="openTab('purchase')">Purchase</div>
+  <div id="tab-return" class="menuItem" onclick="openTab('return')">Return</div>
   <div id="tab-cash" class="menuItem" onclick="openTab('cash')">Cash In Hand</div>
   <div id="tab-reports" class="menuItem" onclick="openTab('reports')">Reports</div>
   <div id="tab-settings" class="menuItem" onclick="openTab('settings')">Settings</div>
@@ -198,6 +199,24 @@ button{
 #mainMenu .menuItem.active{
   background:#eef2f7;
   color:var(--primary,#1e1e1e);
+}
+/* ================= RETURN UI ================= */
+#return{
+  padding:20px;
+  animation:fadeIn .25s ease;
+  min-height:auto;
+}
+
+.ret-box{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:10px;
+  margin-bottom:20px;
+}
+
+@keyframes fadeIn{
+  from{opacity:0;transform:translateY(6px)}
+  to{opacity:1;transform:none}
 }
 </style>
 
@@ -1852,7 +1871,47 @@ loadPurchaseVendors();
 addPurchaseRow();
 renderPurchaseHistory();
 </script>
+<!-- ================= RETURN SECTION ================= -->
+<section id="return" style="display:none">
+  <h3>Return (Vendor)</h3>
 
+  <div class="ret-box">
+    <label>Return No</label>
+    <input id="returnNo" disabled>
+
+    <label>Vendor</label>
+    <select id="returnVendor"></select>
+
+    <label>Product</label>
+    <select id="returnProduct"></select>
+
+    <label>Cost Rate</label>
+    <input type="number" id="returnRate">
+
+    <label>Qty</label>
+    <input type="number" id="returnQty">
+
+    <button onclick="addReturn()">Add Return</button>
+  </div>
+
+  <h4>Previous Returns</h4>
+  <select id="filterVendor" onchange="renderReturns()">
+    <option value="">All Vendors</option>
+  </select>
+
+  <table id="returnTable">
+    <thead>
+      <tr>
+        <th>No</th>
+        <th>Vendor</th>
+        <th>Product</th>
+        <th>Rate</th>
+        <th>Qty</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</section>
 
 <!-- ================= REPORTS ================= -->
 <section id="reports">
@@ -2450,4 +2509,90 @@ logAction("DELETE", `Product ${prod.itemNo}`);
 logAction("DELETE", `Vendor ${vendor.name}`);
 logAction("DELETE", `Purchase ${purchase.id}`);
 
+</script>
+<script>
+/* ================= RETURN LOGIC ================= */
+
+let returns = JSON.parse(localStorage.getItem("returns") || "[]");
+
+function nextReturnNo(){
+  return "RT" + String(returns.length + 1).padStart(4,"0");
+}
+
+function loadReturnVendors(){
+  const vendors = JSON.parse(localStorage.getItem("vendors")||"[]");
+  const vSel = returnVendor;
+  const fSel = filterVendor;
+  vSel.innerHTML = fSel.innerHTML = `<option value="">Select Vendor</option>`;
+  vendors.forEach(v=>{
+    vSel.innerHTML += `<option>${v.name}</option>`;
+    fSel.innerHTML += `<option>${v.name}</option>`;
+  });
+}
+
+function loadReturnProducts(){
+  const products = JSON.parse(localStorage.getItem("products")||"[]");
+  returnProduct.innerHTML = `<option value="">Select Product</option>`;
+  products.forEach(p=>{
+    returnProduct.innerHTML += `<option>${p.name}</option>`;
+  });
+}
+
+returnVendor.onchange = ()=>{
+  const purchases = JSON.parse(localStorage.getItem("purchases")||"[]");
+  const last = purchases.filter(p=>p.vendor===returnVendor.value);
+  returnProduct.onchange = ()=>{
+    const item = last.reverse().find(x=>x.product===returnProduct.value);
+    if(item){
+      returnRate.value = item.rate;
+    }else{
+      alert("⚠ Product not purchased from this vendor");
+      returnRate.value = "";
+    }
+  }
+};
+
+function addReturn(){
+  if(!returnVendor.value||!returnProduct.value) return;
+
+  returns.push({
+    no:returnNo.value,
+    vendor:returnVendor.value,
+    product:returnProduct.value,
+    rate:returnRate.value,
+    qty:returnQty.value
+  });
+
+  localStorage.setItem("returns",JSON.stringify(returns));
+  renderReturns();
+  resetReturn();
+}
+
+function renderReturns(){
+  const tbody = returnTable.querySelector("tbody");
+  tbody.innerHTML = "";
+  returns.filter(r=>!filterVendor.value||r.vendor===filterVendor.value)
+  .forEach(r=>{
+    tbody.innerHTML += `
+      <tr>
+        <td>${r.no}</td>
+        <td>${r.vendor}</td>
+        <td>${r.product}</td>
+        <td>${r.rate}</td>
+        <td>${r.qty}</td>
+      </tr>`;
+  });
+}
+
+function resetReturn(){
+  returnNo.value = nextReturnNo();
+  returnRate.value = returnQty.value = "";
+}
+
+document.addEventListener("DOMContentLoaded",()=>{
+  loadReturnVendors();
+  loadReturnProducts();
+  returnNo.value = nextReturnNo();
+  renderReturns();
+});
 </script>
