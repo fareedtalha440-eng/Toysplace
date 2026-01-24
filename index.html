@@ -1578,7 +1578,7 @@ renderProducts();
 <section id="vendors">
   <div class="card">
     <h2>Vendors</h2>
-
+<input id="vendorSearch" placeholder="Search vendor (No, Name)" oninput="renderVendors()" style="margin-bottom:10px;width:100%;">
     <div style="display:flex;gap:10px;margin-bottom:12px;">
       <input id="vendorName" placeholder="Vendor Name" style="flex:1">
       <button onclick="addVendor()">Add Vendor</button>
@@ -1602,9 +1602,9 @@ renderProducts();
 <script>
 /* ================= HELPERS ================= */
 function money(v){
-  return Number(v||0).toLocaleString("en-PK",{minimumFractionDigits:2});
+  const n = Number(v || 0);
+  return (n < 0 ? "-" : "") + Math.abs(n).toLocaleString("en-PK",{minimumFractionDigits:2});
 }
-
 // Vendor No VEN1001, VEN1002 ...
 function nextVendorNo(){
   if(!DB.vendors.length) return "VEN1001";
@@ -1688,13 +1688,26 @@ function vendorBalance(v){
 function renderVendors(){
   const tbody = document.getElementById("vendorRows");
   tbody.innerHTML = "";
+let vendorPage = 1;
+const vendorsPerPage = 20;
 
   // Sort newest to oldest
-  const vendorsSorted = [...DB.vendors].sort((a,b)=>new Date(b.createdDate)-new Date(a.createdDate));
+  const q = (document.getElementById("vendorSearch")?.value || "").toLowerCase();
+const vendorsSorted = DB.vendors
+  .filter(v => !q || v.name.toLowerCase().includes(q) || v.no.toLowerCase().includes(q))
+  .sort((a,b)=>new Date(b.createdDate)-new Date(a.createdDate));
 
-  vendorsSorted.forEach((v,i)=>{
+
+  vendorsSorted
+  .slice((vendorPage-1)*vendorsPerPage, vendorPage*vendorsPerPage)
+  .forEach((v,i)=>{
+
     const bal = vendorBalance(v);
     const created = new Date(v.createdDate).toLocaleString();
+<div style="margin-top:10px;">
+  <button onclick="vendorPage=Math.max(1,vendorPage-1);renderVendors()">Prev</button>
+  <button onclick="vendorPage++;renderVendors()">Next</button>
+</div>
 
     tbody.innerHTML += `
       <tr>
@@ -1718,92 +1731,71 @@ function openVendorLedger(vendorId){
 
   const rows = [];
 
-  DB.purchases
-    .filter(p=>p.vendorId===v.id)
-    .forEach(p=>{
-      rows.push({
-        date: p.dateTime || p.date,
-        type: "Purchase",
-        ref: p.id,
-        debit: p.total,
-        credit: 0
-      });
-    });
+  DB.purchases.filter(p=>p.vendorId===v.id).forEach(p=>{
+    rows.push({ date:p.dateTime||p.date, type:"Purchase", ref:p.id, debit:p.total, credit:0 });
+  });
 
-  DB.cash
-    .filter(c=>c.type==="OUT" && c.vendor === v.name)
-    .forEach(c=>{
-      rows.push({
-        date: c.dateTime,
-        type: "Payment",
-        ref: c.ref || c.id,
-        debit: 0,
-        credit: c.amount
-      });
-    });
+  DB.cash.filter(c=>c.type==="OUT" && c.vendor===v.name).forEach(c=>{
+    rows.push({ date:c.dateTime, type:"Payment", ref:c.ref||c.id, debit:0, credit:c.amount });
+  });
 
   rows.sort((a,b)=>new Date(a.date)-new Date(b.date));
 
-  let runBal = 0;
+  let bal = 0;
+  const printedAt = new Date().toLocaleString();
 
-  const w = window.open("","_blank");
+  const w = window.open("");
   w.document.write(`
-<!DOCTYPE html>
-<html>
-<head>
-<title>Vendor Ledger</title>
+<html><head><title>Vendor Ledger</title>
 <style>
-body{font-family:Segoe UI,Arial;padding:30px}
-h1{margin:0;font-size:26px}
-h2{margin:0 0 15px;color:#666;font-size:14px}
-table{width:100%;border-collapse:collapse}
-th,td{border:1px solid #ccc;padding:8px;text-align:center}
-th{background:#f3f3f3}
+body{font-family:Arial;padding:10px}
+.r{height:4px}
+.b{background:#2196f3}
+.r2{background:#f44336}
+.g{background:#4caf50}
+.p{background:#9c27b0}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{border:1px solid #000;padding:4px;text-align:center}
 .right{text-align:right}
-.total{font-size:26px;font-weight:bold;margin-top:20px;text-align:right}
+.footer{text-align:right;margin-top:8px;font-size:10px}
 @media print{button{display:none}}
 </style>
 </head>
 <body>
 
-<h1>${v.name}</h1>
-<h2>${v.no}</h2>
+<div class="r b"></div>
+<div class="r r2"></div>
+<div class="r g"></div>
+<div class="r p"></div>
+
+<h2>${v.name}</h2>
+<div>${v.no}</div>
 
 <table>
-<thead>
-<tr>
-<th>S No</th>
-<th>Date</th>
-<th>Type</th>
-<th>Ref</th>
-<th>Debit</th>
-<th>Credit</th>
-<th>Balance</th>
-</tr>
-</thead>
-<tbody>
+<tr><th>#</th><th>Date & Time</th><th>Type</th><th>Ref</th><th>Debit</th><th>Credit</th><th>Balance</th></tr>
 ${rows.map((r,i)=>{
-  runBal += r.debit - r.credit;
-  const d = new Date(r.date);
-  return `
-<tr>
+  bal += r.debit - r.credit;
+  const d = new Date(r.date).toLocaleString();
+  return `<tr>
 <td>${i+1}</td>
-<td>${d.toLocaleDateString()} ${d.toLocaleTimeString()}</td>
+<td>${d}</td>
 <td>${r.type}</td>
 <td>${r.ref}</td>
 <td class="right">${money(r.debit)}</td>
 <td class="right">${money(r.credit)}</td>
-<td class="right">${money(runBal)}</td>
+<td class="right">${money(bal)}</td>
 </tr>`;
 }).join("")}
-</tbody>
 </table>
 
-<div class="total">Present Balance: ₨ ${money(runBal)}</div>
+<div class="footer">
+Printed on: ${printedAt}<br>
+Present Balance: ₨ ${money(bal)}
+</div>
 
-</body>
-</html>
+</body></html>
 `);
+  w.print();
 }
 
 /* ================= CASH IN HAND LINK ================= */
