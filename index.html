@@ -790,43 +790,58 @@ function renderInvoice(){
 
 /* ===== SEARCH DROPDOWN ===== */
 function searchInvProduct(i,val,field){
-  const q=val.trim().toLowerCase();
-  const row=invoiceDraft[i]; row.valid=false;
-  const box=document.getElementById(field==="barcode"?"invSugB"+i:field==="itemNo"?"invSugI"+i:"invSugD"+i);
-  box.innerHTML=""; if(!q) return;
+  const q = val.trim().toLowerCase();
+  const row = invoiceDraft[i];
+  row.valid = false;
 
-  const results=DB.products.filter(p=>((field==="barcode"&&(p.barcode||"").toLowerCase().includes(q))||(field==="itemNo"&&(p.itemNo||"").toLowerCase().includes(q))||(field==="desc"&&(p.desc||"").toLowerCase().includes(q))));
-  if(!results.length){ box.innerHTML=`<div style="padding:4px;color:red">Product not exist or no stock</div>`; return; }
+  const box = document.getElementById(
+    field==="barcode" ? "invSugB"+i :
+    field==="itemNo"  ? "invSugI"+i :
+                         "invSugD"+i
+  );
+
+  box.innerHTML = "";
+  if(!q) return;
+
+  const results = DB.products.filter(p =>
+    (field==="barcode" && (p.barcode||"").toLowerCase().includes(q)) ||
+    (field==="itemNo"  && (p.itemNo||"").toLowerCase().includes(q)) ||
+    (field==="desc"    && (p.desc||"").toLowerCase().includes(q))
+  );
+
+  if(!results.length){
+    box.innerHTML = `<div style="padding:4px;color:red">Product not found</div>`;
+    return;
+  }
 
   results.forEach(p=>{
-    const stockNote=p.stock<=0?" ❌ NO STOCK":"";
-    const d=document.createElement("div"); d.style.padding="4px"; d.style.cursor="pointer";
-    d.innerText=`${p.itemNo} - ${p.desc} (Stock: ${p.stock})${stockNote}`;
-   d.onclick=()=>{
-  if(invoiceDraft.some((x,idx)=>idx!==i && x.productId===p.id)){
-    ruleMessage("This product already exists in invoice");
-    return;
-  }
-  invoiceDraft[i]={
-    productId:p.id,
-    barcode:p.barcode||"",
-    itemNo:p.itemNo,
-    desc:p.desc,
-    qty:1,
-    rate:p.rate,
-    valid:true
-  };
-  renderInvoice();
-};
-}
+    const d = document.createElement("div");
+    d.style.padding = "4px";
+    d.style.cursor = "pointer";
+    d.innerText = `${p.itemNo} - ${p.desc} (Stock: ${p.stock})`;
 
-function setInvQty(i,v){
-  if(String(v).includes(".")){
-    ruleMessage("Decimal quantity not allowed");
-    return;
-  }
-  invoiceDraft[i].qty = parseInt(v) || 1;
-  renderInvoice();
+    d.onclick = ()=>{
+      if(invoiceDraft.some((x,idx)=>idx!==i && x.productId===p.id)){
+        ruleMessage("This product already exists in invoice");
+        return;
+      }
+
+      invoiceDraft[i] = {
+        productId: p.id,
+        barcode: p.barcode || "",
+        itemNo: p.itemNo,
+        desc: p.desc,
+        qty: 1,
+        rate: p.rate,
+        valid: true
+      };document.addEventListener("DOMContentLoaded", ()=>{
+  openTab("invoice");
+});
+
+      renderInvoice();
+    };
+    box.appendChild(d);
+  });
 }
 function setInvRate(i,v){ invoiceDraft[i].rate=+v; renderInvoice(); }
 function delInvRow(i){ invoiceDraft.splice(i,1); renderInvoice(); }
