@@ -641,6 +641,9 @@ document.addEventListener("DOMContentLoaded",()=>{
 <section id="invoice">
   <div class="card" id="newInvoiceCard">
     <h2>New Invoice</h2>
+<div style="font-size:28px;font-weight:900;letter-spacing:2px;margin-bottom:10px;">
+  Invoice No: <span id="liveInvoiceNo"></span>
+</div>
 
     <!-- ===== ADD PRODUCT ROW ===== -->
     <table style="width:100%; margin-bottom:10px;">
@@ -851,11 +854,14 @@ function saveInvoice(){
   DB.cash.push({id:uid("C"),type:"IN",amount:total,ref:id,date:dateTime});
 
   saveDB(); invoiceDraft=[]; editingInvoiceId=null;
-  document.getElementById("mainDiscAmt").value=document.getElementById("mainDiscPct").value=0;
 
-  renderInvoice(); renderInvoiceList(); renderCash();
-  alert("Invoice saved successfully");
-}
+document.getElementById("liveInvoiceNo").innerText = getNextInvoiceNumber();
+
+document.getElementById("mainDiscAmt").value=document.getElementById("mainDiscPct").value=0;
+
+renderInvoice(); renderInvoiceList(); renderCash();
+alert("Invoice saved successfully");
+
 
 /* ===== RENDER PREVIOUS INVOICES ===== */
 function renderInvoiceList(){
@@ -952,6 +958,8 @@ function printInvoice(id){
 /* ===== INITIAL RENDER ===== */
 renderInvoice();
 renderInvoiceList();
+document.getElementById("liveInvoiceNo").innerText = editingInvoiceId || getNextInvoiceNumber();
+
 function syncDiscFromAmt(){
   const sub=getSubTotal();
   const amt=+document.getElementById("mainDiscAmt").value||0;
