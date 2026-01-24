@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -164,7 +163,7 @@ button{
   <div id="tab-products" class="menuItem" onclick="openTab('products')">Products</div>
   <div id="tab-vendors" class="menuItem" onclick="openTab('vendors')">Vendors</div>
   <div id="tab-purchase" class="menuItem" onclick="openTab('purchase')">Purchase</div>
-  <div id="tab-return" class="menuItem" onclick="openTab('return')">Return</div>
+  <div id="tab-returns" class="menuItem" onclick="openTab('returns')">Return</div>
   <div id="tab-cash" class="menuItem" onclick="openTab('cash')">Cash In Hand</div>
   <div id="tab-reports" class="menuItem" onclick="openTab('reports')">Reports</div>
   <div id="tab-settings" class="menuItem" onclick="openTab('settings')">Settings</div>
@@ -254,7 +253,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
   if(!acc) return;
 
   const user = JSON.parse(acc);
-  const order = ["invoice","products","vendors","purchase","return","cash","reports","settings"];
+  const order = ["invoice","products","vendors","purchase","returns","cash","reports","settings"];
 
   for(const t of order){
     if(user.role==="developer" || (user.permissions||[]).includes(t)){
@@ -431,11 +430,12 @@ function logAction(action, ref=""){
 
 </section>
 <script>
-let returns = JSON.parse(localStorage.getItem("returns")||"[]");
-
 function generateReturnNo(){
-  return "RT" + String(returns.length + 1).padStart(4,"0");
+  if(!DB.returns.length) return "RT0001";
+  const nums = DB.returns.map(r=>parseInt(r.no.replace("RT",""))||0);
+  return "RT" + String(Math.max(...nums)+1).padStart(4,"0");
 }
+
 
 function loadReturnNo(){
   document.getElementById("returnNo").innerText = generateReturnNo();
@@ -444,35 +444,67 @@ function loadReturnNo(){
 function addReturnRow(){
   const tbody = document.getElementById("returnBody");
   const tr = document.createElement("tr");
+
   tr.innerHTML = `
     <td><input onblur="autoCost(this)"></td>
     <td><input></td>
-    <td><input type="number" min="1" oninput="calcReturn()"></td>
-    <td><input type="number" oninput="calcReturn()"></td>
+    <td><input type="number" min="1" oninput="validateReturnQty(this)"></td>
+    <td><input type="number" readonly></td>
     <td class="amt">0</td>
     <td><button onclick="this.closest('tr').remove();calcReturn()">X</button></td>
   `;
   tbody.appendChild(tr);
 }
-
+function validateReturnQty(inp){
+  if(inp.value.includes(".")){
+    ruleMessage("Decimal quantity not allowed");
+    inp.value = "";
+    return;
+  }
+  calcReturn();
+}
 function autoCost(inp){
   const vendor = document.getElementById("returnVendor").value;
-  if(!vendor) return alert("Select vendor first");
+  if(!vendor){
+    ruleMessage("Select vendor first");
+    inp.value="";
+    return;
+  }
 
-  const item = inp.value;
-  const purchases = JSON.parse(localStorage.getItem("purchases")||"[]");
+  const item = inp.value.trim();
+  if(!item) return;
 
-  const match = purchases
-    .filter(p=>p.vendor===vendor && p.itemNo===item)
+  // prevent duplicate item
+  let exists = false;
+  document.querySelectorAll("#returnBody tr").forEach(r=>{
+    if(r!==inp.closest("tr") && r.children[0].children[0].value===item){
+      exists = true;
+    }
+  });
+  if(exists){
+    ruleMessage("Product already added in return");
+    inp.value="";
+    return;
+  }
+
+  const match = DB.purchases
+    .filter(p=>{
+      const v = DB.vendors.find(x=>x.id===p.vendorId);
+      return v && v.name===vendor;
+    })
+    .flatMap(p=>p.items)
+    .filter(it=>it.itemNo===item)
     .slice(-1)[0];
 
-  if(match){
-    inp.closest("tr").children[3].children[0].value = match.cost;
-  }else{
-    alert("This product does not belong to this vendor");
+  if(!match){
+    ruleMessage("This item was not purchased from this vendor");
+    inp.value="";
+    return;
   }
-}
 
+  inp.closest("tr").children[3].children[0].value = match.cost;
+  calcReturn();
+}
 function calcReturn(){
   let total = 0;
   document.querySelectorAll("#returnBody tr").forEach(r=>{
@@ -487,56 +519,115 @@ function calcReturn(){
 
 function saveReturn(){
   const vendor = document.getElementById("returnVendor").value;
-  if(!vendor) return alert("Vendor required");
+  if(!vendor) return ruleMessage("Vendor required");
 
-  const items=[];
-  document.querySelectorAll("#returnBody tr").forEach(r=>{
-    items.push({
-      itemNo:r.children[0].children[0].value,
-      qty:+r.children[2].children[0].value,
-      cost:+r.children[3].children[0].value
-    });
+  const rows = document.querySelectorAll("#returnBody tr");
+  if(!rows.length) return ruleMessage("No items added");
+
+  const items = [];
+  rows.forEach(r=>{
+    const itemNo = r.children[0].children[0].value;
+    const qty = +r.children[2].children[0].value;
+    const cost = +r.children[3].children[0].value;
+    if(itemNo && qty>0){
+      items.push({itemNo, qty, cost});
+    }
   });
 
-  const obj={
-    no:generateReturnNo(),
+  if(!items.length) return ruleMessage("Invalid return");
+
+  const amount = items.reduce((s,i)=>s+(i.qty*i.cost),0);
+
+  const obj = {
+    no: generateReturnNo(),
     vendor,
-    date:new Date().toLocaleDateString(),
-    time:new Date().toLocaleTimeString(),
-    amount:+document.getElementById("returnTotal").innerText,
+    date: new Date().toISOString().slice(0,10),
+    time: new Date().toLocaleTimeString(),
+    amount,
     items
   };
 
-  returns.push(obj);
-  localStorage.setItem("returns",JSON.stringify(returns));
+  // STOCK IN
+  items.forEach(it=>{
+    const p = DB.products.find(x=>x.itemNo===it.itemNo);
+    if(p) p.stock += it.qty;
+  });
 
+  // CASH OUT
+  DB.cash.push({
+    id: uid("C"),
+    type: "OUT",
+    amount,
+    vendor,
+    ref: obj.no,
+    dateTime: new Date().toISOString()
+  });
+
+  // VENDOR LEDGER
+  const v = DB.vendors.find(x=>x.name===vendor);
+  if(v) v.balance = (v.balance||0) - amount;
+
+  DB.returns.push(obj);
+  saveDB();
+
+  resetReturnForm();
   loadReturnNo();
   loadReturns();
-  resetReturnForm();
+  renderCash();
 }
-
 function resetReturnForm(){
   document.getElementById("returnBody").innerHTML="";
   document.getElementById("returnTotal").innerText="0";
 }
-
 function loadReturns(){
-  const tbody=document.getElementById("previousReturns");
-  tbody.innerHTML="";
-  returns.forEach((r,i)=>{
-    tbody.innerHTML+=`
-    <tr>
-      <td>${i+1}</td>
-      <td>${r.no}</td>
-      <td>${r.date}</td>
-      <td>${r.time}</td>
-      <td>${r.vendor}</td>
-      <td>${r.amount}</td>
-      <td>🖨</td>
-      <td>✏</td>
-      <td onclick="returns.splice(${i},1);localStorage.setItem('returns',JSON.stringify(returns));loadReturns()">🗑</td>
-    </tr>`;
+  const tbody = document.getElementById("previousReturns");
+  tbody.innerHTML = "";
+
+  const fd = document.getElementById("filterReturnDate").value;
+  const fv = document.getElementById("filterReturnVendor").value;
+
+  DB.returns
+    .filter(r=>{
+      if(fd && r.date!==fd) return false;
+      if(fv && r.vendor!==fv) return false;
+      return true;
+    })
+    .forEach((r,i)=>{
+      tbody.innerHTML += `
+      <tr>
+        <td>${i+1}</td>
+        <td>${r.no}</td>
+        <td>${r.date}</td>
+        <td>${r.time}</td>
+        <td>${r.vendor}</td>
+        <td>${r.amount}</td>
+        <td>🖨</td>
+        <td>✏</td>
+        <td onclick="deleteReturn(${i})">🗑</td>
+      </tr>`;
+    });
+}
+function deleteReturn(i){
+  const r = DB.returns[i];
+  if(!confirm("Delete "+r.no+" ?")) return;
+
+  // reverse stock
+  r.items.forEach(it=>{
+    const p = DB.products.find(x=>x.itemNo===it.itemNo);
+    if(p) p.stock -= it.qty;
   });
+
+  // reverse cash
+  DB.cash = DB.cash.filter(c=>c.ref!==r.no);
+
+  // reverse vendor
+  const v = DB.vendors.find(x=>x.name===r.vendor);
+  if(v) v.balance += r.amount;
+
+  DB.returns.splice(i,1);
+  saveDB();
+  loadReturns();
+  renderCash();
 }
 
 document.addEventListener("DOMContentLoaded",()=>{
