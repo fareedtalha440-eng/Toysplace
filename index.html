@@ -228,6 +228,15 @@ function openTab(id){
   document.querySelectorAll("section").forEach(s=>{
     s.style.display="none";
   });
+// ================= AUTO LOGIN FIX =================
+// TEMP FIX so software opens (developer access)
+if (!sessionStorage.getItem("loggedInUser")) {
+  sessionStorage.setItem("loggedInUser", JSON.stringify({
+    username: "Dani",
+    role: "developer",
+    permissions: []
+  }));
+}
 
   // Permission check
   const user = JSON.parse(sessionStorage.getItem("loggedInUser") || "{}");
@@ -811,16 +820,14 @@ function searchInvProduct(i,val,field){
 };
 }
 
-/* ===== SETTERS ===== */
 function setInvQty(i,v){
-  if(v.includes(".")){
+  if(String(v).includes(".")){
     ruleMessage("Decimal quantity not allowed");
     return;
   }
   invoiceDraft[i].qty = parseInt(v) || 1;
   renderInvoice();
 }
-
 function setInvRate(i,v){ invoiceDraft[i].rate=+v; renderInvoice(); }
 function delInvRow(i){ invoiceDraft.splice(i,1); renderInvoice(); }
 
@@ -1436,13 +1443,18 @@ function addNewProduct(){
   const desc = newProdDesc.value.trim();
   const rate = +newProdRate.value;
 
+  if(!itemNo || !desc){
+    ruleMessage("Item No & Description required");
+    return;
+  }
+
   if(DB.products.some(p=>p.itemNo===itemNo)){
-    ruleMessage("This Item No is Present");
+    ruleMessage("This Item No already exists");
     return;
   }
 
   if(barcode && DB.products.some(p=>p.barcode===barcode)){
-    ruleMessage("This Barcode is Present");
+    ruleMessage("This Barcode already exists");
     return;
   }
 
@@ -1452,25 +1464,18 @@ function addNewProduct(){
     itemNo,
     desc,
     rate,
-    stock:0
+    stock: 0
   });
 
-  logAction("Product Created", itemNo);
   saveDB();
   prodFiltered = DB.products;
   renderProducts();
-  hideAddProductForm();
-}
-
-  saveDB();
-  prodFiltered = DB.products;
-  renderProducts();
-  hideAddProductForm();
 
   newProdBarcode.value="";
   newProdItemNo.value="";
   newProdDesc.value="";
   newProdRate.value="";
+  hideAddProductForm();
 }
 
 /* ===== EDIT ===== */
@@ -2025,29 +2030,46 @@ function costTab(e,i){if(e.key==="Tab"){e.preventDefault();if(i===purchaseDraft.
 
 /* ===== SAVE ===== */
 function savePurchase(){
-  if(!purchaseVendor.value)return alert("Select vendor");
-  let total=0;
-
-  for(const r of purchaseDraft){
-  if(!r.productId){
-    alert("Invalid product detected. Please select from list.");
+  if(!purchaseVendor || !purchaseVendor.value){
+    alert("Select vendor");
     return;
   }
-  const p=DB.products.find(x=>x.id===r.productId);
-  p.stock+=r.qty;
-  total+=r.qty*r.cost;
-}
+
+  if(!purchaseDraft.length){
+    alert("No products added");
+    return;
+  }
+
+  let total = 0;
+
+  for(const r of purchaseDraft){
+    if(!r.productId){
+      alert("Invalid product detected. Select from list only.");
+      return;
+    }
+
+    if(String(r.qty).includes(".")){
+      ruleMessage("Decimal quantity not allowed");
+      return;
+    }
+
+    const p = DB.products.find(x=>x.id===r.productId);
+    if(!p) return alert("Product missing");
+
+    p.stock += r.qty;
+    total += r.qty * r.cost;
+  }
 
   DB.purchases.push({
-    id:uid("PUR"),
-    vendorId:purchaseVendor.value,
-    date:new Date().toISOString().slice(0,10),
-    items:JSON.parse(JSON.stringify(purchaseDraft)),
+    id: uid("PUR"),
+    vendorId: purchaseVendor.value,
+    date: new Date().toISOString().slice(0,10),
+    items: JSON.parse(JSON.stringify(purchaseDraft)),
     total
   });
 
   saveDB();
-  purchaseDraft=[];
+  purchaseDraft = [];
   addPurchaseRow();
   renderPurchaseHistory();
 }
