@@ -851,8 +851,13 @@ function saveInvoice(){
   // Save invoice
   DB.invoices=DB.invoices.filter(i=>i.id!==id);
   DB.invoices.push({id,dateTime,total,items:JSON.parse(JSON.stringify(invoiceDraft)), discountAmt:+document.getElementById("mainDiscAmt").value, discountPct:+document.getElementById("mainDiscPct").value});
-  DB.cash.push({id:uid("C"),type:"IN",amount:total,ref:id,date:dateTime});
-
+  DB.cash.push({
+  id: uid("C"),
+  type: "IN",
+  amount: total,
+  ref: id,
+  dateTime: dateTime
+});
   saveDB(); invoiceDraft=[]; editingInvoiceId=null;
 
 document.getElementById("liveInvoiceNo").innerText = getNextInvoiceNumber();
@@ -912,49 +917,72 @@ function deleteInvoice(id){
 
 /* ===== PRINT INVOICE PROFESSIONAL ===== */
 function printInvoice(id){
-  const inv=DB.invoices.find(x=>x.id===id); if(!inv) return alert("Invoice not found");
-  const subtotal=inv.items.reduce((s,r)=>s+r.qty*r.rate,0);
-  const discountTotal=inv.discountPct>0 ? subtotal*inv.discountPct/100 : inv.discountAmt;
-  const dt=new Date(inv.dateTime);
-  const weekday=dt.toLocaleDateString(undefined,{weekday:'long'});
-  const dateStr=`${weekday}, ${dt.toLocaleDateString()}`;
-  const timeStr=dt.toLocaleTimeString();
-  let logoTag=""; if(DB.settings&&DB.settings.logo){logoTag=`<img src="${DB.settings.logo}" style="max-width:100px;height:auto;">`;}
-  let rowsHtml=""; inv.items.forEach((r,i)=>{ rowsHtml+=`<tr><td>${i+1}</td><td>${r.itemNo}</td><td>${r.desc}</td><td>${r.qty}</td><td>PKR ${formatNumber(r.rate)}</td><td>PKR ${formatNumber(r.qty*r.rate)}</td></tr>`;});
-  const companyInfo=DB.settings?.company||"";
-  const html=`<html><head><title>Invoice ${inv.id}</title><style>
-    body{font-family:Arial;padding:10px;box-sizing:border-box;} 
-    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;} 
-    .header-left div{
-  margin-bottom:4px;
-  padding:0;
-  border:none;
-  font-weight:500;
-}
- 
-    .logo{text-align:right;} h2{text-align:center;margin:5px 0;} 
-    table{width:100%;border-collapse:collapse;margin-top:5px;font-size:12px;} 
-    th,td{border:1px solid #000;padding:4px;text-align:left;} 
-    th{background:#eee;font-weight:600;} 
-    .subtotal,.discount,.totals{padding:4px;margin-top:2px;font-weight:500;} 
-    .totals{font-weight:600;} 
-    @media print{body{width:100%;} table,.totals,.subtotal,.discount{page-break-inside:avoid;}}</style></head>
-    <body><div class="header-left">
-  <div style="font-size:20px;font-weight:bold;">Cash Customer</div>
-  <div><b>Invoice No:</b> ${inv.id}</div>
-  <div><b>Invoice Date:</b> ${dateStr}</div>
-  <div><b>Time:</b> ${timeStr}</div>
-</div>
-</div><div class="logo">${logoTag}</div></div>
-    <table><thead><tr><th>#</th><th>Item No</th><th>Description</th><th>Qty</th><th>Rate (PKR)</th><th>Total (PKR)</th></tr></thead><tbody>${rowsHtml}</tbody></table>
-    <div class="subtotal">Subtotal: PKR ${formatNumber(subtotal)}</div>
-    <div class="discount">Discount: PKR ${formatNumber(discountTotal)} (${inv.discountPct}%)</div>
-    <div class="totals">Total: PKR ${formatNumber(inv.total)}</div>
-    <div style="margin-top:20px;"><p>${companyInfo}</p></div></body></html>`;
+  const inv = DB.invoices.find(x=>x.id===id);
+  if(!inv) return;
 
-  const printWindow=window.open('','_blank'); printWindow.document.write(html); printWindow.document.close(); printWindow.print();
-}
+  const dt = new Date(inv.dateTime);
+  const rows = inv.items.map(r=>`
+    <tr>
+      <td>${r.itemNo}</td>
+      <td>${r.qty}</td>
+      <td>${formatNumber(r.qty*r.rate)}</td>
+    </tr>`).join("");
 
+  const logo = DB.settings?.logo
+    ? `<img src="${DB.settings.logo}" style="width:40px;position:absolute;top:5px;right:5px;">`
+    : "";
+
+  const html = `
+  <html><head><style>
+    body{margin:0;font-family:Arial;}
+    .p{width:80mm;padding:6px;font-size:10px;}
+    .r{height:3px;}
+    .b{background:#2196f3;}
+    .r2{background:#f44336;}
+    .g{background:#4caf50;}
+    .p2{background:#9c27b0;}
+    table{width:100%;border-collapse:collapse;}
+    td{border-bottom:1px dotted #000;padding:2px;}
+    .f{text-align:center;margin-top:6px;font-size:9px;}
+  </style></head>
+  <body>
+    <div class="p">
+      ${logo}
+      <div class="r b"></div>
+      <div class="r r2"></div>
+      <div class="r g"></div>
+      <div class="r p2"></div>
+
+      <div style="text-align:center;font-weight:bold;margin:4px 0;">INVOICE</div>
+
+      <div>
+        <b>No:</b> ${inv.id}<br>
+        <b>Date:</b> ${dt.toLocaleDateString()}<br>
+        <b>Time:</b> ${dt.toLocaleTimeString()}
+      </div>
+
+      <table>
+        ${rows}
+      </table>
+
+      <div style="text-align:right;">
+        <b>Total:</b> PKR ${formatNumber(inv.total)}<br>
+        <small>Location: Main Counter</small>
+      </div>
+
+      <div class="f">
+        Thanks For Shopping From Us<br>
+        Visit Us Again<br>
+        <small>Printed: ${new Date().toLocaleString()}</small>
+      </div>
+    </div>
+  </body></html>`;
+
+  const w = window.open("");
+  w.document.write(html);
+  w.document.close();
+  w.print();
+}
 /* ===== INITIAL RENDER ===== */
 renderInvoice();
 renderInvoiceList();
