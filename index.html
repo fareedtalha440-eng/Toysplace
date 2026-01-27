@@ -1650,51 +1650,6 @@ renderProducts();
   </div>
 </section>
 <script>
-function addVendor(){
-  const name = document.getElementById("vendorName").value.trim();
-  const phone = document.getElementById("vendorPhone").value.trim();
-
-  if(!name) return alert("Vendor name required");
-
-  if(DB.vendors.some(v=>v.name.toLowerCase()===name.toLowerCase())){
-    return alert("Vendor already exists");
-  }
-
-  DB.vendors.push({
-    id: uid("V"),
-    name,
-    phone,
-    balance: 0
-  });
-
-  saveDB();
-  document.getElementById("vendorName").value="";
-  document.getElementById("vendorPhone").value="";
-  renderVendors();
-  loadVendorOptions();
-  loadReturnVendors();
-}
-
-function renderVendors(){
-  const tbody = document.getElementById("vendorTable");
-  if(!tbody) return;
-  tbody.innerHTML="";
-  DB.vendors.forEach((v,i)=>{
-    tbody.innerHTML += `
-      <tr>
-        <td>${i+1}</td>
-        <td>${v.name}</td>
-        <td>${v.phone||""}</td>
-        <td>${v.balance||0}</td>
-      </tr>
-    `;
-  });
-}
-
-document.addEventListener("DOMContentLoaded", renderVendors);
-</script>
-
-<script>
 /* ================= HELPERS ================= */
 function money(v){
   const n = Number(v || 0);
@@ -1712,10 +1667,10 @@ function nextVendorNo(){
 /* ================= ADD VENDOR ================= */
 function addVendor(){
   const name = vendorName.value.trim();
-  if(!name) return;
+  if(!name) return alert("Vendor name required");
 
   if(DB.vendors.some(v=>v.name.toLowerCase()===name.toLowerCase())){
-    ruleMessage("Vendor already exists");
+    alert("Vendor already exists");
     return;
   }
 
@@ -1726,17 +1681,15 @@ function addVendor(){
     createdDate: new Date().toISOString()
   });
 
-  logAction("Vendor Created", name);
-  saveDB();
-  renderVendors();
-}
-
-
   saveDB();
   vendorName.value="";
   renderVendors();
-  loadVendorOptions(); // refresh cash dropdown
+  loadVendorOptions();
+  if(typeof loadReturnVendors === "function"){
+  loadReturnVendors();
 }
+}
+document.addEventListener("DOMContentLoaded", renderVendors);
 
 /* ================= EDIT VENDOR ================= */
 function editVendor(id){
@@ -1780,45 +1733,43 @@ function vendorBalance(v){
 }
 
 /* ================= RENDER VENDORS ================= */
-function renderVendors(){
-  const tbody = document.getElementById("vendorRows");
-  tbody.innerHTML = "";
 let vendorPage = 1;
 const vendorsPerPage = 20;
 
-  // Sort newest to oldest
-  const q = (document.getElementById("vendorSearch")?.value || "").toLowerCase();
-const vendorsSorted = DB.vendors
-  .filter(v => !q || v.name.toLowerCase().includes(q) || v.no.toLowerCase().includes(q))
-  .sort((a,b)=>new Date(b.createdDate)-new Date(a.createdDate));
+function renderVendors(){
+  const tbody = document.getElementById("vendorRows");
+  if(!tbody) return;
+  tbody.innerHTML = "";
 
+  const q = (vendorSearch.value || "").toLowerCase();
+
+  const vendorsSorted = DB.vendors
+    .filter(v =>
+      !q ||
+      v.name.toLowerCase().includes(q) ||
+      (v.no||"").toLowerCase().includes(q)
+    )
+    .sort((a,b)=>new Date(b.createdDate)-new Date(a.createdDate));
 
   vendorsSorted
-  .slice((vendorPage-1)*vendorsPerPage, vendorPage*vendorsPerPage)
-  .forEach((v,i)=>{
+    .slice((vendorPage-1)*vendorsPerPage, vendorPage*vendorsPerPage)
+    .forEach((v,i)=>{
+      const bal = vendorBalance(v);
+      const created = new Date(v.createdDate).toLocaleString();
 
-    const bal = vendorBalance(v);
-    const created = new Date(v.createdDate).toLocaleString();
-<div style="margin-top:10px;">
-  <button onclick="vendorPage=Math.max(1,vendorPage-1);renderVendors()">Prev</button>
-  <button onclick="vendorPage++;renderVendors()">Next</button>
-</div>
-
-    tbody.innerHTML += `
-      <tr>
-        <td>${i+1}</td>
-        <td>${v.no}</td>
-        <td>${v.name}</td>
-        <td>₨ ${money(bal)}</td>
-        <td><button onclick="openVendorLedger('${v.id}')">Open</button></td>
-        <td><button onclick="editVendor('${v.id}')">Edit</button></td>
-        <td><button onclick="deleteVendor('${v.id}')">Delete</button></td>
-        <td>${created}</td>
-      </tr>
-    `;
-  });
+      tbody.innerHTML += `
+        <tr>
+          <td>${i+1}</td>
+          <td>${v.no}</td>
+          <td>${v.name}</td>
+          <td>₨ ${money(bal)}</td>
+          <td><button onclick="openVendorLedger('${v.id}')">Open</button></td>
+          <td><button onclick="editVendor('${v.id}')">Edit</button></td>
+          <td><button onclick="deleteVendor('${v.id}')">Delete</button></td>
+        </tr>
+      `;
+    });
 }
-
 /* ================= VENDOR LEDGER ================= */
 function openVendorLedger(vendorId){
   const v = DB.vendors.find(x=>x.id===vendorId);
@@ -1906,7 +1857,6 @@ function loadVendorOptions(){
 }
 
 /* ================= INIT ================= */
-renderVendors();
 loadVendorOptions();
 </script>
 
