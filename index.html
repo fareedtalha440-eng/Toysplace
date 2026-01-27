@@ -801,10 +801,7 @@ function renderInvoice(){
           <input value="${r.desc}" placeholder="Description" oninput="searchInvProduct(${i}, this.value,'desc')">
           <div id="invSugD${i}" class="invSug"></div>
         </td>
-       <input type="number" min="1" step="1"
-  value="${r.qty}"
-  onchange="setInvQty(${i},this.value)">
-
+       <<td><input type="number" min="1" step="1"value="${r.qty}"onchange="setInvQty(${i},this.value)">
         <td><input type="number" value="${r.rate}" onchange="setInvRate(${i},this.value)"></td>
         <td>${r.valid ? formatNumber(r.qty*r.rate) : "<span style='color:red'>Invalid</span>"}</td>
         <td><button class="red" onclick="delInvRow(${i})">X</button></td>
