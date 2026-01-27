@@ -275,7 +275,8 @@ document.addEventListener("DOMContentLoaded", ()=>{
 
 <!-- ================= DATABASE ================= -->
 <script>
-let DB = {
+/* ================= GLOBAL DATABASE ================= */
+const DB = {
   products: JSON.parse(localStorage.getItem("products") || "[]"),
   vendors: JSON.parse(localStorage.getItem("vendors") || "[]"),
   purchases: JSON.parse(localStorage.getItem("purchases") || "[]"),
@@ -284,62 +285,192 @@ let DB = {
   cash: JSON.parse(localStorage.getItem("cash") || "[]"),
   deleted: JSON.parse(localStorage.getItem("deleted") || "[]"),
   settings: JSON.parse(localStorage.getItem("settings") || "{}"),
-  accounts: JSON.parse(localStorage.getItem("accounts") || "[]")  // Added accounts
+  accounts: JSON.parse(localStorage.getItem("accounts") || "[]"),
+  logs: JSON.parse(localStorage.getItem("logs") || "[]")  // for audit log
 };
 
-// Initialize default developer account if not exists
-if(!DB.accounts.find(x=>x.fixed)) {
-  DB.accounts.push({id: uid("A"), username:"Dani", password:"7525", role:"developer", fixed:true, permissions:[]});
-  saveDB();
-}
-// ===== Add default test product if none exist =====
-if(!DB.products.length){
-  DB.products.push({
-    id: uid("P"),
-    barcode: "1111",
-    itemNo: "TEST001",
-    desc: "Sample Product",
-    rate: 100,
-    stock: 50
-  });
-  saveDB();
+/* ====================== UNIQUE ID GENERATOR ====================== */
+function uid(prefix) {
+    return prefix + "_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
 }
 
-// ===== Add default vendor if none exist =====
-if(!DB.vendors.length){
-  DB.vendors.push({
-    id: uid("V"),
-    name: "Default Vendor"
-  });
-  saveDB();
-}
-function saveDB() { 
-  for(let k in DB){ 
-    localStorage.setItem(k, JSON.stringify(DB[k])); 
-  } 
-}
-
-function uid(prefix){ 
-  return prefix + "_" + Date.now() + Math.floor(Math.random()*1000); 
-}
-</script>
-<script>
-function loadReturnVendors(){
-  const sel = document.getElementById("returnVendor");
-  const filter = document.getElementById("filterReturnVendor");
-  if(!sel) return;
-
-  sel.innerHTML = `<option value="">Select Vendor</option>`;
-  if(filter) filter.innerHTML = `<option value="">All Vendors</option>`;
-
-  DB.vendors.forEach(v=>{
-    sel.innerHTML += `<option value="${v.name}">${v.name}</option>`;
-    if(filter){
-      filter.innerHTML += `<option value="${v.name}">${v.name}</option>`;
+/* ====================== SAVE DATABASE ====================== */
+function saveDB() {
+    for (let key in DB) {
+        localStorage.setItem(key, JSON.stringify(DB[key]));
     }
-  });
+}
+
+/* ====================== AUDIT LOG ====================== */
+function logAction(action, ref = "") {
+    const user = JSON.parse(sessionStorage.getItem("loggedInUser") || "{}");
+    DB.logs.push({
+        timestamp: new Date().toISOString(),
+        action,
+        ref,
+        user: user.username || "unknown",
+        role: user.role || ""
+    });
+    saveDB();
+}
+
+/* ====================== DEFAULT DATA ====================== */
+
+// 1️⃣ Default developer account
+if (!DB.accounts.find(x => x.fixed)) {
+    DB.accounts.push({
+        id: uid("A"),
+        username: "Dani",
+        password: "7525",
+        role: "developer",
+        fixed: true,
+        permissions: []
+    });
+    saveDB();
+}
+
+// 2️⃣ Default vendor
+if (!DB.vendors.length) {
+    DB.vendors.push({
+        id: uid("V"),
+        name: "Default Vendor",
+        contact: "",
+        email: "",
+        createdAt: new Date().toISOString()
+    });
+    saveDB();
+}
+
+// 3️⃣ Default product
+if (!DB.products.length) {
+    DB.products.push({
+        id: uid("P"),
+        barcode: "1111",
+        itemNo: "TEST001",
+        desc: "Sample Product",
+        rate: 100,
+        stock: 50,
+        createdAt: new Date().toISOString()
+    });
+    saveDB();
+}
+
+/* ====================== VENDOR UTILITIES ====================== */
+function loadVendors(selectId, filterId = null) {
+    const sel = document.getElementById(selectId);
+    const filter = filterId ? document.getElementById(filterId) : null;
+    if (!sel) return;
+
+    sel.innerHTML = `<option value="">Select Vendor</option>`;
+    if (filter) filter.innerHTML = `<option value="">All Vendors</option>`;
+
+    DB.vendors.forEach(v => {
+        sel.innerHTML += `<option value="${v.id}">${v.name}</option>`;
+        if (filter) filter.innerHTML += `<option value="${v.id}">${v.name}</option>`;
+    });
+}
+
+/* ====================== PRODUCT UTILITIES ====================== */
+function addProduct(product) {
+    // Validate duplicates
+    if (DB.products.some(p => p.itemNo === product.itemNo)) {
+        throw new Error("Duplicate itemNo not allowed");
+    }
+    if (DB.products.some(p => p.barcode === product.barcode)) {
+        throw new Error("Duplicate barcode not allowed");
+    }
+
+    const newProduct = {
+        id: uid("P"),
+        barcode: product.barcode || "",
+        itemNo: product.itemNo || "",
+        desc: product.desc || "",
+        rate: product.rate || 0,
+        stock: product.stock || 0,
+        createdAt: new Date().toISOString()
+    };
+    DB.products.push(newProduct);
+    saveDB();
+    logAction("Add Product", newProduct.id);
+    return newProduct;
+}
+
+function updateProduct(id, updates) {
+    const p = DB.products.find(x => x.id === id);
+    if (!p) throw new Error("Product not found");
+
+    Object.assign(p, updates);
+    saveDB();
+    logAction("Update Product", id);
+    return p;
+}
+
+function deleteProduct(id) {
+    const idx = DB.products.findIndex(x => x.id === id);
+    if (idx === -1) throw new Error("Product not found");
+
+    const removed = DB.products.splice(idx, 1)[0];
+    DB.deleted.push({ type: "product", data: removed, deletedAt: new Date().toISOString() });
+    saveDB();
+    logAction("Delete Product", id);
+    return removed;
+}
+
+/* ====================== VENDOR UTILITIES ====================== */
+function addVendor(vendor) {
+    if (DB.vendors.some(v => v.name.toLowerCase() === vendor.name.toLowerCase())) {
+        throw new Error("Duplicate vendor name not allowed");
+    }
+    const newVendor = {
+        id: uid("V"),
+        name: vendor.name,
+        contact: vendor.contact || "",
+        email: vendor.email || "",
+        createdAt: new Date().toISOString()
+    };
+    DB.vendors.push(newVendor);
+    saveDB();
+    logAction("Add Vendor", newVendor.id);
+    return newVendor;
+}
+
+function updateVendor(id, updates) {
+    const v = DB.vendors.find(x => x.id === id);
+    if (!v) throw new Error("Vendor not found");
+
+    Object.assign(v, updates);
+    saveDB();
+    logAction("Update Vendor", id);
+    return v;
+}
+
+function deleteVendor(id) {
+    const idx = DB.vendors.findIndex(x => x.id === id);
+    if (idx === -1) throw new Error("Vendor not found");
+
+    const removed = DB.vendors.splice(idx, 1)[0];
+    DB.deleted.push({ type: "vendor", data: removed, deletedAt: new Date().toISOString() });
+    saveDB();
+    logAction("Delete Vendor", id);
+    return removed;
+}
+
+/* ====================== HELPER FUNCTIONS ====================== */
+function getProductById(id) {
+    return DB.products.find(p => p.id === id) || null;
+}
+
+function getVendorById(id) {
+    return DB.vendors.find(v => v.id === id) || null;
+}
+
+/* ====================== RESET DATABASE (DEV PURPOSE) ====================== */
+function resetDB() {
+    localStorage.clear();
+    location.reload();
 }
 </script>
+
 <script>
 /* ================= RULE ENGINE ================= */
 const RULES = {
