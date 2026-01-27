@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -223,21 +224,11 @@ button{
 
 <script>
 /* ================= TAB SWITCHING (CLEAN) ================= */
-function openTab(tabId){
+function openTab(id){
+  // Hide all sections
   document.querySelectorAll("section").forEach(s=>{
-    s.style.display = "none";
+    s.style.display="none";
   });
-
-  document.getElementById(tabId).style.display = "block";
-
-  if(tabId === "invoice"){
-    renderInvoice();
-    renderInvoiceList();
-    document.getElementById("liveInvoiceNo").innerText =
-      editingInvoiceId || getNextInvoiceNumber();
-  }
-}
-
 // ================= AUTO LOGIN FIX =================
 // TEMP FIX so software opens (developer access)
 if (!sessionStorage.getItem("loggedInUser")) {
@@ -467,26 +458,13 @@ function addReturnRow(){
   tr.innerHTML = `
     <td><input onblur="autoCost(this)"></td>
     <td><input></td>
-    <td>
-  <<input type="number" min="1" step="1"
-  value="${r.qty}"
-  onchange="setInvQty(${i},this.value)">
-</td>
+    <td><input type="number" min="1" oninput="validateReturnQty(this)"></td>
     <td><input type="number" readonly></td>
     <td class="amt">0</td>
     <td><button onclick="this.closest('tr').remove();calcReturn()">X</button></td>
   `;
   tbody.appendChild(tr);
 }
-  function setInvQty(i,v){
-  if(v.includes(".")){
-    alert("Decimal quantity not allowed");
-    return;
-  }
-  invoiceDraft[i].qty = parseInt(v)||1;
-  renderInvoice();
-}
-
 function validateReturnQty(inp){
   if(inp.value.includes(".")){
     ruleMessage("Decimal quantity not allowed");
@@ -801,7 +779,7 @@ function renderInvoice(){
           <input value="${r.desc}" placeholder="Description" oninput="searchInvProduct(${i}, this.value,'desc')">
           <div id="invSugD${i}" class="invSug"></div>
         </td>
-       <<td><input type="number" min="1" step="1"value="${r.qty}"onchange="setInvQty(${i},this.value)">
+        <td><input type="number" min="1" value="${r.qty}" onchange="setInvQty(${i},this.value)"></td>
         <td><input type="number" value="${r.rate}" onchange="setInvRate(${i},this.value)"></td>
         <td>${r.valid ? formatNumber(r.qty*r.rate) : "<span style='color:red'>Invalid</span>"}</td>
         <td><button class="red" onclick="delInvRow(${i})">X</button></td>
@@ -849,32 +827,24 @@ function searchInvProduct(i,val,field){
         return;
       }
 
-     invoiceDraft[i] = {
-  productId: p.id,
-  barcode: p.barcode || "",
-  itemNo: p.itemNo,
-  desc: p.desc,
-  qty: 1,
-  rate: p.rate,
-  valid: true
-};
+      invoiceDraft[i] = {
+        productId: p.id,
+        barcode: p.barcode || "",
+        itemNo: p.itemNo,
+        desc: p.desc,
+        qty: 1,
+        rate: p.rate,
+        valid: true
+      };document.addEventListener("DOMContentLoaded", ()=>{
+  openTab("invoice");
+});
 
-renderInvoice();
-
+      renderInvoice();
     };
     box.appendChild(d);
   });
 }
 function setInvRate(i,v){ invoiceDraft[i].rate=+v; renderInvoice(); }
-  function setInvQty(i,v){
-  if(String(v).includes(".")){
-    alert("Decimal quantity not allowed");
-    return;
-  }
-  invoiceDraft[i].qty = parseInt(v,10) || 1;
-  renderInvoice();
-}
-
 function delInvRow(i){ invoiceDraft.splice(i,1); renderInvoice(); }
 
 /* ===== TOTAL / DISCOUNT ===== */
@@ -1040,7 +1010,7 @@ function printInvoice(id){
 renderInvoice();
 renderInvoiceList();
 document.getElementById("liveInvoiceNo").innerText = editingInvoiceId || getNextInvoiceNumber();
-renderProducts?.();
+
 function syncDiscFromAmt(){
   const sub=getSubTotal();
   const amt=+document.getElementById("mainDiscAmt").value||0;
@@ -1649,6 +1619,7 @@ renderProducts();
     </table>
   </div>
 </section>
+
 <script>
 /* ================= HELPERS ================= */
 function money(v){
@@ -1667,10 +1638,10 @@ function nextVendorNo(){
 /* ================= ADD VENDOR ================= */
 function addVendor(){
   const name = vendorName.value.trim();
-  if(!name) return alert("Vendor name required");
+  if(!name) return;
 
   if(DB.vendors.some(v=>v.name.toLowerCase()===name.toLowerCase())){
-    alert("Vendor already exists");
+    ruleMessage("Vendor already exists");
     return;
   }
 
@@ -1681,15 +1652,17 @@ function addVendor(){
     createdDate: new Date().toISOString()
   });
 
+  logAction("Vendor Created", name);
+  saveDB();
+  renderVendors();
+}
+
+
   saveDB();
   vendorName.value="";
   renderVendors();
-  loadVendorOptions();
-  if(typeof loadReturnVendors === "function"){
-  loadReturnVendors();
+  loadVendorOptions(); // refresh cash dropdown
 }
-}
-document.addEventListener("DOMContentLoaded", renderVendors);
 
 /* ================= EDIT VENDOR ================= */
 function editVendor(id){
@@ -1733,43 +1706,45 @@ function vendorBalance(v){
 }
 
 /* ================= RENDER VENDORS ================= */
+function renderVendors(){
+  const tbody = document.getElementById("vendorRows");
+  tbody.innerHTML = "";
 let vendorPage = 1;
 const vendorsPerPage = 20;
 
-function renderVendors(){
-  const tbody = document.getElementById("vendorRows");
-  if(!tbody) return;
-  tbody.innerHTML = "";
+  // Sort newest to oldest
+  const q = (document.getElementById("vendorSearch")?.value || "").toLowerCase();
+const vendorsSorted = DB.vendors
+  .filter(v => !q || v.name.toLowerCase().includes(q) || v.no.toLowerCase().includes(q))
+  .sort((a,b)=>new Date(b.createdDate)-new Date(a.createdDate));
 
-  const q = (vendorSearch.value || "").toLowerCase();
-
-  const vendorsSorted = DB.vendors
-    .filter(v =>
-      !q ||
-      v.name.toLowerCase().includes(q) ||
-      (v.no||"").toLowerCase().includes(q)
-    )
-    .sort((a,b)=>new Date(b.createdDate)-new Date(a.createdDate));
 
   vendorsSorted
-    .slice((vendorPage-1)*vendorsPerPage, vendorPage*vendorsPerPage)
-    .forEach((v,i)=>{
-      const bal = vendorBalance(v);
-      const created = new Date(v.createdDate).toLocaleString();
+  .slice((vendorPage-1)*vendorsPerPage, vendorPage*vendorsPerPage)
+  .forEach((v,i)=>{
 
-      tbody.innerHTML += `
-        <tr>
-          <td>${i+1}</td>
-          <td>${v.no}</td>
-          <td>${v.name}</td>
-          <td>₨ ${money(bal)}</td>
-          <td><button onclick="openVendorLedger('${v.id}')">Open</button></td>
-          <td><button onclick="editVendor('${v.id}')">Edit</button></td>
-          <td><button onclick="deleteVendor('${v.id}')">Delete</button></td>
-        </tr>
-      `;
-    });
+    const bal = vendorBalance(v);
+    const created = new Date(v.createdDate).toLocaleString();
+<div style="margin-top:10px;">
+  <button onclick="vendorPage=Math.max(1,vendorPage-1);renderVendors()">Prev</button>
+  <button onclick="vendorPage++;renderVendors()">Next</button>
+</div>
+
+    tbody.innerHTML += `
+      <tr>
+        <td>${i+1}</td>
+        <td>${v.no}</td>
+        <td>${v.name}</td>
+        <td>₨ ${money(bal)}</td>
+        <td><button onclick="openVendorLedger('${v.id}')">Open</button></td>
+        <td><button onclick="editVendor('${v.id}')">Edit</button></td>
+        <td><button onclick="deleteVendor('${v.id}')">Delete</button></td>
+        <td>${created}</td>
+      </tr>
+    `;
+  });
 }
+
 /* ================= VENDOR LEDGER ================= */
 function openVendorLedger(vendorId){
   const v = DB.vendors.find(x=>x.id===vendorId);
@@ -1857,6 +1832,7 @@ function loadVendorOptions(){
 }
 
 /* ================= INIT ================= */
+renderVendors();
 loadVendorOptions();
 </script>
 
@@ -1967,7 +1943,7 @@ function loadPurchaseVendors(){
     filterVendor.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
   });
 }
-loadPurchaseVendors();
+
 /* ===== ADD ROW ===== */
 function addPurchaseRow(){
   purchaseDraft.push({productId:null,barcode:"",itemNo:"",desc:"",qty:1,cost:0});
@@ -2289,7 +2265,10 @@ function showProfitDetail(inv){
 }
 </script>
 <script>
-
+document.addEventListener("DOMContentLoaded",()=>{
+  [...new Set(DB.logs.map(l=>l.user))].forEach(u=>{
+    profitUser.innerHTML += `<option value="${u}">${u}</option>`;
+  });
 });
 <hr style="margin:30px 0">
 
@@ -2771,17 +2750,4 @@ logAction("DELETE", `Product ${prod.itemNo}`);
 logAction("DELETE", `Vendor ${vendor.name}`);
 logAction("DELETE", `Purchase ${purchase.id}`);
 
-</script>
-<script>
-/* ===== INIT PURCHASE SECTION ===== */
-document.addEventListener("DOMContentLoaded", ()=>{
-  // 1️⃣ Load vendors into purchase dropdowns
-  if(typeof loadPurchaseVendors === "function") loadPurchaseVendors();
-
-  // 2️⃣ Add initial empty product row
-  if(typeof addPurchaseRow === "function") addPurchaseRow();
-
-  // 3️⃣ Render previous purchases
-  if(typeof renderPurchaseHistory === "function") renderPurchaseHistory();
-});
 </script>
