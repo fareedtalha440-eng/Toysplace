@@ -746,6 +746,11 @@ function getNextInvoiceNumber(){
   return "INV"+String(max+1).padStart(6,"0");
 }
 
+function updateLiveInvoiceNo(){
+  document.getElementById("liveInvoiceNo").innerText =
+    editingInvoiceId ? editingInvoiceId : getNextInvoiceNumber();
+}
+
 /* ===== ADD ROW ===== */
 function addInvoiceRow(){
   invoiceDraft.push({productId:"",barcode:"",itemNo:"",desc:"",qty:1,rate:0,valid:false});
@@ -780,9 +785,10 @@ function renderInvoice(){
   });
 
   recalcInvoiceFast();
+  updateLiveInvoiceNo();
 }
 
-/* ===== SEARCH (UNCHANGED CORE LOGIC) ===== */
+/* ===== SEARCH ===== */
 function searchInvProduct(i,val,field){
   const q = val.trim().toLowerCase();
   const row = invoiceDraft[i];
@@ -799,11 +805,6 @@ function searchInvProduct(i,val,field){
     (field==="itemNo"&&(p.itemNo||"").toLowerCase().includes(q))||
     (field==="desc"&&(p.desc||"").toLowerCase().includes(q))
   );
-
-  if(!results.length){
-    box.innerHTML="<div style='padding:4px;color:red'>Product not found</div>";
-    return;
-  }
 
   results.forEach(p=>{
     const d=document.createElement("div");
@@ -872,30 +873,43 @@ function saveInvoice(){
     if(p.stock<r.qty) return alert("Low stock: "+p.desc);
   }
 
-  const id=editingInvoiceId||getNextInvoiceNumber();
+  const id=editingInvoiceId || getNextInvoiceNumber();
   const dateTime=new Date().toISOString();
   const total=+invTotal.innerText.replace(/,/g,"");
 
   DB.invoices=DB.invoices.filter(i=>i.id!==id);
-  DB.invoices.push({id,dateTime,total,items:JSON.parse(JSON.stringify(invoiceDraft)),discountAmt:+mainDiscAmt.value,discountPct:+mainDiscPct.value});
+  DB.invoices.push({
+    id,
+    dateTime,
+    total,
+    items:JSON.parse(JSON.stringify(invoiceDraft)),
+    discountAmt:+mainDiscAmt.value,
+    discountPct:+mainDiscPct.value
+  });
 
-  invoiceDraft.forEach(r=>{ DB.products.find(p=>p.id===r.productId).stock-=r.qty; });
+  invoiceDraft.forEach(r=>{
+    DB.products.find(p=>p.id===r.productId).stock-=r.qty;
+  });
 
   DB.cash.push({id:uid("C"),type:"IN",amount:total,ref:id,dateTime});
-
   saveDB();
+
   invoiceDraft=[];
   editingInvoiceId=null;
   mainDiscAmt.value=mainDiscPct.value=0;
-  liveInvoiceNo.innerText=getNextInvoiceNumber();
-  renderInvoice();renderInvoiceList();renderCash();
+
+  renderInvoice();
+  renderInvoiceList();
+  renderCash();
+  updateLiveInvoiceNo();
+
   alert("Invoice saved");
 }
 
 /* ===== INIT ===== */
 renderInvoice();
 renderInvoiceList();
-liveInvoiceNo.innerText=getNextInvoiceNumber();
+updateLiveInvoiceNo();
 </script>
 
 <style>
@@ -903,6 +917,7 @@ liveInvoiceNo.innerText=getNextInvoiceNumber();
 .invSug div:hover{background:#eee}
 td{position:relative}
 </style>
+  
 <!-- ================= CASH ================= -->
 <section id="cash">
 
