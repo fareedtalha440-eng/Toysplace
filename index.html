@@ -1471,7 +1471,12 @@ renderProducts();
 <section id="vendors">
   <div class="card">
     <h2>Vendors</h2>
-<input id="vendorSearch" placeholder="Search vendor (No, Name)" oninput="renderVendors()" style="margin-bottom:10px;width:100%;">
+
+    <input id="vendorSearch"
+           placeholder="Search vendor (No, Name)"
+           oninput="renderVendors()"
+           style="margin-bottom:10px;width:100%;">
+
     <div style="display:flex;gap:10px;margin-bottom:12px;">
       <input id="vendorName" placeholder="Vendor Name" style="flex:1">
       <button onclick="addVendor()">Add Vendor</button>
@@ -1485,35 +1490,49 @@ renderProducts();
           <th>Name</th>
           <th>Balance</th>
           <th>Ledger</th>
+          <th>Edit</th>
+          <th>Delete</th>
         </tr>
       </thead>
       <tbody id="vendorRows"></tbody>
     </table>
+
+    <div style="margin-top:10px;display:flex;gap:10px;">
+      <button onclick="prevVendorPage()">Prev</button>
+      <button onclick="nextVendorPage()">Next</button>
+    </div>
   </div>
 </section>
 
 <script>
-/* ================= HELPERS ================= */
+/* ================= VENDOR LOGIC ================= */
+
+let vendorPage = 1;
+const vendorsPerPage = 20;
+
+/* ===== MONEY FORMAT ===== */
 function money(v){
   const n = Number(v || 0);
-  return (n < 0 ? "-" : "") + Math.abs(n).toLocaleString("en-PK",{minimumFractionDigits:2});
-}
-// Vendor No VEN1001, VEN1002 ...
-function nextVendorNo(){
-  if(!DB.vendors.length) return "VEN1001";
-  const nums = DB.vendors
-    .map(v => parseInt(String(v.no||"").replace("VEN","")))
-    .filter(n => !isNaN(n));
-  return "VEN" + (Math.max(...nums,1000) + 1);
+  return (n < 0 ? "-" : "") +
+    Math.abs(n).toLocaleString("en-PK",{minimumFractionDigits:2});
 }
 
-/* ================= ADD VENDOR ================= */
+/* ===== NEXT VENDOR NO ===== */
+function nextVendorNo(){
+  if(!DB.vendors || !DB.vendors.length) return "VEN1001";
+  const nums = DB.vendors
+    .map(v=>parseInt(String(v.no||"").replace("VEN","")))
+    .filter(n=>!isNaN(n));
+  return "VEN"+(Math.max(...nums,1000)+1);
+}
+
+/* ===== ADD VENDOR ===== */
 function addVendor(){
   const name = vendorName.value.trim();
-  if(!name) return;
+  if(!name) return alert("Vendor name required");
 
   if(DB.vendors.some(v=>v.name.toLowerCase()===name.toLowerCase())){
-    ruleMessage("Vendor already exists");
+    alert("Vendor already exists");
     return;
   }
 
@@ -1524,113 +1543,109 @@ function addVendor(){
     createdDate: new Date().toISOString()
   });
 
-  logAction("Vendor Created", name);
-  saveDB();
-  renderVendors();
-}
-
-
   saveDB();
   vendorName.value="";
   renderVendors();
-  loadVendorOptions(); // refresh cash dropdown
+  loadVendorOptions();
 }
 
-/* ================= EDIT VENDOR ================= */
+/* ===== EDIT VENDOR ===== */
 function editVendor(id){
   const v = DB.vendors.find(x=>x.id===id);
   if(!v) return;
+
   const name = prompt("Edit vendor name", v.name);
   if(!name) return;
+
   v.name = name.trim();
   saveDB();
   renderVendors();
   loadVendorOptions();
 }
 
-/* ================= DELETE VENDOR ================= */
+/* ===== DELETE VENDOR ===== */
 function deleteVendor(id){
   const v = DB.vendors.find(x=>x.id===id);
   if(!v) return;
+
   const bal = vendorBalance(v);
   if(bal !== 0){
     alert("Cannot delete vendor. Balance must be zero.");
     return;
   }
+
   if(!confirm("Delete this vendor?")) return;
+
   DB.vendors = DB.vendors.filter(x=>x.id!==id);
   saveDB();
   renderVendors();
   loadVendorOptions();
 }
 
-/* ================= VENDOR BALANCE ================= */
+/* ===== VENDOR BALANCE ===== */
 function vendorBalance(v){
   const purchase = DB.purchases
-    .filter(p => p.vendorId === v.id)
+    .filter(p=>p.vendorId===v.id)
     .reduce((s,p)=>s+(p.total||0),0);
 
   const paid = DB.cash
-    .filter(c => c.type==="OUT" && c.vendor === v.name)
+    .filter(c=>c.type==="OUT" && c.vendorId===v.id)
     .reduce((s,c)=>s+(c.amount||0),0);
 
   return purchase - paid;
 }
 
-/* ================= RENDER VENDORS ================= */
+/* ===== RENDER VENDORS ===== */
 function renderVendors(){
   const tbody = document.getElementById("vendorRows");
-  tbody.innerHTML = "";
-let vendorPage = 1;
-const vendorsPerPage = 20;
+  tbody.innerHTML="";
 
-  // Sort newest to oldest
-  const q = (document.getElementById("vendorSearch")?.value || "").toLowerCase();
-const vendorsSorted = DB.vendors
-  .filter(v => !q || v.name.toLowerCase().includes(q) || v.no.toLowerCase().includes(q))
-  .sort((a,b)=>new Date(b.createdDate)-new Date(a.createdDate));
+  const q = (vendorSearch.value||"").toLowerCase();
 
+  const vendors = DB.vendors
+    .filter(v=>!q || v.name.toLowerCase().includes(q) || v.no.toLowerCase().includes(q))
+    .sort((a,b)=>new Date(b.createdDate)-new Date(a.createdDate));
 
-  vendorsSorted
-  .slice((vendorPage-1)*vendorsPerPage, vendorPage*vendorsPerPage)
-  .forEach((v,i)=>{
-
-    const bal = vendorBalance(v);
-    const created = new Date(v.createdDate).toLocaleString();
-<div style="margin-top:10px;">
-  <button onclick="vendorPage=Math.max(1,vendorPage-1);renderVendors()">Prev</button>
-  <button onclick="vendorPage++;renderVendors()">Next</button>
-</div>
-
-    tbody.innerHTML += `
-      <tr>
-        <td>${i+1}</td>
-        <td>${v.no}</td>
-        <td>${v.name}</td>
-        <td>₨ ${money(bal)}</td>
-        <td><button onclick="openVendorLedger('${v.id}')">Open</button></td>
-        <td><button onclick="editVendor('${v.id}')">Edit</button></td>
-        <td><button onclick="deleteVendor('${v.id}')">Delete</button></td>
-        <td>${created}</td>
-      </tr>
-    `;
-  });
+  vendors
+    .slice((vendorPage-1)*vendorsPerPage, vendorPage*vendorsPerPage)
+    .forEach((v,i)=>{
+      const bal = vendorBalance(v);
+      tbody.innerHTML+=`
+        <tr>
+          <td>${(vendorPage-1)*vendorsPerPage+i+1}</td>
+          <td>${v.no}</td>
+          <td>${v.name}</td>
+          <td>₨ ${money(bal)}</td>
+          <td><button onclick="openVendorLedger('${v.id}')">Open</button></td>
+          <td><button onclick="editVendor('${v.id}')">Edit</button></td>
+          <td><button class="red" onclick="deleteVendor('${v.id}')">Delete</button></td>
+        </tr>
+      `;
+    });
 }
 
-/* ================= VENDOR LEDGER ================= */
+/* ===== PAGINATION ===== */
+function nextVendorPage(){ vendorPage++; renderVendors(); }
+function prevVendorPage(){
+  if(vendorPage>1){ vendorPage--; renderVendors(); }
+}
+
+/* ===== VENDOR LEDGER ===== */
 function openVendorLedger(vendorId){
   const v = DB.vendors.find(x=>x.id===vendorId);
   if(!v) return;
 
   const rows = [];
 
-  DB.purchases.filter(p=>p.vendorId===v.id).forEach(p=>{
-    rows.push({ date:p.dateTime||p.date, type:"Purchase", ref:p.id, debit:p.total, credit:0 });
-  });
+  DB.purchases.filter(p=>p.vendorId===v.id)
+    .forEach(p=>{
+      rows.push({date:p.dateTime,type:"Purchase",ref:p.id,debit:p.total,credit:0});
+    });
 
-  DB.cash.filter(c=>c.type==="OUT" && c.vendor===v.name).forEach(c=>{
-    rows.push({ date:c.dateTime, type:"Payment", ref:c.ref||c.id, debit:0, credit:c.amount });
-  });
+  DB.cash.filter(c=>c.type==="OUT" && c.vendorId===v.id)
+    .forEach(c=>{
+      rows.push({date:c.dateTime,type:"Payment",ref:c.ref||c.id,debit:0,credit:c.amount});
+    });
 
   rows.sort((a,b)=>new Date(a.date)-new Date(b.date));
 
@@ -1642,11 +1657,6 @@ function openVendorLedger(vendorId){
 <html><head><title>Vendor Ledger</title>
 <style>
 body{font-family:Arial;padding:10px}
-.r{height:4px}
-.b{background:#2196f3}
-.r2{background:#f44336}
-.g{background:#4caf50}
-.p{background:#9c27b0}
 table{width:100%;border-collapse:collapse;font-size:12px}
 th,td{border:1px solid #000;padding:4px;text-align:center}
 .right{text-align:right}
@@ -1656,22 +1666,19 @@ th,td{border:1px solid #000;padding:4px;text-align:center}
 </head>
 <body>
 
-<div class="r b"></div>
-<div class="r r2"></div>
-<div class="r g"></div>
-<div class="r p"></div>
-
 <h2>${v.name}</h2>
 <div>${v.no}</div>
 
 <table>
-<tr><th>#</th><th>Date & Time</th><th>Type</th><th>Ref</th><th>Debit</th><th>Credit</th><th>Balance</th></tr>
+<tr>
+<th>#</th><th>Date & Time</th><th>Type</th><th>Ref</th>
+<th>Debit</th><th>Credit</th><th>Balance</th>
+</tr>
 ${rows.map((r,i)=>{
   bal += r.debit - r.credit;
-  const d = new Date(r.date).toLocaleString();
   return `<tr>
 <td>${i+1}</td>
-<td>${d}</td>
+<td>${new Date(r.date).toLocaleString()}</td>
 <td>${r.type}</td>
 <td>${r.ref}</td>
 <td class="right">${money(r.debit)}</td>
@@ -1691,19 +1698,22 @@ Present Balance: ₨ ${money(bal)}
   w.print();
 }
 
-/* ================= CASH IN HAND LINK ================= */
+/* ===== CASH DROPDOWNS ===== */
 function loadVendorOptions(){
-  const selectAdd = document.getElementById("payVendor");
-  const selectFilter = document.getElementById("cashVendorFilter");
-  selectAdd.innerHTML='<option value="">Select Vendor</option>';
-  selectFilter.innerHTML='<option value="">All Vendors</option>';
+  const add = document.getElementById("payVendor");
+  const filter = document.getElementById("cashVendorFilter");
+  if(!add || !filter) return;
+
+  add.innerHTML='<option value="">Select Vendor</option>';
+  filter.innerHTML='<option value="">All Vendors</option>';
+
   DB.vendors.forEach(v=>{
-    selectAdd.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
-    selectFilter.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
+    add.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
+    filter.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
   });
 }
 
-/* ================= INIT ================= */
+/* ===== INIT ===== */
 renderVendors();
 loadVendorOptions();
 </script>
