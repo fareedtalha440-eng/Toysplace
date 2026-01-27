@@ -751,7 +751,6 @@ function updateLiveInvoiceNo(){
   if(el) el.innerText = editingInvoiceId || getNextInvoiceNumber();
 }
 
-
 /* ===== ADD ROW ===== */
 function addInvoiceRow(){
   invoiceDraft.push({productId:"",barcode:"",itemNo:"",desc:"",qty:1,rate:0,valid:false});
@@ -876,7 +875,7 @@ function saveInvoice(){
 
   for(const r of invoiceDraft){
     const p=DB.products.find(x=>x.id===r.productId);
-    if(p.stock<r.qty) return alert("Low stock: "+p.desc);
+    if(p.stock<r.qty) return alert("Low stock: "+r.desc);
   }
 
   const id=editingInvoiceId||getNextInvoiceNumber();
@@ -948,6 +947,7 @@ function applyInvoiceFilter(){
 }
 function prevInvPage(){ if(invPage>1){invPage--;renderInvoiceList();} }
 function nextInvPage(){ invPage++;renderInvoiceList(); }
+
 /* ===== EDIT INVOICE ===== */
 function editInvoice(id){
   const inv = DB.invoices.find(i=>i.id===id);
@@ -971,16 +971,12 @@ function deleteInvoice(id){
   const inv = DB.invoices.find(i=>i.id===id);
   if(!inv) return;
 
-  // restore stock
   inv.items.forEach(r=>{
     const p = DB.products.find(x=>x.id===r.productId);
     if(p) p.stock += r.qty;
   });
 
-  // remove cash entry
   DB.cash = DB.cash.filter(c=>c.ref!==id);
-
-  // remove invoice
   DB.invoices = DB.invoices.filter(i=>i.id!==id);
 
   saveDB();
@@ -1035,28 +1031,26 @@ function printInvoice(id){
   <h3 style="text-align:right">
     Total: ${formatNumber(inv.total)}
   </h3>
-
 </body>
 </html>
-  `); // <-- close template literal
-
-  // 🔹 Call print after document is fully written
+  `);
   w.document.close();
   w.focus();
   w.print();
   w.close();
 }
-<script>
-/* ===== INITIAL RENDER ===== */
-renderInvoice();
-renderInvoiceList();
-updateLiveInvoiceNo();
 
+/* ===== INITIAL RENDER ===== */
+document.addEventListener("DOMContentLoaded",()=>{
+  renderInvoice();
+  renderInvoiceList();
+  updateLiveInvoiceNo();
+});
 </script>
 
 <style>
 .invSug{position:absolute;background:#fff;border:1px solid #ccc;max-height:160px;overflow:auto;z-index:100}
-.invSug div:hover{background:#eee}
+.invSug div:hover{background:#eee;cursor:pointer;}
 td{position:relative}
 </style>
 
