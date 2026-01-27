@@ -943,72 +943,207 @@ function logAction(action, ref=""){ if(!RULES.auditLog) return;
   saveDB();
 }
 
-/* ================= VENDORS ================= */
-function addVendor(){
-  const name = document.getElementById("vendorName").value.trim();
-  const phone = document.getElementById("vendorPhone").value.trim();
-  if(!name){ ruleMessage("Vendor name required"); return; }
+<!-- ================= INVOICE ================= -->
+<section id="invoice">
+  <div class="card" id="newInvoiceCard">
+    <h2>New Invoice</h2>
+    <div style="font-size:28px;font-weight:900;letter-spacing:2px;margin-bottom:10px;">
+      Invoice No: <span id="liveInvoiceNo"></span>
+    </div>
 
-  if(RULES.uniqueVendorName && DB.vendors.some(v=>v.name.toLowerCase()===name.toLowerCase())){
-    ruleMessage("Vendor already exists"); return;
+    <!-- ===== ADD PRODUCT ROW ===== -->
+    <table style="width:100%; margin-bottom:10px;">
+      <thead>
+        <tr>
+          <th style="width:12%">Barcode</th>
+          <th style="width:12%">Item No</th>
+          <th style="width:34%">Description</th>
+          <th style="width:8%">Qty</th>
+          <th style="width:12%">Rate (PKR)</th>
+          <th style="width:12%">Total (PKR)</th>
+          <th style="width:10%">Delete</th>
+        </tr>
+      </thead>
+      <tbody id="invoiceRows"></tbody>
+    </table>
+    <button class="green" onclick="addInvoiceRow()">+ Add Item</button>
+
+    <!-- ===== MAIN DISCOUNT & TOTAL ===== -->
+    <div style="margin-top:10px; display:flex; gap:15px; flex-wrap:wrap; align-items:center; justify-content:center; border:1px solid #000; padding:10px;">
+      <div>
+        <label>Main Discount Amount:</label>
+        <input type="number" id="mainDiscAmt" value="0"
+          oninput="applyMainDiscount(getSubTotal());syncDiscFromAmt();">
+      </div>
+      <div>
+        <label>Main Discount %:</label>
+        <input type="number" id="mainDiscPct" value="0"
+          oninput="applyMainDiscount(getSubTotal());syncDiscFromPct();">
+      </div>
+      <div style="padding:10px; font-weight:bold; text-align:center; border-left:2px solid #000;">
+        <label><b>Total:</b></label><br>
+        <span style="font-size:22px;"><b id="invTotal">0</b> PKR</span>
+      </div>
+    </div>
+
+    <!-- ===== SAVE INVOICE ===== -->
+    <div style="margin-top:10px;">
+      <button class="blue" onclick="saveInvoice()">Save Invoice</button>
+    </div>
+  </div>
+
+  <!-- ===== INVOICE LIST ===== -->
+  <div class="card" style="margin-top:20px;">
+    <h2>Previous Invoices</h2>
+
+    <!-- Filter -->
+    <div style="margin-bottom:10px;">
+      <label>From:</label><input type="date" id="invFrom">
+      <label>To:</label><input type="date" id="invTo">
+      <button onclick="applyInvoiceFilter()">Apply</button>
+    </div>
+
+    <table style="width:100%;">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Invoice No</th>
+          <th>Date</th>
+          <th>Time</th>
+          <th>Total (PKR)</th>
+          <th>Print</th>
+          <th>Edit</th>
+          <th>Delete</th>
+        </tr>
+      </thead>
+      <tbody id="invoiceList"></tbody>
+    </table>
+
+    <!-- Pagination -->
+    <div style="margin-top:10px; display:flex; gap:10px;">
+      <button onclick="prevInvPage()">Prev</button>
+      <button onclick="nextInvPage()">Next</button>
+    </div>
+  </div>
+</section>
+
+<!-- ================= VENDOR ================= -->
+<section id="vendor" style="margin-top:30px;">
+  <div class="card">
+    <h2>Vendor Management</h2>
+    <div style="display:flex; gap:10px; margin-bottom:10px;">
+      <input type="text" id="vendorName" placeholder="Vendor Name">
+      <input type="text" id="vendorPhone" placeholder="Phone">
+      <button class="green" onclick="addVendor()">Add Vendor</button>
+    </div>
+
+    <table style="width:100%;">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th>Phone</th>
+          <th>Balance</th>
+          <th>Delete</th>
+        </tr>
+      </thead>
+      <tbody id="vendorTableBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+/* ================= DATABASE ================= */
+let DB = {
+  products: JSON.parse(localStorage.getItem("products") || "[]"),
+  vendors: JSON.parse(localStorage.getItem("vendors") || "[]"),
+  invoices: JSON.parse(localStorage.getItem("invoices") || "[]"),
+  cash: JSON.parse(localStorage.getItem("cash") || "[]"),
+  settings: JSON.parse(localStorage.getItem("settings") || "{}"),
+  accounts: JSON.parse(localStorage.getItem("accounts") || "[]"),
+  logs: JSON.parse(localStorage.getItem("logs") || "[]")
+};
+
+function saveDB(){
+  for(let k in DB) localStorage.setItem(k, JSON.stringify(DB[k]));
+}
+
+function uid(prefix){ return prefix + "_" + Date.now() + Math.floor(Math.random()*1000); }
+
+/* ===== DEFAULT DATA ===== */
+if(!DB.accounts.some(x=>x.fixed)) { DB.accounts.push({id:uid("A"),username:"Dani",password:"7525",role:"developer",fixed:true,permissions:[]}); saveDB(); }
+if(!DB.products.length){ DB.products.push({id:uid("P"),barcode:"1111",itemNo:"TEST001",desc:"Sample Product",rate:100,stock:50}); saveDB(); }
+if(!DB.vendors.length){ DB.vendors.push({id:uid("V"),name:"Default Vendor"}); saveDB(); }
+
+/* ===== RULES ENGINE ===== */
+const RULES = {
+  qtyIntegerOnly: true,
+  noDuplicateInvoiceProduct: true,
+  uniqueItemNo: true,
+  uniqueBarcode: true,
+  uniqueVendorName: true,
+  auditLog: true
+};
+
+function ruleMessage(msg){
+  let box = document.getElementById("ruleMsgBox");
+  if(!box){
+    box = document.createElement("div");
+    box.id="ruleMsgBox";
+    box.style=`position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+      background:#111;color:#fff;padding:18px 26px;border-radius:10px;font-size:16px;
+      z-index:99999;box-shadow:0 0 20px rgba(0,0,0,.4)`;
+    document.body.appendChild(box);
   }
-
-  DB.vendors.push({id:uid("V"), name, phone, balance:0});
-  saveDB(); document.getElementById("vendorName").value=""; document.getElementById("vendorPhone").value="";
-  renderVendors(); logAction("Added Vendor", name);
-}
-function renderVendors(){
-  const tbody=document.getElementById("vendorTableBody"); if(!tbody) return;
-  tbody.innerHTML=""; DB.vendors.forEach((v,i)=>{
-    tbody.innerHTML+=`<tr>
-      <td>${i+1}</td>
-      <td>${v.name}</td>
-      <td>${v.phone||""}</td>
-      <td>${v.balance||0}</td>
-      <td><button onclick="deleteVendor('${v.id}')">Delete</button></td>
-    </tr>`;
-  });
-}
-function deleteVendor(id){
-  if(!confirm("Delete vendor?")) return;
-  const v=DB.vendors.find(x=>x.id===id); if(!v) return;
-  DB.vendors=DB.vendors.filter(x=>x.id!==id);
-  saveDB(); renderVendors(); logAction("Deleted Vendor", v.name);
+  box.innerText = msg; box.style.display="block";
+  setTimeout(()=>box.style.display="none",2500);
 }
 
-/* ================= INVOICE ================= */
-let invoiceDraft=[]; let editingInvoiceId=null; let invPage=1, invPerPage=100; let invFiltered=null;
+function logAction(action, ref=""){
+  if(!RULES.auditLog) return;
+  const user = JSON.parse(sessionStorage.getItem("loggedInUser")||"{}");
+  DB.logs.push({user:user.username||"unknown",role:user.role||"",action,ref,dateTime:new Date().toISOString()});
+  saveDB();
+}
+
+/* ================= INVOICE LOGIC ================= */
+let invoiceDraft=[], editingInvoiceId=null, invPage=1, invPerPage=100, invFiltered=null;
+
 function formatNumber(x){return Number(x).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
+
 function getNextInvoiceNumber(){
   if(!DB.invoices.length) return "INV000001";
   const nums = DB.invoices.map(inv=>parseInt(inv.id.replace("INV",""),10)||0);
-  return "INV"+String(Math.max(...nums)+1).padStart(6,'0');
+  return "INV" + String(Math.max(...nums)+1).padStart(6,'0');
 }
-function addInvoiceRow(){ invoiceDraft.push({productId:"", barcode:"", itemNo:"", desc:"", qty:1, rate:0, valid:false}); renderInvoice(); }
-function setInvQty(i,v){ if(RULES.qtyIntegerOnly) v=Math.floor(v); invoiceDraft[i].qty=+v; renderInvoice(); }
+
+/* ===== ADD / RENDER ROWS ===== */
+function addInvoiceRow(){invoiceDraft.push({productId:"",barcode:"",itemNo:"",desc:"",qty:1,rate:0,valid:false}); renderInvoice();}
 function setInvRate(i,v){ invoiceDraft[i].rate=+v; renderInvoice(); }
 function delInvRow(i){ invoiceDraft.splice(i,1); renderInvoice(); }
 
 function renderInvoice(){
-  const tbody=document.getElementById("invoiceRows"); if(!tbody) return; tbody.innerHTML="";
-  let subtotal=0;
+  const tbody=document.getElementById("invoiceRows"); if(!tbody) return;
+  tbody.innerHTML=""; let subtotal=0;
+
   invoiceDraft.forEach((r,i)=>{
-    if(r.valid) subtotal+=r.qty*r.rate;
-    tbody.innerHTML+=`<tr>
-      <td style="position:relative;"><input value="${r.barcode}" placeholder="Barcode" oninput="searchInvProduct(${i}, this.value,'barcode')"><div id="invSugB${i}" class="invSug"></div></td>
-      <td style="position:relative;"><input value="${r.itemNo}" placeholder="Item No" oninput="searchInvProduct(${i}, this.value,'itemNo')"><div id="invSugI${i}" class="invSug"></div></td>
-      <td style="position:relative;"><input value="${r.desc}" placeholder="Description" oninput="searchInvProduct(${i}, this.value,'desc')"><div id="invSugD${i}" class="invSug"></div></td>
+    if(r.valid) subtotal += r.qty*r.rate;
+    tbody.innerHTML += `<tr>
+      <td style="position:relative;"><input value="${r.barcode}" placeholder="Barcode" oninput="searchInvProduct(${i},this.value,'barcode')"><div id="invSugB${i}" class="invSug"></div></td>
+      <td style="position:relative;"><input value="${r.itemNo}" placeholder="Item No" oninput="searchInvProduct(${i},this.value,'itemNo')"><div id="invSugI${i}" class="invSug"></div></td>
+      <td style="position:relative;"><input value="${r.desc}" placeholder="Description" oninput="searchInvProduct(${i},this.value,'desc')"><div id="invSugD${i}" class="invSug"></div></td>
       <td><input type="number" min="1" value="${r.qty}" onchange="setInvQty(${i},this.value)"></td>
       <td><input type="number" value="${r.rate}" onchange="setInvRate(${i},this.value)"></td>
       <td>${r.valid?formatNumber(r.qty*r.rate):"<span style='color:red'>Invalid</span>"}</td>
       <td><button class="red" onclick="delInvRow(${i})">X</button></td>
     </tr>`;
   });
+
   applyMainDiscount(subtotal);
 }
 
 function searchInvProduct(i,val,field){
-  const q=val.trim().toLowerCase(); const row=invoiceDraft[i]; row.valid=false;
+  const q=val.trim().toLowerCase(); invoiceDraft[i].valid=false;
   const box=document.getElementById(field==="barcode"?"invSugB"+i:field==="itemNo"?"invSugI"+i:"invSugD"+i);
   box.innerHTML=""; if(!q) return;
 
@@ -1024,55 +1159,56 @@ function searchInvProduct(i,val,field){
     const d=document.createElement("div"); d.style.padding="4px"; d.style.cursor="pointer";
     d.innerText=`${p.itemNo} - ${p.desc} (Stock: ${p.stock})`;
     d.onclick=()=>{
-      if(RULES.noDuplicateInvoiceProduct && invoiceDraft.some((x,idx)=>idx!==i && x.productId===p.id)){
-        ruleMessage("This product already exists in invoice"); return;
-      }
+      if(RULES.noDuplicateInvoiceProduct && invoiceDraft.some((x,idx)=>idx!==i && x.productId===p.id)){ruleMessage("This product already exists in invoice"); return;}
       invoiceDraft[i]={productId:p.id,barcode:p.barcode||"",itemNo:p.itemNo,desc:p.desc,qty:1,rate:p.rate,valid:true};
       renderInvoice();
-    }; box.appendChild(d);
+    };
+    box.appendChild(d);
   });
 }
 
+/* ===== TOTAL / DISCOUNT ===== */
 function getSubTotal(){ return invoiceDraft.reduce((s,r)=>r.valid?s+(r.qty*r.rate):s,0); }
 function applyMainDiscount(sub){
-  let amt=+document.getElementById("mainDiscAmt")?.value||0; const pct=+document.getElementById("mainDiscPct")?.value||0;
-  if(pct>0) amt=sub*pct/100; document.getElementById("invTotal").innerText=formatNumber(sub-amt);
+  let amt=+document.getElementById("mainDiscAmt")?.value||0;
+  const pct=+document.getElementById("mainDiscPct")?.value||0; if(pct>0) amt=sub*pct/100;
+  document.getElementById("invTotal").innerText=formatNumber(sub-amt);
 }
-function syncDiscFromAmt(){ const sub=getSubTotal(); const amt=+document.getElementById("mainDiscAmt").value||0; if(sub>0) document.getElementById("mainDiscPct").value=((amt/sub)*100).toFixed(2);}
-function syncDiscFromPct(){ const sub=getSubTotal(); const pct=+document.getElementById("mainDiscPct").value||0; if(sub>0) document.getElementById("mainDiscAmt").value=((sub*pct)/100).toFixed(2); }
+function syncDiscFromAmt(){const sub=getSubTotal();const amt=+document.getElementById("mainDiscAmt").value||0;if(sub>0) document.getElementById("mainDiscPct").value=((amt/sub)*100).toFixed(2);}
+function syncDiscFromPct(){const sub=getSubTotal();const pct=+document.getElementById("mainDiscPct").value||0;if(sub>0) document.getElementById("mainDiscAmt").value=((sub*pct)/100).toFixed(2);}
 
+/* ===== SAVE / EDIT / DELETE INVOICE ===== */
 function saveInvoice(){
-  if(!invoiceDraft.length){ ruleMessage("Invoice empty"); return; }
-  if(invoiceDraft.some(r=>!r.valid)){ ruleMessage("Invoice has invalid products"); return; }
+  if(!invoiceDraft.length) return alert("Invoice empty");
+  if(invoiceDraft.some(r=>!r.valid)) return alert("Invoice contains invalid product.");
 
-  const id=editingInvoiceId||getNextInvoiceNumber(); const dt=new Date(); const dateTime=dt.toISOString();
+  const id=editingInvoiceId||getNextInvoiceNumber();
+  const dt=new Date(); const dateTime=dt.toISOString();
   const total=+document.getElementById("invTotal").innerText.replace(/,/g,'');
 
-  // Stock check
-  for(const r of invoiceDraft){ const p=DB.products.find(x=>x.id===r.productId); if(!p){ ruleMessage("Product missing: "+r.desc); return; } if(p.stock<r.qty){ ruleMessage("Insufficient stock for: "+r.desc); return; } }
-
+  for(const r of invoiceDraft){ const p=DB.products.find(x=>x.id===r.productId); if(!p){alert("Product missing: "+r.desc); return;} if(p.stock<r.qty){alert("Insufficient stock for: "+r.desc); return;} }
   invoiceDraft.forEach(r=>{ const p=DB.products.find(x=>x.id===r.productId); if(p) p.stock-=r.qty; });
 
-  DB.invoices=DB.invoices.filter(x=>x.id!==id);
+  DB.invoices=DB.invoices.filter(i=>i.id!==id);
   DB.invoices.push({id,dateTime,total,items:JSON.parse(JSON.stringify(invoiceDraft)), discountAmt:+document.getElementById("mainDiscAmt").value, discountPct:+document.getElementById("mainDiscPct").value});
   DB.cash.push({id:uid("C"),type:"IN",amount:total,ref:id,dateTime:dateTime});
-  saveDB(); logAction("Saved Invoice", id);
+  saveDB(); invoiceDraft=[]; editingInvoiceId=null;
 
-  invoiceDraft=[]; editingInvoiceId=null;
   document.getElementById("liveInvoiceNo").innerText=getNextInvoiceNumber();
   document.getElementById("mainDiscAmt").value=document.getElementById("mainDiscPct").value=0;
   renderInvoice(); renderInvoiceList();
+  logAction("Saved Invoice",id); alert("Invoice saved successfully");
 }
 
 function renderInvoiceList(){
-  const tbody=document.getElementById("invoiceList"); if(!tbody) return; tbody.innerHTML="";
-  const invoices=(invFiltered||DB.invoices).slice((invPage-1)*invPerPage,invPage*invPerPage);
+  const tbody=document.getElementById("invoiceList"); if(!tbody) return;
+  tbody.innerHTML=""; const invoices=(invFiltered||DB.invoices).slice((invPage-1)*invPerPage,invPage*invPerPage);
   invoices.forEach((i,idx)=>{
     const dt=new Date(i.dateTime);
     tbody.innerHTML+=`<tr>
       <td>${(invPage-1)*invPerPage+idx+1}</td>
       <td>${i.id}</td>
-      <td>${dt.toLocaleDateString()}</td>
+      <td>${dt.toLocaleDateString(undefined,{weekday:'long',year:'numeric',month:'short',day:'numeric'})}</td>
       <td>${dt.toLocaleTimeString()}</td>
       <td>${formatNumber(i.total)}</td>
       <td><button onclick="printInvoice('${i.id}')">Print</button></td>
@@ -1081,24 +1217,70 @@ function renderInvoiceList(){
     </tr>`;
   });
 }
-function applyInvoiceFilter(){ const from=document.getElementById("invFrom").value; const to=document.getElementById("invTo").value;
-  invFiltered=DB.invoices.filter(i=>{ const dt=new Date(i.dateTime); const f=from?new Date(from):null; const t=to?new Date(to):null; if(f&&dt<f) return false; if(t&&dt>t) return false; return true; }); invPage=1; renderInvoiceList(); }
+
+function applyInvoiceFilter(){const from=document.getElementById("invFrom").value; const to=document.getElementById("invTo").value; invFiltered=DB.invoices.filter(i=>{const dt=new Date(i.dateTime); const f=from?new Date(from):null; const t=to?new Date(to):null; if(f&&dt<f)return false;if(t&&dt>t)return false;return true;}); invPage=1; renderInvoiceList();}
 function nextInvPage(){ invPage++; renderInvoiceList(); }
 function prevInvPage(){ if(invPage>1){ invPage--; renderInvoiceList(); } }
+function editInvoice(id){ const inv=DB.invoices.find(x=>x.id===id); if(!inv)return; editingInvoiceId=id; invoiceDraft=JSON.parse(JSON.stringify(inv.items)); renderInvoice();}
+function deleteInvoice(id){ if(!confirm("Delete invoice?")) return; const inv=DB.invoices.find(x=>x.id===id); inv.items.forEach(r=>{ const p=DB.products.find(x=>x.id===r.productId); if(p) p.stock+=r.qty;}); DB.invoices=DB.invoices.filter(i=>i.id!==id); saveDB(); renderInvoiceList(); logAction("Deleted Invoice",id); }
 
-function editInvoice(id){ const inv=DB.invoices.find(x=>x.id===id); if(!inv) return; editingInvoiceId=id; invoiceDraft=JSON.parse(JSON.stringify(inv.items)); renderInvoice(); }
-function deleteInvoice(id){ if(!confirm("Delete invoice?")) return;
-  const inv=DB.invoices.find(x=>x.id===id); if(!inv) return;
-  inv.items.forEach(r=>{ const p=DB.products.find(x=>x.id===r.productId); if(p) p.stock+=r.qty; });
-  DB.invoices=DB.invoices.filter(x=>x.id!==id); DB.cash=DB.cash.filter(c=>c.ref!==id); saveDB(); renderInvoiceList(); logAction("Deleted Invoice", id);
+/* ===== PRINT INVOICE ===== */
+function printInvoice(id){
+  const inv = DB.invoices.find(x=>x.id===id); if(!inv)return;
+  const dt = new Date(inv.dateTime);
+  const rows = inv.items.map(r=>`<tr><td>${r.itemNo}</td><td>${r.qty}</td><td>${formatNumber(r.qty*r.rate)}</td></tr>`).join("");
+  const html=`<html><head><style>body{margin:0;font-family:Arial;}table{width:100%;border-collapse:collapse;}td{border-bottom:1px dotted #000;padding:2px;}</style></head><body>
+  <div><h3>INVOICE: ${inv.id}</h3><table>${rows}</table><div>Total: ${formatNumber(inv.total)}</div></div></body></html>`;
+  const w=window.open(""); w.document.write(html); w.document.close(); w.print();
 }
 
-function printInvoice(id){
-  const inv=DB.invoices.find(x=>x.id===id); if(!inv) return; const dt=new Date(inv.dateTime);
-  const rows=inv.items.map(r=>`<tr><td>${r.itemNo}</td><td>${r.qty}</td><td>${formatNumber(r.qty*r.rate)}</td></tr>`).join("");
-  const html=`<html><head><style>
-  body{margin:0;font-family:Arial;} table{width:100%;border-collapse:collapse;} td{border-bottom:1px dotted #000;padding:2px;}
+/* ===== AUTO LOAD INVOICE ON PAGE LOAD ===== */
+window.addEventListener("load", ()=>{
+  invoiceDraft=[]; editingInvoiceId=null; addInvoiceRow();
+  document.getElementById("liveInvoiceNo").innerText=getNextInvoiceNumber();
+  document.getElementById("mainDiscAmt").value=document.getElementById("mainDiscPct").value=0;
+  renderInvoice(); renderInvoiceList();
+});
 
+/* ================= VENDOR LOGIC ================= */
+function addVendor(){
+  const name=document.getElementById("vendorName").value.trim();
+  const phone=document.getElementById("vendorPhone").value.trim();
+  if(!name){alert("Vendor name required"); return;}
+  if(RULES.uniqueVendorName && DB.vendors.some(v=>v.name.toLowerCase()===name.toLowerCase())){alert("Vendor already exists"); return;}
+
+  DB.vendors.push({id:uid("V"),name,phone,balance:0});
+  saveDB(); document.getElementById("vendorName").value=""; document.getElementById("vendorPhone").value="";
+  renderVendors(); logAction("Added Vendor",name);
+}
+
+function renderVendors(){
+  const tbody = document.getElementById("vendorTableBody");
+  if(!tbody) return;
+
+  tbody.innerHTML = "";
+
+  DB.vendors.forEach((v, i)=>{
+    tbody.innerHTML += `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${v.name}</td>
+        <td>
+          <button onclick="deleteVendor('${v.id}')">Delete</button>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+function deleteVendor(id){
+  if(!confirm("Delete this vendor?")) return;
+  DB.vendors = DB.vendors.filter(v => v.id !== id);
+  saveDB();
+  renderVendors();
+}
+</script>
+<script>
 <!-- ================= CASH ================= -->
 <section id="cash">
 
