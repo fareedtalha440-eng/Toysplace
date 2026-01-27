@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1010,6 +1009,7 @@ function printInvoice(id){
 renderInvoice();
 renderInvoiceList();
 document.getElementById("liveInvoiceNo").innerText = editingInvoiceId || getNextInvoiceNumber();
+advancedProductSearch();
 
 function syncDiscFromAmt(){
   const sub=getSubTotal();
@@ -1023,6 +1023,67 @@ function syncDiscFromPct(){
   if(sub>0) document.getElementById("mainDiscAmt").value=((sub*pct)/100).toFixed(2);
 }
 
+</script>
+<script>
+/* ================= VENDORS ================= */
+
+function addVendor(){
+  const name = document.getElementById("vendorName").value.trim();
+  const phone = document.getElementById("vendorPhone").value.trim();
+
+  if(!name){
+    alert("Vendor name required");
+    return;
+  }
+
+  // prevent duplicate vendor
+  if(DB.vendors.some(v => v.name.toLowerCase() === name.toLowerCase())){
+    alert("Vendor already exists");
+    return;
+  }
+
+  DB.vendors.push({
+    id: uid("V"),
+    name,
+    phone,
+    balance: 0
+  });
+
+  saveDB();
+  document.getElementById("vendorName").value = "";
+  document.getElementById("vendorPhone").value = "";
+
+  renderVendors();
+  loadVendorOptions();
+  loadReturnVendors();
+}
+
+function renderVendors(){
+  const tbody = document.getElementById("vendorTableBody");
+  if(!tbody) return;
+
+  tbody.innerHTML = "";
+  DB.vendors.forEach((v,i)=>{
+    tbody.innerHTML += `
+      <tr>
+        <td>${i+1}</td>
+        <td>${v.name}</td>
+        <td>${v.phone || ""}</td>
+        <td>${v.balance || 0}</td>
+        <td><button onclick="deleteVendor('${v.id}')">Delete</button></td>
+      </tr>
+    `;
+  });
+}
+
+function deleteVendor(id){
+  if(!confirm("Delete vendor?")) return;
+  DB.vendors = DB.vendors.filter(v => v.id !== id);
+  saveDB();
+  renderVendors();
+  loadVendorOptions();
+  loadReturnVendors();
+}
 </script>
 
 <style>
@@ -1634,6 +1695,13 @@ function nextVendorNo(){
     .filter(n => !isNaN(n));
   return "VEN" + (Math.max(...nums,1000) + 1);
 }
+<input id="vendorName" placeholder="Vendor Name">
+<input id="vendorPhone" placeholder="Phone">
+<button onclick="addVendor()">Save Vendor</button>
+
+<table>
+  <tbody id="vendorTableBody"></tbody>
+</table>
 
 /* ================= ADD VENDOR ================= */
 function addVendor(){
@@ -2486,7 +2554,8 @@ document.addEventListener("DOMContentLoaded", ()=>{
   } else {
     document.querySelectorAll("section").forEach(s=>{
       if(s.id!=="loginScreen") s.style.display="none";
-    });
+   renderVendors();
+ });
   }
 });
 
