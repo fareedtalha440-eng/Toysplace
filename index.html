@@ -223,11 +223,21 @@ button{
 
 <script>
 /* ================= TAB SWITCHING (CLEAN) ================= */
-function openTab(id){
-  // Hide all sections
+function openTab(tabId){
   document.querySelectorAll("section").forEach(s=>{
-    s.style.display="none";
+    s.style.display = "none";
   });
+
+  document.getElementById(tabId).style.display = "block";
+
+  if(tabId === "invoice"){
+    renderInvoice();
+    renderInvoiceList();
+    document.getElementById("liveInvoiceNo").innerText =
+      editingInvoiceId || getNextInvoiceNumber();
+  }
+}
+
 // ================= AUTO LOGIN FIX =================
 // TEMP FIX so software opens (developer access)
 if (!sessionStorage.getItem("loggedInUser")) {
@@ -458,9 +468,9 @@ function addReturnRow(){
     <td><input onblur="autoCost(this)"></td>
     <td><input></td>
     <td>
-  <input type="number" min="1" step="1"
-    value="${r.qty}"
-    onchange="setInvQty(${i}, this.value)">
+  <<input type="number" min="1" step="1"
+  value="${r.qty}"
+  onchange="setInvQty(${i},this.value)">
 </td>
     <td><input type="number" readonly></td>
     <td class="amt">0</td>
@@ -791,7 +801,10 @@ function renderInvoice(){
           <input value="${r.desc}" placeholder="Description" oninput="searchInvProduct(${i}, this.value,'desc')">
           <div id="invSugD${i}" class="invSug"></div>
         </td>
-        <td><input type="number" min="1" value="${r.qty}" onchange="setInvQty(${i},this.value)"></td>
+       <input type="number" min="1" step="1"
+  value="${r.qty}"
+  onchange="setInvQty(${i},this.value)">
+
         <td><input type="number" value="${r.rate}" onchange="setInvRate(${i},this.value)"></td>
         <td>${r.valid ? formatNumber(r.qty*r.rate) : "<span style='color:red'>Invalid</span>"}</td>
         <td><button class="red" onclick="delInvRow(${i})">X</button></td>
@@ -856,6 +869,15 @@ renderInvoice();
   });
 }
 function setInvRate(i,v){ invoiceDraft[i].rate=+v; renderInvoice(); }
+  function setInvQty(i,v){
+  if(String(v).includes(".")){
+    alert("Decimal quantity not allowed");
+    return;
+  }
+  invoiceDraft[i].qty = parseInt(v,10) || 1;
+  renderInvoice();
+}
+
 function delInvRow(i){ invoiceDraft.splice(i,1); renderInvoice(); }
 
 /* ===== TOTAL / DISCOUNT ===== */
