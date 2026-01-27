@@ -834,12 +834,29 @@ function searchInvProduct(i,val,field){
         qty: 1,
         rate: p.rate,
         valid: true
-      };document.addEventListener("DOMContentLoaded", ()=>{
-  openTab("invoice");
+      };
+      document.addEventListener("DOMContentLoaded", () => {
+    // Open the invoice tab
+    if(typeof openTab === "function") openTab("invoice");
+
+    // Reset invoice draft and editing mode
+    invoiceDraft = [];
+    editingInvoiceId = null;
+
+    // Add a first empty row
+    addInvoiceRow();
+
+    // Set the live invoice number
+    document.getElementById("liveInvoiceNo").innerText = getNextInvoiceNumber();
+
+    // Reset main discount fields
+    document.getElementById("mainDiscAmt").value = 0;
+    document.getElementById("mainDiscPct").value = 0;
+
+    // Render invoice (optional because addInvoiceRow calls renderInvoice)
+    renderInvoice();
 });
 
-      renderInvoice();
-    };
     box.appendChild(d);
   });
 }
