@@ -835,25 +835,30 @@ function searchInvProduct(i,val,field){
         rate: p.rate,
         valid: true
       };
-      document.addEventListener("DOMContentLoaded", () => {
-    // Open the invoice tab
-    if(typeof openTab === "function") openTab("invoice");
+// ===== AUTO OPEN NEW INVOICE ON PAGE LOAD =====
+window.addEventListener("load", () => {
+    // Make sure invoice section is visible
+    const invoiceSection = document.getElementById("invoice");
+    if(invoiceSection) invoiceSection.style.display = "block";
 
-    // Reset invoice draft and editing mode
+    // Reset draft and editing mode
     invoiceDraft = [];
     editingInvoiceId = null;
 
-    // Add a first empty row
+    // Add first empty row
     addInvoiceRow();
 
-    // Set the live invoice number
-    document.getElementById("liveInvoiceNo").innerText = getNextInvoiceNumber();
+    // Set live invoice number
+    const liveNo = document.getElementById("liveInvoiceNo");
+    if(liveNo) liveNo.innerText = getNextInvoiceNumber();
 
-    // Reset main discount fields
-    document.getElementById("mainDiscAmt").value = 0;
-    document.getElementById("mainDiscPct").value = 0;
+    // Reset discount fields
+    const discAmt = document.getElementById("mainDiscAmt");
+    const discPct = document.getElementById("mainDiscPct");
+    if(discAmt) discAmt.value = 0;
+    if(discPct) discPct.value = 0;
 
-    // Render invoice (optional because addInvoiceRow calls renderInvoice)
+    // Render invoice
     renderInvoice();
 });
 
