@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -646,14 +645,14 @@ document.addEventListener("DOMContentLoaded",()=>{
   loadReturnVendors();
 });
 </script>
-
 <!-- ================= INVOICE ================= -->
 <section id="invoice">
   <div class="card" id="newInvoiceCard">
     <h2>New Invoice</h2>
-<div style="font-size:28px;font-weight:900;letter-spacing:2px;margin-bottom:10px;">
-  Invoice No: <span id="liveInvoiceNo"></span>
-</div>
+
+    <div style="font-size:28px;font-weight:900;letter-spacing:2px;margin-bottom:10px;">
+      Invoice No: <span id="liveInvoiceNo"></span>
+    </div>
 
     <!-- ===== ADD PRODUCT ROW ===== -->
     <table style="width:100%; margin-bottom:10px;">
@@ -670,27 +669,25 @@ document.addEventListener("DOMContentLoaded",()=>{
       </thead>
       <tbody id="invoiceRows"></tbody>
     </table>
+
     <button class="green" onclick="addInvoiceRow()">+ Add Item</button>
 
-    <!-- ===== MAIN DISCOUNT & TOTAL ===== -->
-<div style="margin-top:10px; display:flex; gap:15px; flex-wrap:wrap; align-items:center; justify-content:center; border:1px solid #000; padding:10px;">
-  <div>
-    <label>Main Discount Amount:</label>
-    <input type="number" id="mainDiscAmt" value="0"
-      oninput="applyMainDiscount(getSubTotal());syncDiscFromAmt();">
-  </div>
-  <div>
-    <label>Main Discount %:</label>
-    <input type="number" id="mainDiscPct" value="0"
-      oninput="applyMainDiscount(getSubTotal());syncDiscFromPct();">
-  </div>
-  <div style="padding:10px; font-weight:bold; text-align:center; border-left:2px solid #000;">
-    <label><b>Total:</b></label><br>
-    <span style="font-size:22px;"><b id="invTotal">0</b> PKR</span>
-  </div>
-</div>
+    <!-- ===== DISCOUNT & TOTAL ===== -->
+    <div style="margin-top:10px;display:flex;gap:15px;flex-wrap:wrap;align-items:center;justify-content:center;border:1px solid #000;padding:10px;">
+      <div>
+        <label>Main Discount Amount:</label>
+        <input type="number" id="mainDiscAmt" value="0" oninput="syncDiscFromAmt();recalcInvoiceFast();">
+      </div>
+      <div>
+        <label>Main Discount %:</label>
+        <input type="number" id="mainDiscPct" value="0" oninput="syncDiscFromPct();recalcInvoiceFast();">
+      </div>
+      <div style="padding:10px;font-weight:bold;text-align:center;border-left:2px solid #000;">
+        <label>Total:</label><br>
+        <span style="font-size:22px;"><b id="invTotal">0.00</b> PKR</span>
+      </div>
+    </div>
 
-    <!-- ===== SAVE INVOICE ===== -->
     <div style="margin-top:10px;">
       <button class="blue" onclick="saveInvoice()">Save Invoice</button>
     </div>
@@ -700,7 +697,6 @@ document.addEventListener("DOMContentLoaded",()=>{
   <div class="card" style="margin-top:20px;">
     <h2>Previous Invoices</h2>
 
-    <!-- Filter -->
     <div style="margin-bottom:10px;">
       <label>From:</label><input type="date" id="invFrom">
       <label>To:</label><input type="date" id="invTo">
@@ -714,7 +710,7 @@ document.addEventListener("DOMContentLoaded",()=>{
           <th>Invoice No</th>
           <th>Date</th>
           <th>Time</th>
-          <th>Total (PKR)</th>
+          <th>Total</th>
           <th>Print</th>
           <th>Edit</th>
           <th>Delete</th>
@@ -723,8 +719,7 @@ document.addEventListener("DOMContentLoaded",()=>{
       <tbody id="invoiceList"></tbody>
     </table>
 
-    <!-- Pagination -->
-    <div style="margin-top:10px; display:flex; gap:10px;">
+    <div style="margin-top:10px;display:flex;gap:10px;">
       <button onclick="prevInvPage()">Prev</button>
       <button onclick="nextInvPage()">Next</button>
     </div>
@@ -733,304 +728,181 @@ document.addEventListener("DOMContentLoaded",()=>{
 
 <script>
 /* ================= INVOICE LOGIC ================= */
+
 let invoiceDraft = [];
 let editingInvoiceId = null;
 let invPage = 1, invPerPage = 100;
 let invFiltered = null;
 
-/* ===== FORMAT NUMBER WITH COMMAS ===== */
+/* ===== FORMAT ===== */
 function formatNumber(x){
-  return Number(x).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2});
+  return Number(x).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 
-/* ===== SEQUENTIAL INVOICE NUMBER ===== */
+/* ===== INVOICE NO ===== */
 function getNextInvoiceNumber(){
   if(!DB.invoices || !DB.invoices.length) return "INV000001";
-  const nums = DB.invoices.map(inv=>parseInt(inv.id.replace("INV",""),10)||0);
-  return "INV" + String(Math.max(...nums)+1).padStart(6,'0');
+  const max = Math.max(...DB.invoices.map(i=>+i.id.replace("INV","")));
+  return "INV"+String(max+1).padStart(6,"0");
 }
 
 /* ===== ADD ROW ===== */
 function addInvoiceRow(){
-  invoiceDraft.push({ productId:"", barcode:"", itemNo:"", desc:"", qty:1, rate:0, valid:false });
+  invoiceDraft.push({productId:"",barcode:"",itemNo:"",desc:"",qty:1,rate:0,valid:false});
   renderInvoice();
 }
 
-/* ===== RENDER INVOICE ROWS ===== */
+/* ===== RENDER ===== */
 function renderInvoice(){
   const tbody = document.getElementById("invoiceRows");
-  if(!tbody) return;
   tbody.innerHTML="";
-  let subtotal=0;
 
   invoiceDraft.forEach((r,i)=>{
-    if(r.valid) subtotal += r.qty*r.rate;
-    tbody.innerHTML += `
+    tbody.innerHTML+=`
       <tr>
-        <td style="position:relative;">
-          <input value="${r.barcode}" placeholder="Barcode" oninput="searchInvProduct(${i}, this.value,'barcode')">
+        <td>
+          <input value="${r.barcode}" oninput="searchInvProduct(${i},this.value,'barcode')">
           <div id="invSugB${i}" class="invSug"></div>
         </td>
-        <td style="position:relative;">
-          <input value="${r.itemNo}" placeholder="Item No" oninput="searchInvProduct(${i}, this.value,'itemNo')">
+        <td>
+          <input value="${r.itemNo}" oninput="searchInvProduct(${i},this.value,'itemNo')">
           <div id="invSugI${i}" class="invSug"></div>
         </td>
-        <td style="position:relative;">
-          <input value="${r.desc}" placeholder="Description" oninput="searchInvProduct(${i}, this.value,'desc')">
+        <td>
+          <input value="${r.desc}" oninput="searchInvProduct(${i},this.value,'desc')">
           <div id="invSugD${i}" class="invSug"></div>
         </td>
-        <td><input type="number" min="1" value="${r.qty}" onchange="setInvQty(${i},this.value)"></td>
+        <td><input type="number" min="1" step="1" value="${r.qty}" onchange="setInvQty(${i},this.value)"></td>
         <td><input type="number" value="${r.rate}" onchange="setInvRate(${i},this.value)"></td>
-        <td>${r.valid ? formatNumber(r.qty*r.rate) : "<span style='color:red'>Invalid</span>"}</td>
+        <td>${r.valid?formatNumber(r.qty*r.rate):"<span style='color:red'>Invalid</span>"}</td>
         <td><button class="red" onclick="delInvRow(${i})">X</button></td>
       </tr>`;
   });
 
-  applyMainDiscount(subtotal);
+  recalcInvoiceFast();
 }
 
-/* ===== SEARCH DROPDOWN ===== */
+/* ===== SEARCH (UNCHANGED CORE LOGIC) ===== */
 function searchInvProduct(i,val,field){
   const q = val.trim().toLowerCase();
   const row = invoiceDraft[i];
-  row.valid = false;
+  row.valid=false;
 
-  const box = document.getElementById(
-    field==="barcode" ? "invSugB"+i :
-    field==="itemNo"  ? "invSugI"+i :
-                         "invSugD"+i
+  const box=document.getElementById(
+    field==="barcode"?"invSugB"+i:field==="itemNo"?"invSugI"+i:"invSugD"+i
   );
-
-  box.innerHTML = "";
+  box.innerHTML="";
   if(!q) return;
 
-  const results = DB.products.filter(p =>
-    (field==="barcode" && (p.barcode||"").toLowerCase().includes(q)) ||
-    (field==="itemNo"  && (p.itemNo||"").toLowerCase().includes(q)) ||
-    (field==="desc"    && (p.desc||"").toLowerCase().includes(q))
+  const results=DB.products.filter(p=>
+    (field==="barcode"&&(p.barcode||"").toLowerCase().includes(q))||
+    (field==="itemNo"&&(p.itemNo||"").toLowerCase().includes(q))||
+    (field==="desc"&&(p.desc||"").toLowerCase().includes(q))
   );
 
   if(!results.length){
-    box.innerHTML = `<div style="padding:4px;color:red">Product not found</div>`;
+    box.innerHTML="<div style='padding:4px;color:red'>Product not found</div>";
     return;
   }
 
   results.forEach(p=>{
-    const d = document.createElement("div");
-    d.style.padding = "4px";
-    d.style.cursor = "pointer";
-    d.innerText = `${p.itemNo} - ${p.desc} (Stock: ${p.stock})`;
-
-    d.onclick = ()=>{
-      if(invoiceDraft.some((x,idx)=>idx!==i && x.productId===p.id)){
-        ruleMessage("This product already exists in invoice");
+    const d=document.createElement("div");
+    d.innerText=`${p.itemNo} - ${p.desc} (Stock: ${p.stock})`;
+    d.style.padding="4px";
+    d.style.cursor="pointer";
+    d.onclick=()=>{
+      if(invoiceDraft.some((x,idx)=>idx!==i&&x.productId===p.id)){
+        alert("Product already added");
         return;
       }
-
-      invoiceDraft[i] = {
-        productId: p.id,
-        barcode: p.barcode || "",
-        itemNo: p.itemNo,
-        desc: p.desc,
-        qty: 1,
-        rate: p.rate,
-        valid: true
-      };document.addEventListener("DOMContentLoaded", ()=>{
-  openTab("invoice");
-});
-
+      invoiceDraft[i]={productId:p.id,barcode:p.barcode||"",itemNo:p.itemNo,desc:p.desc,qty:1,rate:p.rate,valid:true};
       renderInvoice();
     };
     box.appendChild(d);
   });
 }
-function setInvRate(i,v){ invoiceDraft[i].rate=+v; renderInvoice(); }
-function delInvRow(i){ invoiceDraft.splice(i,1); renderInvoice(); }
 
-/* ===== TOTAL / DISCOUNT ===== */
-function getSubTotal(){ return invoiceDraft.reduce((s,r)=>r.valid?s+(r.qty*r.rate):s,0); }
-function applyMainDiscount(sub){
-  let amt=+document.getElementById("mainDiscAmt")?.value||0;
-  const pct=+document.getElementById("mainDiscPct")?.value||0;
-  if(pct>0) amt=sub*pct/100;
-  document.getElementById("invTotal").innerText=formatNumber(sub-amt);
+/* ===== QTY / RATE ===== */
+function setInvQty(i,v){
+  v=Math.floor(+v);
+  if(v<=0||isNaN(v)) v=1;
+  invoiceDraft[i].qty=v;
+  recalcInvoiceFast();
+}
+function setInvRate(i,v){
+  v=+v;
+  if(v<0||isNaN(v)) v=0;
+  invoiceDraft[i].rate=v;
+  recalcInvoiceFast();
+}
+function delInvRow(i){
+  invoiceDraft.splice(i,1);
+  renderInvoice();
 }
 
-/* ===== SAVE INVOICE ===== */
+/* ===== TOTAL ===== */
+function recalcInvoiceFast(){
+  let sub=0;
+  invoiceDraft.forEach(r=>{ if(r.valid) sub+=r.qty*r.rate; });
+  applyMainDiscount(sub);
+}
+function applyMainDiscount(sub){
+  let amt=+mainDiscAmt.value||0;
+  let pct=+mainDiscPct.value||0;
+  if(pct>0) amt=sub*pct/100;
+  if(amt>sub) amt=sub;
+  invTotal.innerText=formatNumber(Math.max(0,sub-amt));
+}
+function syncDiscFromAmt(){
+  const sub=invoiceDraft.reduce((s,r)=>r.valid?s+r.qty*r.rate:s,0);
+  if(sub>0) mainDiscPct.value=((+mainDiscAmt.value/sub)*100).toFixed(2);
+}
+function syncDiscFromPct(){
+  const sub=invoiceDraft.reduce((s,r)=>r.valid?s+r.qty*r.rate:s,0);
+  if(sub>0) mainDiscAmt.value=((sub*+mainDiscPct.value)/100).toFixed(2);
+}
+
+/* ===== SAVE ===== */
 function saveInvoice(){
   if(!invoiceDraft.length) return alert("Invoice empty");
-  if(invoiceDraft.some(r=>!r.valid)) return alert("Invoice contains invalid product. Select from list only.");
+  if(invoiceDraft.some(r=>!r.valid)) return alert("Invalid product");
+
+  for(const r of invoiceDraft){
+    const p=DB.products.find(x=>x.id===r.productId);
+    if(p.stock<r.qty) return alert("Low stock: "+p.desc);
+  }
 
   const id=editingInvoiceId||getNextInvoiceNumber();
-  const dt=new Date(); const dateTime=dt.toISOString();
-  const total=+document.getElementById("invTotal").innerText.replace(/,/g,'');
+  const dateTime=new Date().toISOString();
+  const total=+invTotal.innerText.replace(/,/g,"");
 
-  // Check stock
-  for(const r of invoiceDraft){ const p=DB.products.find(x=>x.id===r.productId); if(!p){alert("Product missing: "+r.desc); return;} if(p.stock<r.qty){alert("Insufficient stock for: "+r.desc); return;} }
-
-  // Deduct stock
-  invoiceDraft.forEach(r=>{ const p=DB.products.find(x=>x.id===r.productId); if(p) p.stock-=r.qty; });
-
-  // Save invoice
   DB.invoices=DB.invoices.filter(i=>i.id!==id);
-  DB.invoices.push({id,dateTime,total,items:JSON.parse(JSON.stringify(invoiceDraft)), discountAmt:+document.getElementById("mainDiscAmt").value, discountPct:+document.getElementById("mainDiscPct").value});
-  DB.cash.push({
-  id: uid("C"),
-  type: "IN",
-  amount: total,
-  ref: id,
-  dateTime: dateTime
-});
-  saveDB(); invoiceDraft=[]; editingInvoiceId=null;
+  DB.invoices.push({id,dateTime,total,items:JSON.parse(JSON.stringify(invoiceDraft)),discountAmt:+mainDiscAmt.value,discountPct:+mainDiscPct.value});
 
-document.getElementById("liveInvoiceNo").innerText = getNextInvoiceNumber();
+  invoiceDraft.forEach(r=>{ DB.products.find(p=>p.id===r.productId).stock-=r.qty; });
 
-document.getElementById("mainDiscAmt").value=document.getElementById("mainDiscPct").value=0;
+  DB.cash.push({id:uid("C"),type:"IN",amount:total,ref:id,dateTime});
 
-renderInvoice(); renderInvoiceList(); renderCash();
-alert("Invoice saved successfully");
-
-
-/* ===== RENDER PREVIOUS INVOICES ===== */
-function renderInvoiceList(){
-  const tbody=document.getElementById("invoiceList"); if(!tbody) return;
-  tbody.innerHTML="";
-  const invoices=(invFiltered||DB.invoices).slice((invPage-1)*invPerPage,invPage*invPerPage);
-
-  invoices.forEach((i,idx)=>{
-    const dt=new Date(i.dateTime);
-    tbody.innerHTML+=`<tr>
-      <td>${(invPage-1)*invPerPage+idx+1}</td>
-      <td>${i.id}</td>
-      <td>${dt.toLocaleDateString(undefined,{weekday:'long', year:'numeric', month:'short', day:'numeric'})}</td>
-      <td>${dt.toLocaleTimeString()}</td>
-      <td>${formatNumber(i.total)}</td>
-      <td><button onclick="printInvoice('${i.id}')">Print</button></td>
-      <td><button onclick="editInvoice('${i.id}')">Edit</button></td>
-      <td><button class="red" onclick="deleteInvoice('${i.id}')">Delete</button></td>
-    </tr>`;
-  });
+  saveDB();
+  invoiceDraft=[];
+  editingInvoiceId=null;
+  mainDiscAmt.value=mainDiscPct.value=0;
+  liveInvoiceNo.innerText=getNextInvoiceNumber();
+  renderInvoice();renderInvoiceList();renderCash();
+  alert("Invoice saved");
 }
 
-/* ===== FILTER / PAGINATION ===== */
-function applyInvoiceFilter(){ const from=document.getElementById("invFrom").value; const to=document.getElementById("invTo").value;
-  invFiltered=DB.invoices.filter(i=>{
-    const dt=new Date(i.dateTime); const f=from?new Date(from):null; const t=to?new Date(to):null;
-    if(f&&dt<f) return false; if(t&&dt>t) return false; return true;
-  }); invPage=1; renderInvoiceList();
-}
-function nextInvPage(){ invPage++; renderInvoiceList(); }
-function prevInvPage(){ if(invPage>1){ invPage--; renderInvoiceList();} }
-
-/* ===== EDIT / DELETE ===== */
-function editInvoice(id){ const inv=DB.invoices.find(x=>x.id===id); if(!inv) return; editingInvoiceId=id; invoiceDraft=JSON.parse(JSON.stringify(inv.items)); renderInvoice();}
-function deleteInvoice(id){
-  if(!confirm("Delete invoice?")) return;
-  const inv=DB.invoices.find(x=>x.id===id);
-  if(!DB.deletedInvoices) DB.deletedInvoices=[];
-  DB.deletedInvoices.push({
-    id:inv.id, dateTime:new Date().toISOString(), items:inv.items,
-    total:inv.total, discountAmt:inv.discountAmt, discountPct:inv.discountPct, who:"current_user"
-  });
-  inv.items.forEach(r=>{ const p=DB.products.find(x=>x.id===r.productId); if(p) p.stock+=r.qty; });
-  DB.cash=DB.cash.filter(c=>c.ref!==id);
-  DB.invoices=DB.invoices.filter(i=>i.id!==id);
-  saveDB(); renderInvoiceList();
-}
-
-/* ===== PRINT INVOICE PROFESSIONAL ===== */
-function printInvoice(id){
-  const inv = DB.invoices.find(x=>x.id===id);
-  if(!inv) return;
-
-  const dt = new Date(inv.dateTime);
-  const rows = inv.items.map(r=>`
-    <tr>
-      <td>${r.itemNo}</td>
-      <td>${r.qty}</td>
-      <td>${formatNumber(r.qty*r.rate)}</td>
-    </tr>`).join("");
-
-  const logo = DB.settings?.logo
-    ? `<img src="${DB.settings.logo}" style="width:40px;position:absolute;top:5px;right:5px;">`
-    : "";
-
-  const html = `
-  <html><head><style>
-    body{margin:0;font-family:Arial;}
-    .p{width:80mm;padding:6px;font-size:10px;}
-    .r{height:3px;}
-    .b{background:#2196f3;}
-    .r2{background:#f44336;}
-    .g{background:#4caf50;}
-    .p2{background:#9c27b0;}
-    table{width:100%;border-collapse:collapse;}
-    td{border-bottom:1px dotted #000;padding:2px;}
-    .f{text-align:center;margin-top:6px;font-size:9px;}
-  </style></head>
-  <body>
-    <div class="p">
-      ${logo}
-      <div class="r b"></div>
-      <div class="r r2"></div>
-      <div class="r g"></div>
-      <div class="r p2"></div>
-
-      <div style="text-align:center;font-weight:bold;margin:4px 0;">INVOICE</div>
-
-      <div>
-        <b>No:</b> ${inv.id}<br>
-        <b>Date:</b> ${dt.toLocaleDateString()}<br>
-        <b>Time:</b> ${dt.toLocaleTimeString()}
-      </div>
-
-      <table>
-        ${rows}
-      </table>
-
-      <div style="text-align:right;">
-        <b>Total:</b> PKR ${formatNumber(inv.total)}<br>
-        <small>Location: Main Counter</small>
-      </div>
-
-      <div class="f">
-        Thanks For Shopping From Us<br>
-        Visit Us Again<br>
-        <small>Printed: ${new Date().toLocaleString()}</small>
-      </div>
-    </div>
-  </body></html>`;
-
-  const w = window.open("");
-  w.document.write(html);
-  w.document.close();
-  w.print();
-}
-/* ===== INITIAL RENDER ===== */
+/* ===== INIT ===== */
 renderInvoice();
 renderInvoiceList();
-document.getElementById("liveInvoiceNo").innerText = editingInvoiceId || getNextInvoiceNumber();
-
-function syncDiscFromAmt(){
-  const sub=getSubTotal();
-  const amt=+document.getElementById("mainDiscAmt").value||0;
-  if(sub>0) document.getElementById("mainDiscPct").value=((amt/sub)*100).toFixed(2);
-}
-
-function syncDiscFromPct(){
-  const sub=getSubTotal();
-  const pct=+document.getElementById("mainDiscPct").value||0;
-  if(sub>0) document.getElementById("mainDiscAmt").value=((sub*pct)/100).toFixed(2);
-}
-
+liveInvoiceNo.innerText=getNextInvoiceNumber();
 </script>
 
 <style>
-.invSug{position:absolute;background:#fff;border:1px solid #ccc;max-height:160px;overflow:auto;z-index:50;}
-.invSug div:hover{background:#eee;}
-td{position:relative;}
+.invSug{position:absolute;background:#fff;border:1px solid #ccc;max-height:160px;overflow:auto;z-index:100}
+.invSug div:hover{background:#eee}
+td{position:relative}
 </style>
-
 <!-- ================= CASH ================= -->
 <section id="cash">
 
