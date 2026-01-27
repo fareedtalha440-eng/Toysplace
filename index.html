@@ -457,13 +457,26 @@ function addReturnRow(){
   tr.innerHTML = `
     <td><input onblur="autoCost(this)"></td>
     <td><input></td>
-    <td><input type="number" min="1" oninput="validateReturnQty(this)"></td>
+    <td>
+  <input type="number" min="1" step="1"
+    value="${r.qty}"
+    onchange="setInvQty(${i}, this.value)">
+</td>
     <td><input type="number" readonly></td>
     <td class="amt">0</td>
     <td><button onclick="this.closest('tr').remove();calcReturn()">X</button></td>
   `;
   tbody.appendChild(tr);
 }
+  function setInvQty(i,v){
+  if(v.includes(".")){
+    alert("Decimal quantity not allowed");
+    return;
+  }
+  invoiceDraft[i].qty = parseInt(v)||1;
+  renderInvoice();
+}
+
 function validateReturnQty(inp){
   if(inp.value.includes(".")){
     ruleMessage("Decimal quantity not allowed");
@@ -826,19 +839,18 @@ function searchInvProduct(i,val,field){
         return;
       }
 
-      invoiceDraft[i] = {
-        productId: p.id,
-        barcode: p.barcode || "",
-        itemNo: p.itemNo,
-        desc: p.desc,
-        qty: 1,
-        rate: p.rate,
-        valid: true
-      };document.addEventListener("DOMContentLoaded", ()=>{
-  openTab("invoice");
-});
+     invoiceDraft[i] = {
+  productId: p.id,
+  barcode: p.barcode || "",
+  itemNo: p.itemNo,
+  desc: p.desc,
+  qty: 1,
+  rate: p.rate,
+  valid: true
+};
 
-      renderInvoice();
+renderInvoice();
+
     };
     box.appendChild(d);
   });
@@ -1009,7 +1021,7 @@ function printInvoice(id){
 renderInvoice();
 renderInvoiceList();
 document.getElementById("liveInvoiceNo").innerText = editingInvoiceId || getNextInvoiceNumber();
-
+renderProducts?.();
 function syncDiscFromAmt(){
   const sub=getSubTotal();
   const amt=+document.getElementById("mainDiscAmt").value||0;
@@ -1618,6 +1630,50 @@ renderProducts();
     </table>
   </div>
 </section>
+<script>
+function addVendor(){
+  const name = document.getElementById("vendorName").value.trim();
+  const phone = document.getElementById("vendorPhone").value.trim();
+
+  if(!name) return alert("Vendor name required");
+
+  if(DB.vendors.some(v=>v.name.toLowerCase()===name.toLowerCase())){
+    return alert("Vendor already exists");
+  }
+
+  DB.vendors.push({
+    id: uid("V"),
+    name,
+    phone,
+    balance: 0
+  });
+
+  saveDB();
+  document.getElementById("vendorName").value="";
+  document.getElementById("vendorPhone").value="";
+  renderVendors();
+  loadVendorOptions();
+  loadReturnVendors();
+}
+
+function renderVendors(){
+  const tbody = document.getElementById("vendorTable");
+  if(!tbody) return;
+  tbody.innerHTML="";
+  DB.vendors.forEach((v,i)=>{
+    tbody.innerHTML += `
+      <tr>
+        <td>${i+1}</td>
+        <td>${v.name}</td>
+        <td>${v.phone||""}</td>
+        <td>${v.balance||0}</td>
+      </tr>
+    `;
+  });
+}
+
+document.addEventListener("DOMContentLoaded", renderVendors);
+</script>
 
 <script>
 /* ================= HELPERS ================= */
@@ -2264,10 +2320,7 @@ function showProfitDetail(inv){
 }
 </script>
 <script>
-document.addEventListener("DOMContentLoaded",()=>{
-  [...new Set(DB.logs.map(l=>l.user))].forEach(u=>{
-    profitUser.innerHTML += `<option value="${u}">${u}</option>`;
-  });
+
 });
 <hr style="margin:30px 0">
 
