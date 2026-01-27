@@ -1036,11 +1036,16 @@ function printInvoice(id){
     Total: ${formatNumber(inv.total)}
   </h3>
 
-  <script>window.print();</script>
 </body>
 </html>
-  `); // <-- closing backtick alone
-} // <-- function ends here
+  `); // <-- close template literal
+
+  // 🔹 Call print after document is fully written
+  w.document.close();
+  w.focus();
+  w.print();
+  w.close();
+}
 <script>
 /* ===== INITIAL RENDER ===== */
 renderInvoice();
