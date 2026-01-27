@@ -1967,7 +1967,7 @@ function loadPurchaseVendors(){
     filterVendor.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
   });
 }
-
+loadPurchaseVendors();
 /* ===== ADD ROW ===== */
 function addPurchaseRow(){
   purchaseDraft.push({productId:null,barcode:"",itemNo:"",desc:"",qty:1,cost:0});
@@ -2771,4 +2771,17 @@ logAction("DELETE", `Product ${prod.itemNo}`);
 logAction("DELETE", `Vendor ${vendor.name}`);
 logAction("DELETE", `Purchase ${purchase.id}`);
 
+</script>
+<script>
+/* ===== INIT PURCHASE SECTION ===== */
+document.addEventListener("DOMContentLoaded", ()=>{
+  // 1️⃣ Load vendors into purchase dropdowns
+  if(typeof loadPurchaseVendors === "function") loadPurchaseVendors();
+
+  // 2️⃣ Add initial empty product row
+  if(typeof addPurchaseRow === "function") addPurchaseRow();
+
+  // 3️⃣ Render previous purchases
+  if(typeof renderPurchaseHistory === "function") renderPurchaseHistory();
+});
 </script>
