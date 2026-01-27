@@ -747,9 +747,10 @@ function getNextInvoiceNumber(){
   return "INV"+String(max+1).padStart(6,"0");
 }
 function updateLiveInvoiceNo(){
-  document.getElementById("liveInvoiceNo").innerText =
-    editingInvoiceId ? editingInvoiceId : getNextInvoiceNumber();
+  const el = document.getElementById("liveInvoiceNo");
+  if(el) el.innerText = editingInvoiceId || getNextInvoiceNumber();
 }
+
 
 /* ===== ADD ROW ===== */
 function addInvoiceRow(){
@@ -995,55 +996,57 @@ function printInvoice(id){
 
   const w = window.open("");
   w.document.write(`
-  <html>
-  <head>
-    <title>Invoice ${inv.id}</title>
-    <style>
-      body{font-family:Arial;font-size:12px}
-      table{width:100%;border-collapse:collapse}
-      th,td{border:1px solid #000;padding:4px;text-align:center}
-      h2{text-align:center}
-      .right{text-align:right}
-    </style>
-  </head>
-  <body>
-    <h2>INVOICE</h2>
-    <div>Invoice No: ${inv.id}</div>
-    <div>Date: ${new Date(inv.dateTime).toLocaleString()}</div>
-    <br>
+<html>
+<head>
+  <title>Invoice ${inv.id}</title>
+  <style>
+    body{font-family:Arial;font-size:12px}
+    table{width:100%;border-collapse:collapse}
+    th,td{border:1px solid #000;padding:4px;text-align:center}
+    h2{text-align:center}
+    .right{text-align:right}
+  </style>
+</head>
+<body>
+  <h2>INVOICE</h2>
+  <div>Invoice No: ${inv.id}</div>
+  <div>Date: ${new Date(inv.dateTime).toLocaleString()}</div>
+  <br>
 
-    <table>
+  <table>
+    <tr>
+      <th>#</th>
+      <th>Item</th>
+      <th>Qty</th>
+      <th>Rate</th>
+      <th>Total</th>
+    </tr>
+    ${inv.items.map((r,i)=>`
       <tr>
-        <th>#</th>
-        <th>Item</th>
-        <th>Qty</th>
-        <th>Rate</th>
-        <th>Total</th>
+        <td>${i+1}</td>
+        <td>${r.desc}</td>
+        <td>${r.qty}</td>
+        <td class="right">${formatNumber(r.rate)}</td>
+        <td class="right">${formatNumber(r.qty*r.rate)}</td>
       </tr>
-      ${inv.items.map((r,i)=>`
-        <tr>
-          <td>${i+1}</td>
-          <td>${r.desc}</td>
-          <td>${r.qty}</td>
-          <td class="right">${formatNumber(r.rate)}</td>
-          <td class="right">${formatNumber(r.qty*r.rate)}</td>
-        </tr>
-      `).join("")}
-    </table>
+    `).join("")}
+  </table>
 
-    <h3 style="text-align:right">
-      Total: ${formatNumber(inv.total)}
-    </h3>
+  <h3 style="text-align:right">
+    Total: ${formatNumber(inv.total)}
+  </h3>
 
-    <script>window.print()</script>
-  </body>
-  </html>
-  `);
-}
-/* ===== INIT ===== */
+  <script>window.print();</script>
+</body>
+</html>
+  `); // <-- closing backtick alone
+} // <-- function ends here
+<script>
+/* ===== INITIAL RENDER ===== */
 renderInvoice();
 renderInvoiceList();
 updateLiveInvoiceNo();
+
 </script>
 
 <style>
