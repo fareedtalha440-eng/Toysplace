@@ -292,7 +292,27 @@ if(!DB.accounts.find(x=>x.fixed)) {
   DB.accounts.push({id: uid("A"), username:"Dani", password:"7525", role:"developer", fixed:true, permissions:[]});
   saveDB();
 }
+// ===== Add default test product if none exist =====
+if(!DB.products.length){
+  DB.products.push({
+    id: uid("P"),
+    barcode: "1111",
+    itemNo: "TEST001",
+    desc: "Sample Product",
+    rate: 100,
+    stock: 50
+  });
+  saveDB();
+}
 
+// ===== Add default vendor if none exist =====
+if(!DB.vendors.length){
+  DB.vendors.push({
+    id: uid("V"),
+    name: "Default Vendor"
+  });
+  saveDB();
+}
 function saveDB() { 
   for(let k in DB){ 
     localStorage.setItem(k, JSON.stringify(DB[k])); 
