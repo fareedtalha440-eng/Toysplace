@@ -731,7 +731,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 
 let invoiceDraft = [];
 let editingInvoiceId = null;
-let invPage = 1, invPerPage = 100;
+let invPage = 1;
+const invPerPage = 100;
 let invFiltered = null;
 
 /* ===== FORMAT ===== */
@@ -745,7 +746,6 @@ function getNextInvoiceNumber(){
   const max = Math.max(...DB.invoices.map(i=>+i.id.replace("INV","")));
   return "INV"+String(max+1).padStart(6,"0");
 }
-
 function updateLiveInvoiceNo(){
   document.getElementById("liveInvoiceNo").innerText =
     editingInvoiceId ? editingInvoiceId : getNextInvoiceNumber();
@@ -757,7 +757,7 @@ function addInvoiceRow(){
   renderInvoice();
 }
 
-/* ===== RENDER ===== */
+/* ===== RENDER INVOICE ===== */
 function renderInvoice(){
   const tbody = document.getElementById("invoiceRows");
   tbody.innerHTML="";
@@ -788,7 +788,7 @@ function renderInvoice(){
   updateLiveInvoiceNo();
 }
 
-/* ===== SEARCH ===== */
+/* ===== SEARCH PRODUCT ===== */
 function searchInvProduct(i,val,field){
   const q = val.trim().toLowerCase();
   const row = invoiceDraft[i];
@@ -805,6 +805,11 @@ function searchInvProduct(i,val,field){
     (field==="itemNo"&&(p.itemNo||"").toLowerCase().includes(q))||
     (field==="desc"&&(p.desc||"").toLowerCase().includes(q))
   );
+
+  if(!results.length){
+    box.innerHTML="<div style='padding:4px;color:red'>Product not found</div>";
+    return;
+  }
 
   results.forEach(p=>{
     const d=document.createElement("div");
@@ -863,7 +868,7 @@ function syncDiscFromPct(){
   if(sub>0) mainDiscAmt.value=((sub*+mainDiscPct.value)/100).toFixed(2);
 }
 
-/* ===== SAVE ===== */
+/* ===== SAVE INVOICE ===== */
 function saveInvoice(){
   if(!invoiceDraft.length) return alert("Invoice empty");
   if(invoiceDraft.some(r=>!r.valid)) return alert("Invalid product");
@@ -873,15 +878,13 @@ function saveInvoice(){
     if(p.stock<r.qty) return alert("Low stock: "+p.desc);
   }
 
-  const id=editingInvoiceId || getNextInvoiceNumber();
+  const id=editingInvoiceId||getNextInvoiceNumber();
   const dateTime=new Date().toISOString();
   const total=+invTotal.innerText.replace(/,/g,"");
 
   DB.invoices=DB.invoices.filter(i=>i.id!==id);
   DB.invoices.push({
-    id,
-    dateTime,
-    total,
+    id,dateTime,total,
     items:JSON.parse(JSON.stringify(invoiceDraft)),
     discountAmt:+mainDiscAmt.value,
     discountPct:+mainDiscPct.value
@@ -892,6 +895,7 @@ function saveInvoice(){
   });
 
   DB.cash.push({id:uid("C"),type:"IN",amount:total,ref:id,dateTime});
+
   saveDB();
 
   invoiceDraft=[];
@@ -900,11 +904,49 @@ function saveInvoice(){
 
   renderInvoice();
   renderInvoiceList();
-  renderCash();
   updateLiveInvoiceNo();
-
   alert("Invoice saved");
 }
+
+/* ===== INVOICE LIST ===== */
+function renderInvoiceList(){
+  const tbody=document.getElementById("invoiceList");
+  tbody.innerHTML="";
+
+  const list=invFiltered||DB.invoices||[];
+  if(!list.length) return;
+
+  const start=(invPage-1)*invPerPage;
+  list.slice().reverse().slice(start,start+invPerPage).forEach((inv,i)=>{
+    const d=new Date(inv.dateTime);
+    tbody.innerHTML+=`
+      <tr>
+        <td>${start+i+1}</td>
+        <td>${inv.id}</td>
+        <td>${d.toLocaleDateString()}</td>
+        <td>${d.toLocaleTimeString()}</td>
+        <td>${formatNumber(inv.total)}</td>
+        <td><button onclick="printInvoice('${inv.id}')">Print</button></td>
+        <td><button onclick="editInvoice('${inv.id}')">Edit</button></td>
+        <td><button class="red" onclick="deleteInvoice('${inv.id}')">Delete</button></td>
+      </tr>`;
+  });
+}
+
+/* ===== FILTER & PAGE ===== */
+function applyInvoiceFilter(){
+  const f=invFrom.value,t=invTo.value;
+  invFiltered=DB.invoices.filter(i=>{
+    const d=new Date(i.dateTime);
+    if(f&&d<new Date(f)) return false;
+    if(t&&d>new Date(t+"T23:59:59")) return false;
+    return true;
+  });
+  invPage=1;
+  renderInvoiceList();
+}
+function prevInvPage(){ if(invPage>1){invPage--;renderInvoiceList();} }
+function nextInvPage(){ invPage++;renderInvoiceList(); }
 
 /* ===== INIT ===== */
 renderInvoice();
@@ -917,7 +959,7 @@ updateLiveInvoiceNo();
 .invSug div:hover{background:#eee}
 td{position:relative}
 </style>
-  
+
 <!-- ================= CASH ================= -->
 <section id="cash">
 
