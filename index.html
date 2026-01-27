@@ -947,7 +947,99 @@ function applyInvoiceFilter(){
 }
 function prevInvPage(){ if(invPage>1){invPage--;renderInvoiceList();} }
 function nextInvPage(){ invPage++;renderInvoiceList(); }
+/* ===== EDIT INVOICE ===== */
+function editInvoice(id){
+  const inv = DB.invoices.find(i=>i.id===id);
+  if(!inv) return alert("Invoice not found");
 
+  editingInvoiceId = id;
+  invoiceDraft = JSON.parse(JSON.stringify(inv.items));
+
+  mainDiscAmt.value = inv.discountAmt || 0;
+  mainDiscPct.value = inv.discountPct || 0;
+
+  renderInvoice();
+  updateLiveInvoiceNo();
+  window.scrollTo(0,0);
+}
+
+/* ===== DELETE INVOICE ===== */
+function deleteInvoice(id){
+  if(!confirm("Delete this invoice?")) return;
+
+  const inv = DB.invoices.find(i=>i.id===id);
+  if(!inv) return;
+
+  // restore stock
+  inv.items.forEach(r=>{
+    const p = DB.products.find(x=>x.id===r.productId);
+    if(p) p.stock += r.qty;
+  });
+
+  // remove cash entry
+  DB.cash = DB.cash.filter(c=>c.ref!==id);
+
+  // remove invoice
+  DB.invoices = DB.invoices.filter(i=>i.id!==id);
+
+  saveDB();
+  renderInvoiceList();
+  renderInvoice();
+  updateLiveInvoiceNo();
+}
+
+/* ===== PRINT INVOICE ===== */
+function printInvoice(id){
+  const inv = DB.invoices.find(i=>i.id===id);
+  if(!inv) return;
+
+  const w = window.open("");
+  w.document.write(`
+  <html>
+  <head>
+    <title>Invoice ${inv.id}</title>
+    <style>
+      body{font-family:Arial;font-size:12px}
+      table{width:100%;border-collapse:collapse}
+      th,td{border:1px solid #000;padding:4px;text-align:center}
+      h2{text-align:center}
+      .right{text-align:right}
+    </style>
+  </head>
+  <body>
+    <h2>INVOICE</h2>
+    <div>Invoice No: ${inv.id}</div>
+    <div>Date: ${new Date(inv.dateTime).toLocaleString()}</div>
+    <br>
+
+    <table>
+      <tr>
+        <th>#</th>
+        <th>Item</th>
+        <th>Qty</th>
+        <th>Rate</th>
+        <th>Total</th>
+      </tr>
+      ${inv.items.map((r,i)=>`
+        <tr>
+          <td>${i+1}</td>
+          <td>${r.desc}</td>
+          <td>${r.qty}</td>
+          <td class="right">${formatNumber(r.rate)}</td>
+          <td class="right">${formatNumber(r.qty*r.rate)}</td>
+        </tr>
+      `).join("")}
+    </table>
+
+    <h3 style="text-align:right">
+      Total: ${formatNumber(inv.total)}
+    </h3>
+
+    <script>window.print()</script>
+  </body>
+  </html>
+  `);
+}
 /* ===== INIT ===== */
 renderInvoice();
 renderInvoiceList();
