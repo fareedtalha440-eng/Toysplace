@@ -2664,33 +2664,27 @@ renderAccounts();
     <h2>Reports</h2>
 
     <div style="display:flex;gap:20px;margin:15px 0">
-      <div class="card" style="cursor:pointer" onclick="openProfitReport()">
-        <h3>📈 Profit Report</h3>
-        <p>Invoice wise profit using purchase cost</p>
-      </div>
-
-      <div class="card" style="cursor:pointer" onclick="openDeleteReport()">
-        <h3>🗑 Deleted Audit</h3>
-        <p>Shows all deleted records</p>
-      </div>
+      <button onclick="showProfitReport()">📈 Profit Report</button>
+      <button onclick="showDeletedReport()">🗑 Deleted Audit</button>
     </div>
   </div>
 
-  <div id="profitReport" style="display:none">
+  <!-- ===== PROFIT REPORT ===== -->
+  <div id="profitReport" class="card" style="display:none">
     <h3>Invoice Wise Profit</h3>
 
-    <div class="r-filter">
+    <div style="display:flex;gap:10px;margin-bottom:10px">
       <input type="date" id="profitFrom">
       <input type="date" id="profitTo">
-      <button onclick="applyProfitReport()">Generate</button>
+      <button onclick="generateProfit()">Generate</button>
     </div>
 
-    <table class="r-table">
+    <table border="1" width="100%">
       <thead>
         <tr>
           <th>Invoice</th>
           <th>Date</th>
-          <th>Invoice Total</th>
+          <th>Sales</th>
           <th>Cost</th>
           <th>Profit</th>
         </tr>
@@ -2699,15 +2693,15 @@ renderAccounts();
     </table>
   </div>
 
-  <div id="deleteReport" style="display:none">
-    <h3>Deleted Data Audit</h3>
-    <button onclick="applyDeletedReport()">Load</button>
+  <!-- ===== DELETE REPORT ===== -->
+  <div id="deleteReport" class="card" style="display:none">
+    <h3>Deleted Records</h3>
+    <button onclick="generateDeleted()">Load</button>
 
-    <table class="r-table">
+    <table border="1" width="100%">
       <thead>
         <tr>
           <th>Date</th>
-          <th>User</th>
           <th>Action</th>
           <th>Reference</th>
         </tr>
@@ -2715,9 +2709,7 @@ renderAccounts();
       <tbody id="deletedRows"></tbody>
     </table>
   </div>
-
 </section>
-
 /* ===== DATE & TIME ===== */
 function updateTime(){
   const now=new Date();
@@ -2729,7 +2721,6 @@ updateTime();
 </script>
 <script>
 <!-- ================= MENU LOGIC ================= -->
-<script>
 /* ===== OPEN TAB FUNCTION WITH UNDERLINE ANIMATION ===== */
 function openTab(id){
   // Hide all sections
@@ -2816,92 +2807,58 @@ function getPurchaseCost(itemNo, invDate){
 
   return list.length ? Number(list[0].rate) : 0;
 }
-
-/* ===== PROFIT REPORT ===== */
-function applyProfitReport(){
-  profitRows.innerHTML="";
-  profitDetail.innerHTML="";
-
-  const from=profitFrom.value, to=profitTo.value, user=profitUser.value;
-
-  (DB.invoices||[]).forEach(inv=>{
-    if(from && inv.date<from) return;
-    if(to && inv.date>to) return;
-    if(user && inv.user!==user) return;
-
-    let cost=0, profit=0;
-
-    inv.items.forEach(it=>{
-      const c = getPurchaseCost(it.itemNo, inv.date);
-      cost += c * it.qty;
-      profit += (it.rate - c) * it.qty;
-    });
-
-    const tr=document.createElement("tr");
-    tr.innerHTML=`
-      <td>${inv.no}</td>
-      <td>${inv.date}</td>
-      <td>${inv.user||""}</td>
-      <td>${inv.total}</td>
-      <td>${cost.toFixed(2)}</td>
-      <td class="${profit>=0?'profit-pos':'profit-neg'}">${profit.toFixed(2)}</td>
-    `;
-    tr.onclick=()=>showProfitDetail(inv);
-    profitRows.appendChild(tr);
-  });
+<script>
+/* ===== REPORT TOGGLE ===== */
+function showProfitReport(){
+  profitReport.style.display="block";
+  deleteReport.style.display="none";
+}
+function showDeletedReport(){
+  deleteReport.style.display="block";
+  profitReport.style.display="none";
 }
 
-function showProfitDetail(inv){
-  let html=`<h4>Invoice ${inv.no}</h4>
-  <table class="r-table">
-  <tr><th>Item</th><th>Qty</th><th>Sale</th><th>Cost</th><th>Profit</th></tr>`;
+/* ===== GET LAST PURCHASE COST ===== */
+function getCost(itemNo, date){
+  const list=(DB.purchases||[])
+    .filter(p=>p.itemNo===itemNo && p.date<=date)
+    .sort((a,b)=>new Date(b.date)-new Date(a.date));
+  return list.length?Number(list[0].rate):0;
+}
 
-  inv.items.forEach(it=>{
-    const c=getPurchaseCost(it.itemNo,inv.date);
-    const p=(it.rate-c)*it.qty;
-    html+=`
+/* ===== PROFIT REPORT ===== */
+function generateProfit(){
+  profitRows.innerHTML="";
+  (DB.invoices||[]).forEach(inv=>{
+    let cost=0, profit=0;
+    inv.items.forEach(it=>{
+      const c=getCost(it.itemNo,inv.date);
+      cost+=c*it.qty;
+      profit+=(it.rate-c)*it.qty;
+    });
+
+    profitRows.innerHTML+=`
       <tr>
-        <td>${it.desc||it.itemNo}</td>
-        <td>${it.qty}</td>
-        <td>${it.rate}</td>
-        <td>${c}</td>
-        <td class="${p>=0?'profit-pos':'profit-neg'}">${p.toFixed(2)}</td>
+        <td>${inv.no}</td>
+        <td>${inv.date}</td>
+        <td>${inv.total}</td>
+        <td>${cost.toFixed(2)}</td>
+        <td>${profit.toFixed(2)}</td>
       </tr>`;
   });
-
-  html+="</table>";
-  profitDetail.innerHTML=html;
 }
 
 /* ===== DELETED REPORT ===== */
-function applyDeletedReport(){
+function generateDeleted(){
   deletedRows.innerHTML="";
-  const from=delFrom.value,to=delTo.value,user=delUser.value,mod=delModule.value;
-
-  DB.logs.forEach(l=>{
-    if(l.action!=="DELETE") return;
-
-    const d=l.dateTime.split("T")[0];
-    if(from && d<from) return;
-    if(to && d>to) return;
-    if(user && l.user!==user) return;
-    if(mod && !l.ref.startsWith(mod)) return;
-
+  (DB.logs||[]).filter(l=>l.action==="DELETE")
+  .forEach(l=>{
     deletedRows.innerHTML+=`
       <tr>
         <td>${new Date(l.dateTime).toLocaleString()}</td>
-        <td>${l.user}</td>
-        <td>${l.ref.split(" ")[0]}</td>
+        <td>${l.action}</td>
         <td>${l.ref}</td>
       </tr>`;
   });
 }
-
-/* ===== LOAD USERS ===== */
-document.addEventListener("DOMContentLoaded",()=>{
-  [...new Set((DB.logs||[]).map(l=>l.user))].forEach(u=>{
-    profitUser.innerHTML+=`<option>${u}</option>`;
-    delUser.innerHTML+=`<option>${u}</option>`;
-  });
-});
 </script>
