@@ -372,8 +372,10 @@ function logAction(action, ref=""){
 </script>
 <!-- ================= RETURNS ================= -->
 <section id="returns" style="display:none;padding:30px">
+
 <h2 style="font-size:26px;font-weight:800">Vendor Return</h2>
 
+<!-- Vendor + Return No -->
 <div style="display:flex;gap:20px;align-items:center;margin:15px 0">
   <div>
     <label>Vendor</label><br>
@@ -387,6 +389,7 @@ function logAction(action, ref=""){
   </div>
 </div>
 
+<!-- Items -->
 <table width="100%" border="1" cellpadding="6">
 <thead>
 <tr>
@@ -403,12 +406,13 @@ function logAction(action, ref=""){
 <tbody id="returnBody"></tbody>
 </table>
 
-<button onclick="addReturnRow()">Add Item</button>
+<button type="button" onclick="addReturnRow()">Add Item</button>
 <h3>Total: <span id="returnTotal">0</span></h3>
-<button onclick="saveReturn()">Save Return</button>
+<button type="button" onclick="saveReturn()">Save Return</button>
 
 <hr>
 
+<!-- Previous Returns -->
 <h3>Previous Returns</h3>
 <table width="100%" border="1" cellpadding="6">
 <thead>
@@ -424,26 +428,33 @@ function logAction(action, ref=""){
 </thead>
 <tbody id="previousReturns"></tbody>
 </table>
+
 </section>
 
 <script>
-/* ========= LOAD VENDORS ========= */
+/* ================= SAFETY ================= */
+if(!DB.vendorLedger) DB.vendorLedger=[];
+
+/* ================= LOAD VENDORS ================= */
 function loadReturnVendors(){
-  returnVendor.innerHTML='<option value="">Select Vendor</option>';
+  const sel=document.getElementById("returnVendor");
+  sel.innerHTML='<option value="">Select Vendor</option>';
   DB.vendors.forEach(v=>{
-    returnVendor.innerHTML+=`<option>${v.name}</option>`;
+    sel.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
   });
 }
 
-/* ========= RETURN NO ========= */
+/* ================= RETURN NO ================= */
 function generateReturnNo(){
   if(!DB.returns.length) return "RT0001";
   const n=DB.returns.map(r=>+r.no.replace("RT","")||0);
   return "RT"+String(Math.max(...n)+1).padStart(4,"0");
 }
-function loadReturnNo(){ returnNo.innerText=generateReturnNo(); }
+function loadReturnNo(){
+  document.getElementById("returnNo").innerText=generateReturnNo();
+}
 
-/* ========= ADD ROW ========= */
+/* ================= ADD ROW ================= */
 function addReturnRow(){
   const tr=document.createElement("tr");
   tr.innerHTML=`
@@ -454,11 +465,11 @@ function addReturnRow(){
 <td><input type="number" min="1" oninput="calcReturn()"></td>
 <td><input readonly></td>
 <td class="amt">0</td>
-<td><button onclick="this.closest('tr').remove();calcReturn()">X</button></td>`;
-  returnBody.appendChild(tr);
+<td><button type="button" onclick="this.closest('tr').remove();calcReturn()">X</button></td>`;
+  document.getElementById("returnBody").appendChild(tr);
 }
 
-/* ========= SEARCH ========= */
+/* ================= SEARCH ================= */
 function searchReturn(inp,type){
   const vendor=returnVendor.value;
   if(!vendor){ ruleMessage("Select vendor first"); inp.value=""; return; }
@@ -471,7 +482,7 @@ function searchReturn(inp,type){
     .flatMap(p=>p.items);
 
   items.filter(it=>{
-    if(type===0) return it.itemNo.includes(inp.value);
+    if(type===0) return it.itemNo?.includes(inp.value);
     if(type===1) return (it.barcode||"").includes(inp.value);
     if(type===2) return (it.desc||"").toLowerCase().includes(inp.value.toLowerCase());
   }).forEach(it=>{
@@ -480,11 +491,11 @@ function searchReturn(inp,type){
     d.innerHTML=`${it.itemNo} | Stock:${prod?.stock||0}`;
     d.onclick=()=>{
       const r=inp.closest("tr");
-      r.children[0].children[0].value=it.itemNo;
+      r.children[0].children[0].value=it.itemNo||"";
       r.children[1].children[0].value=it.barcode||"";
       r.children[2].children[0].value=it.desc||"";
       r.querySelector(".stk").innerText=prod?.stock||0;
-      r.children[5].children[0].value=it.cost;
+      r.children[5].children[0].value=it.cost||0;
       box.innerHTML="";
       calcReturn();
     };
@@ -492,7 +503,7 @@ function searchReturn(inp,type){
   });
 }
 
-/* ========= TOTAL ========= */
+/* ================= TOTAL ================= */
 function calcReturn(){
   let t=0;
   document.querySelectorAll("#returnBody tr").forEach(r=>{
@@ -502,12 +513,13 @@ function calcReturn(){
     r.querySelector(".amt").innerText=a;
     t+=a;
   });
-  returnTotal.innerText=t;
+  document.getElementById("returnTotal").innerText=t;
 }
 
-/* ========= SAVE ========= */
+/* ================= SAVE ================= */
 function saveReturn(){
-  if(!returnVendor.value) return ruleMessage("Vendor required");
+  const vendor=returnVendor.value;
+  if(!vendor) return ruleMessage("Vendor required");
 
   const items=[];
   document.querySelectorAll("#returnBody tr").forEach(r=>{
@@ -521,14 +533,16 @@ function saveReturn(){
   const amount=items.reduce((s,i)=>s+i.qty*i.cost,0);
   const no=generateReturnNo();
 
+  /* STOCK DECREASE */
   items.forEach(i=>{
     const p=DB.products.find(x=>x.itemNo===i.itemNo);
     if(p) p.stock-=i.qty;
   });
 
+  /* VENDOR LEDGER CREDIT */
   DB.vendorLedger.push({
     id:uid("VL"),
-    vendor:returnVendor.value,
+    vendor,
     type:"RETURN",
     ref:no,
     debit:0,
@@ -536,15 +550,13 @@ function saveReturn(){
     date:new Date().toISOString()
   });
 
-  const v=DB.vendors.find(x=>x.name===returnVendor.value);
+  const v=DB.vendors.find(x=>x.name===vendor);
   if(v) v.balance=(v.balance||0)-amount;
 
   DB.returns.push({
-    no,
-    vendor:returnVendor.value,
+    no,vendor,
     date:new Date().toISOString().slice(0,10),
-    amount,
-    items
+    amount,items
   });
 
   saveDB();
@@ -553,9 +565,10 @@ function saveReturn(){
   loadReturns();
 }
 
-/* ========= DELETE ========= */
+/* ================= DELETE ================= */
 function deleteReturn(i){
   const r=DB.returns[i];
+  if(!r) return;
   if(!confirm("Delete "+r.no+" ?")) return;
 
   r.items.forEach(it=>{
@@ -573,13 +586,14 @@ function deleteReturn(i){
   loadReturns();
 }
 
-/* ========= PRINT ========= */
+/* ================= PRINT ================= */
 function printReturn(i){
   const r=DB.returns[i];
-  let html=`<h2>Return ${r.no}</h2>
-  <p>Vendor: ${r.vendor}</p>
-  <p>Date: ${r.date}</p>
-  <table border=1 width=100%>
+  let html=`<h2>Vendor Return</h2>
+  <p><b>No:</b> ${r.no}</p>
+  <p><b>Vendor:</b> ${r.vendor}</p>
+  <p><b>Date:</b> ${r.date}</p>
+  <table border="1" width="100%" cellpadding="5">
   <tr><th>Item</th><th>Qty</th><th>Cost</th><th>Amount</th></tr>`;
   r.items.forEach(it=>{
     html+=`<tr><td>${it.itemNo}</td><td>${it.qty}</td><td>${it.cost}</td><td>${it.qty*it.cost}</td></tr>`;
@@ -590,34 +604,37 @@ function printReturn(i){
   w.print();
 }
 
-/* ========= LOAD ========= */
+/* ================= LOAD ================= */
 function loadReturns(){
-  previousReturns.innerHTML="";
+  const tb=document.getElementById("previousReturns");
+  tb.innerHTML="";
   DB.returns.forEach((r,i)=>{
-    previousReturns.innerHTML+=`
+    tb.innerHTML+=`
 <tr>
 <td>${i+1}</td>
 <td>${r.no}</td>
 <td>${r.date}</td>
 <td>${r.vendor}</td>
 <td>${r.amount}</td>
-<td><button onclick="printReturn(${i})">Print</button></td>
-<td><button onclick="deleteReturn(${i})">Delete</button></td>
+<td><button type="button" onclick="printReturn(${i})">Print</button></td>
+<td><button type="button" onclick="deleteReturn(${i})">Delete</button></td>
 </tr>`;
   });
 }
 
 function resetReturnForm(){
-  returnBody.innerHTML="";
-  returnTotal.innerText=0;
+  document.getElementById("returnBody").innerHTML="";
+  document.getElementById("returnTotal").innerText=0;
 }
 
+/* ================= INIT ================= */
 document.addEventListener("DOMContentLoaded",()=>{
   loadReturnVendors();
   loadReturnNo();
   loadReturns();
 });
 </script>
+
 <!-- ================= INVOICE ================= -->
 <section id="invoice">
   <div class="card" id="newInvoiceCard">
