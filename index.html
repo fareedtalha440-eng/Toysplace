@@ -2684,3 +2684,108 @@ logAction("DELETE", `Vendor ${vendor.name}`);
 logAction("DELETE", `Purchase ${purchase.id}`);
 
 </script>
+<script>
+DB.logs = DB.logs || [];
+
+function openReport(type){
+  document.querySelectorAll(".report-page").forEach(d=>d.style.display="none");
+  document.getElementById(type+"Report").style.display="block";
+}
+
+/* ===== GET COST FROM LAST PURCHASE ===== */
+function getPurchaseCost(itemNo, invDate){
+  const list = (DB.purchases||[])
+    .filter(p=>p.itemNo===itemNo && new Date(p.date)<=new Date(invDate))
+    .sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  return list.length ? Number(list[0].rate) : 0;
+}
+
+/* ===== PROFIT REPORT ===== */
+function applyProfitReport(){
+  profitRows.innerHTML="";
+  profitDetail.innerHTML="";
+
+  const from=profitFrom.value, to=profitTo.value, user=profitUser.value;
+
+  (DB.invoices||[]).forEach(inv=>{
+    if(from && inv.date<from) return;
+    if(to && inv.date>to) return;
+    if(user && inv.user!==user) return;
+
+    let cost=0, profit=0;
+
+    inv.items.forEach(it=>{
+      const c = getPurchaseCost(it.itemNo, inv.date);
+      cost += c * it.qty;
+      profit += (it.rate - c) * it.qty;
+    });
+
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
+      <td>${inv.no}</td>
+      <td>${inv.date}</td>
+      <td>${inv.user||""}</td>
+      <td>${inv.total}</td>
+      <td>${cost.toFixed(2)}</td>
+      <td class="${profit>=0?'profit-pos':'profit-neg'}">${profit.toFixed(2)}</td>
+    `;
+    tr.onclick=()=>showProfitDetail(inv);
+    profitRows.appendChild(tr);
+  });
+}
+
+function showProfitDetail(inv){
+  let html=`<h4>Invoice ${inv.no}</h4>
+  <table class="r-table">
+  <tr><th>Item</th><th>Qty</th><th>Sale</th><th>Cost</th><th>Profit</th></tr>`;
+
+  inv.items.forEach(it=>{
+    const c=getPurchaseCost(it.itemNo,inv.date);
+    const p=(it.rate-c)*it.qty;
+    html+=`
+      <tr>
+        <td>${it.desc||it.itemNo}</td>
+        <td>${it.qty}</td>
+        <td>${it.rate}</td>
+        <td>${c}</td>
+        <td class="${p>=0?'profit-pos':'profit-neg'}">${p.toFixed(2)}</td>
+      </tr>`;
+  });
+
+  html+="</table>";
+  profitDetail.innerHTML=html;
+}
+
+/* ===== DELETED REPORT ===== */
+function applyDeletedReport(){
+  deletedRows.innerHTML="";
+  const from=delFrom.value,to=delTo.value,user=delUser.value,mod=delModule.value;
+
+  DB.logs.forEach(l=>{
+    if(l.action!=="DELETE") return;
+
+    const d=l.dateTime.split("T")[0];
+    if(from && d<from) return;
+    if(to && d>to) return;
+    if(user && l.user!==user) return;
+    if(mod && !l.ref.startsWith(mod)) return;
+
+    deletedRows.innerHTML+=`
+      <tr>
+        <td>${new Date(l.dateTime).toLocaleString()}</td>
+        <td>${l.user}</td>
+        <td>${l.ref.split(" ")[0]}</td>
+        <td>${l.ref}</td>
+      </tr>`;
+  });
+}
+
+/* ===== LOAD USERS ===== */
+document.addEventListener("DOMContentLoaded",()=>{
+  [...new Set((DB.logs||[]).map(l=>l.user))].forEach(u=>{
+    profitUser.innerHTML+=`<option>${u}</option>`;
+    delUser.innerHTML+=`<option>${u}</option>`;
+  });
+});
+</script>
