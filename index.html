@@ -150,16 +150,6 @@ button{
 </head>
 <body>
 <script>
-function openProfitReport(){
-  profitReport.style.display="block";
-  deleteReport.style.display="none";
-}
-
-function openDeleteReport(){
-  deleteReport.style.display="block";
-  profitReport.style.display="none";
-}
-
 function getPurchaseCost(itemNo, invDate){
   let cost=0;
   (DB.purchases||[]).forEach(p=>{
@@ -357,6 +347,76 @@ function saveDB() {
 
 function uid(prefix){ 
   return prefix + "_" + Date.now() + Math.floor(Math.random()*1000); 
+}
+<script>
+/* ===== SAFE ELEMENT GETTER ===== */
+const $ = id => document.getElementById(id);
+
+/* ===== REPORT TAB SWITCH ===== */
+function openProfitReport(){
+  if($("profitReport")) $("profitReport").style.display="block";
+  if($("deleteReport")) $("deleteReport").style.display="none";
+}
+
+function openDeleteReport(){
+  if($("deleteReport")) $("deleteReport").style.display="block";
+  if($("profitReport")) $("profitReport").style.display="none";
+}
+
+/* ===== GET LAST PURCHASE COST ===== */
+function getPurchaseCost(itemNo, invDate){
+  const list = (DB.purchases||[])
+    .filter(p => new Date(p.date) <= new Date(invDate))
+    .flatMap(p => p.items || [])
+    .filter(it => it.itemNo === itemNo)
+    .sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  return list.length ? Number(list[0].cost || 0) : 0;
+}
+
+/* ===== PROFIT REPORT ===== */
+function applyProfitReport(){
+  const rows = $("profitRows");
+  if(!rows) return;
+  rows.innerHTML = "";
+
+  (DB.invoices||[]).forEach(inv=>{
+    let cost=0, profit=0;
+
+    (inv.items||[]).forEach(it=>{
+      const c = getPurchaseCost(it.itemNo, inv.date);
+      cost += c * it.qty;
+      profit += (it.rate - c) * it.qty;
+    });
+
+    rows.innerHTML += `
+      <tr>
+        <td>${inv.no}</td>
+        <td>${inv.date}</td>
+        <td>${inv.total}</td>
+        <td>${cost.toFixed(2)}</td>
+        <td class="${profit>=0?'profit-pos':'profit-neg'}">
+          ${profit.toFixed(2)}
+        </td>
+      </tr>`;
+  });
+}
+
+/* ===== DELETED REPORT ===== */
+function applyDeletedReport(){
+  const rows = $("deletedRows");
+  if(!rows) return;
+  rows.innerHTML = "";
+
+  (DB.logs||[]).filter(l=>l.action==="DELETE")
+  .forEach(l=>{
+    rows.innerHTML += `
+      <tr>
+        <td>${new Date(l.dateTime).toLocaleString()}</td>
+        <td>${l.user || ""}</td>
+        <td>${l.ref || ""}</td>
+      </tr>`;
+  });
 }
 </script>
 <script>
