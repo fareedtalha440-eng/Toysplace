@@ -374,10 +374,10 @@ function logAction(action, ref=""){
 <!-- ================= RETURNS ================= -->
 <section id="returns" style="display:none;padding:30px">
 
-<h2 style="font-weight:800;font-size:26px">Return</h2>
+<h2 style="font-size:26px;font-weight:800">Vendor Return</h2>
 
-<!-- Vendor & Return No -->
-<div style="display:flex;gap:20px;align-items:center;margin:20px 0">
+<!-- Vendor + Return No -->
+<div style="display:flex;gap:20px;align-items:center;margin:15px 0">
   <div>
     <label>Vendor</label><br>
     <select id="returnVendor" onchange="resetReturnForm()">
@@ -390,260 +390,249 @@ function logAction(action, ref=""){
   </div>
 </div>
 
-<!-- Return Items -->
+<!-- Items -->
 <table width="100%" border="1" cellpadding="6">
 <thead>
 <tr>
-<th>Item No</th>
-<th>Description</th>
-<th>Qty</th>
-<th>Cost</th>
-<th>Amount</th>
-<th></th>
+  <th>Item No</th>
+  <th>Barcode</th>
+  <th>Description</th>
+  <th>Stock</th>
+  <th>Qty</th>
+  <th>Cost</th>
+  <th>Amount</th>
+  <th></th>
 </tr>
 </thead>
 <tbody id="returnBody"></tbody>
 </table>
 
-<button onclick="addReturnRow()">Add Item</button>
+<button type="button" onclick="addReturnRow()">Add Item</button>
 <h3>Total: <span id="returnTotal">0</span></h3>
-
-<button onclick="saveReturn()">Save Return</button>
+<button type="button" onclick="saveReturn()">Save Return</button>
 
 <hr>
 
 <!-- Previous Returns -->
 <h3>Previous Returns</h3>
-
-<div style="display:flex;gap:10px;margin-bottom:10px">
-  <input type="date" id="filterReturnDate">
-  <select id="filterReturnVendor"></select>
-  <button onclick="loadReturns()">Filter</button>
-</div>
-
 <table width="100%" border="1" cellpadding="6">
 <thead>
 <tr>
-<th>S No</th>
-<th>Return No</th>
-<th>Date</th>
-<th>Time</th>
-<th>Vendor</th>
-<th>Amount</th>
-<th>Print</th>
-<th>Edit</th>
-<th>Delete</th>
+  <th>#</th>
+  <th>No</th>
+  <th>Date</th>
+  <th>Vendor</th>
+  <th>Amount</th>
+  <th>Print</th>
+  <th>Delete</th>
 </tr>
 </thead>
 <tbody id="previousReturns"></tbody>
 </table>
 
 </section>
+
 <script>
+/* ================= SAFETY ================= */
+if(!DB.vendorLedger) DB.vendorLedger=[];
+
+/* ================= LOAD VENDORS ================= */
+function loadReturnVendors(){
+  const sel=document.getElementById("returnVendor");
+  sel.innerHTML='<option value="">Select Vendor</option>';
+  DB.vendors.forEach(v=>{
+    sel.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
+  });
+}
+
+/* ================= RETURN NO ================= */
 function generateReturnNo(){
   if(!DB.returns.length) return "RT0001";
-  const nums = DB.returns.map(r=>parseInt(r.no.replace("RT",""))||0);
-  return "RT" + String(Math.max(...nums)+1).padStart(4,"0");
+  const n=DB.returns.map(r=>+r.no.replace("RT","")||0);
+  return "RT"+String(Math.max(...n)+1).padStart(4,"0");
 }
-
-
 function loadReturnNo(){
-  document.getElementById("returnNo").innerText = generateReturnNo();
+  document.getElementById("returnNo").innerText=generateReturnNo();
 }
 
+/* ================= ADD ROW ================= */
 function addReturnRow(){
-  const tbody = document.getElementById("returnBody");
-  const tr = document.createElement("tr");
-
-  tr.innerHTML = `
-    <td><input onblur="autoCost(this)"></td>
-    <td><input></td>
-    <td><input type="number" min="1" oninput="validateReturnQty(this)"></td>
-    <td><input type="number" readonly></td>
-    <td class="amt">0</td>
-    <td><button onclick="this.closest('tr').remove();calcReturn()">X</button></td>
-  `;
-  tbody.appendChild(tr);
+  const tr=document.createElement("tr");
+  tr.innerHTML=`
+<td><input oninput="searchReturn(this,0)"><div class="dropdown"></div></td>
+<td><input oninput="searchReturn(this,1)"><div class="dropdown"></div></td>
+<td><input oninput="searchReturn(this,2)"><div class="dropdown"></div></td>
+<td class="stk">0</td>
+<td><input type="number" min="1" oninput="calcReturn()"></td>
+<td><input readonly></td>
+<td class="amt">0</td>
+<td><button type="button" onclick="this.closest('tr').remove();calcReturn()">X</button></td>`;
+  document.getElementById("returnBody").appendChild(tr);
 }
-function validateReturnQty(inp){
-  if(inp.value.includes(".")){
-    ruleMessage("Decimal quantity not allowed");
-    inp.value = "";
-    return;
-  }
-  calcReturn();
-}
-function autoCost(inp){
-  const vendor = document.getElementById("returnVendor").value;
-  if(!vendor){
-    ruleMessage("Select vendor first");
-    inp.value="";
-    return;
-  }
 
-  const item = inp.value.trim();
-  if(!item) return;
+/* ================= SEARCH ================= */
+function searchReturn(inp,type){
+  const vendor=returnVendor.value;
+  if(!vendor){ ruleMessage("Select vendor first"); inp.value=""; return; }
 
-  // prevent duplicate item
-  let exists = false;
-  document.querySelectorAll("#returnBody tr").forEach(r=>{
-    if(r!==inp.closest("tr") && r.children[0].children[0].value===item){
-      exists = true;
-    }
+  const box=inp.nextElementSibling;
+  box.innerHTML="";
+
+  const items=DB.purchases
+    .filter(p=>DB.vendors.find(v=>v.id===p.vendorId)?.name===vendor)
+    .flatMap(p=>p.items);
+
+  items.filter(it=>{
+    if(type===0) return it.itemNo?.includes(inp.value);
+    if(type===1) return (it.barcode||"").includes(inp.value);
+    if(type===2) return (it.desc||"").toLowerCase().includes(inp.value.toLowerCase());
+  }).forEach(it=>{
+    const prod=DB.products.find(p=>p.itemNo===it.itemNo);
+    const d=document.createElement("div");
+    d.innerHTML=`${it.itemNo} | Stock:${prod?.stock||0}`;
+    d.onclick=()=>{
+      const r=inp.closest("tr");
+      r.children[0].children[0].value=it.itemNo||"";
+      r.children[1].children[0].value=it.barcode||"";
+      r.children[2].children[0].value=it.desc||"";
+      r.querySelector(".stk").innerText=prod?.stock||0;
+      r.children[5].children[0].value=it.cost||0;
+      box.innerHTML="";
+      calcReturn();
+    };
+    box.appendChild(d);
   });
-  if(exists){
-    ruleMessage("Product already added in return");
-    inp.value="";
-    return;
-  }
-
-  const match = DB.purchases
-    .filter(p=>{
-      const v = DB.vendors.find(x=>x.id===p.vendorId);
-      return v && v.name===vendor;
-    })
-    .flatMap(p=>p.items)
-    .filter(it=>it.itemNo===item)
-    .slice(-1)[0];
-
-  if(!match){
-    ruleMessage("This item was not purchased from this vendor");
-    inp.value="";
-    return;
-  }
-
-  inp.closest("tr").children[3].children[0].value = match.cost;
-  calcReturn();
 }
+
+/* ================= TOTAL ================= */
 function calcReturn(){
-  let total = 0;
+  let t=0;
   document.querySelectorAll("#returnBody tr").forEach(r=>{
-    const q = +r.children[2].children[0].value || 0;
-    const c = +r.children[3].children[0].value || 0;
-    const a = q*c;
-    r.querySelector(".amt").innerText = a;
-    total += a;
+    const q=+r.children[4].children[0].value||0;
+    const c=+r.children[5].children[0].value||0;
+    const a=q*c;
+    r.querySelector(".amt").innerText=a;
+    t+=a;
   });
-  document.getElementById("returnTotal").innerText = total;
+  document.getElementById("returnTotal").innerText=t;
 }
 
+/* ================= SAVE ================= */
 function saveReturn(){
-  const vendor = document.getElementById("returnVendor").value;
+  const vendor=returnVendor.value;
   if(!vendor) return ruleMessage("Vendor required");
 
-  const rows = document.querySelectorAll("#returnBody tr");
-  if(!rows.length) return ruleMessage("No items added");
+  const items=[];
+  document.querySelectorAll("#returnBody tr").forEach(r=>{
+    const itemNo=r.children[0].children[0].value;
+    const qty=+r.children[4].children[0].value;
+    const cost=+r.children[5].children[0].value;
+    if(itemNo&&qty>0) items.push({itemNo,qty,cost});
+  });
+  if(!items.length) return ruleMessage("No items");
 
-  const items = [];
-  rows.forEach(r=>{
-    const itemNo = r.children[0].children[0].value;
-    const qty = +r.children[2].children[0].value;
-    const cost = +r.children[3].children[0].value;
-    if(itemNo && qty>0){
-      items.push({itemNo, qty, cost});
-    }
+  const amount=items.reduce((s,i)=>s+i.qty*i.cost,0);
+  const no=generateReturnNo();
+
+  /* STOCK DECREASE */
+  items.forEach(i=>{
+    const p=DB.products.find(x=>x.itemNo===i.itemNo);
+    if(p) p.stock-=i.qty;
   });
 
-  if(!items.length) return ruleMessage("Invalid return");
-
-  const amount = items.reduce((s,i)=>s+(i.qty*i.cost),0);
-
-  const obj = {
-    no: generateReturnNo(),
+  /* VENDOR LEDGER CREDIT */
+  DB.vendorLedger.push({
+    id:uid("VL"),
     vendor,
-    date: new Date().toISOString().slice(0,10),
-    time: new Date().toLocaleTimeString(),
-    amount,
-    items
-  };
-
-  // STOCK IN
-  items.forEach(it=>{
-    const p = DB.products.find(x=>x.itemNo===it.itemNo);
-    if(p) p.stock += it.qty;
+    type:"RETURN",
+    ref:no,
+    debit:0,
+    credit:amount,
+    date:new Date().toISOString()
   });
 
-  // CASH OUT
-  DB.cash.push({
-    id: uid("C"),
-    type: "OUT",
-    amount,
-    vendor,
-    ref: obj.no,
-    dateTime: new Date().toISOString()
+  const v=DB.vendors.find(x=>x.name===vendor);
+  if(v) v.balance=(v.balance||0)-amount;
+
+  DB.returns.push({
+    no,vendor,
+    date:new Date().toISOString().slice(0,10),
+    amount,items
   });
 
-  // VENDOR LEDGER
-  const v = DB.vendors.find(x=>x.name===vendor);
-  if(v) v.balance = (v.balance||0) - amount;
-
-  DB.returns.push(obj);
   saveDB();
-
   resetReturnForm();
   loadReturnNo();
   loadReturns();
-  renderCash();
 }
-function resetReturnForm(){
-  document.getElementById("returnBody").innerHTML="";
-  document.getElementById("returnTotal").innerText="0";
-}
-function loadReturns(){
-  const tbody = document.getElementById("previousReturns");
-  tbody.innerHTML = "";
 
-  const fd = document.getElementById("filterReturnDate").value;
-  const fv = document.getElementById("filterReturnVendor").value;
-
-  DB.returns
-    .filter(r=>{
-      if(fd && r.date!==fd) return false;
-      if(fv && r.vendor!==fv) return false;
-      return true;
-    })
-    .forEach((r,i)=>{
-      tbody.innerHTML += `
-      <tr>
-        <td>${i+1}</td>
-        <td>${r.no}</td>
-        <td>${r.date}</td>
-        <td>${r.time}</td>
-        <td>${r.vendor}</td>
-        <td>${r.amount}</td>
-        <td>🖨</td>
-        <td>✏</td>
-        <td onclick="deleteReturn(${i})">🗑</td>
-      </tr>`;
-    });
-}
+/* ================= DELETE ================= */
 function deleteReturn(i){
-  const r = DB.returns[i];
+  const r=DB.returns[i];
+  if(!r) return;
   if(!confirm("Delete "+r.no+" ?")) return;
 
-  // reverse stock
   r.items.forEach(it=>{
-    const p = DB.products.find(x=>x.itemNo===it.itemNo);
-    if(p) p.stock -= it.qty;
+    const p=DB.products.find(x=>x.itemNo===it.itemNo);
+    if(p) p.stock+=it.qty;
   });
 
-  // reverse cash
-  DB.cash = DB.cash.filter(c=>c.ref!==r.no);
+  DB.vendorLedger=DB.vendorLedger.filter(l=>l.ref!==r.no);
 
-  // reverse vendor
-  const v = DB.vendors.find(x=>x.name===r.vendor);
-  if(v) v.balance += r.amount;
+  const v=DB.vendors.find(x=>x.name===r.vendor);
+  if(v) v.balance+=r.amount;
 
   DB.returns.splice(i,1);
   saveDB();
   loadReturns();
-  renderCash();
 }
 
+/* ================= PRINT ================= */
+function printReturn(i){
+  const r=DB.returns[i];
+  let html=`<h2>Vendor Return</h2>
+  <p><b>No:</b> ${r.no}</p>
+  <p><b>Vendor:</b> ${r.vendor}</p>
+  <p><b>Date:</b> ${r.date}</p>
+  <table border="1" width="100%" cellpadding="5">
+  <tr><th>Item</th><th>Qty</th><th>Cost</th><th>Amount</th></tr>`;
+  r.items.forEach(it=>{
+    html+=`<tr><td>${it.itemNo}</td><td>${it.qty}</td><td>${it.cost}</td><td>${it.qty*it.cost}</td></tr>`;
+  });
+  html+=`</table><h3>Total: ${r.amount}</h3>`;
+  const w=window.open("");
+  w.document.write(html);
+  w.print();
+}
+
+/* ================= LOAD ================= */
+function loadReturns(){
+  const tb=document.getElementById("previousReturns");
+  tb.innerHTML="";
+  DB.returns.forEach((r,i)=>{
+    tb.innerHTML+=`
+<tr>
+<td>${i+1}</td>
+<td>${r.no}</td>
+<td>${r.date}</td>
+<td>${r.vendor}</td>
+<td>${r.amount}</td>
+<td><button type="button" onclick="printReturn(${i})">Print</button></td>
+<td><button type="button" onclick="deleteReturn(${i})">Delete</button></td>
+</tr>`;
+  });
+}
+
+function resetReturnForm(){
+  document.getElementById("returnBody").innerHTML="";
+  document.getElementById("returnTotal").innerText=0;
+}
+
+/* ================= INIT ================= */
 document.addEventListener("DOMContentLoaded",()=>{
+  loadReturnVendors();
   loadReturnNo();
   loadReturns();
-  loadReturnVendors();
 });
 </script>
 
@@ -651,9 +640,10 @@ document.addEventListener("DOMContentLoaded",()=>{
 <section id="invoice">
   <div class="card" id="newInvoiceCard">
     <h2>New Invoice</h2>
-<div style="font-size:28px;font-weight:900;letter-spacing:2px;margin-bottom:10px;">
-  Invoice No: <span id="liveInvoiceNo"></span>
-</div>
+
+    <div style="font-size:28px;font-weight:900;letter-spacing:2px;margin-bottom:10px;">
+      Invoice No: <span id="liveInvoiceNo"></span>
+    </div>
 
     <!-- ===== ADD PRODUCT ROW ===== -->
     <table style="width:100%; margin-bottom:10px;">
@@ -670,27 +660,25 @@ document.addEventListener("DOMContentLoaded",()=>{
       </thead>
       <tbody id="invoiceRows"></tbody>
     </table>
+
     <button class="green" onclick="addInvoiceRow()">+ Add Item</button>
 
-    <!-- ===== MAIN DISCOUNT & TOTAL ===== -->
-<div style="margin-top:10px; display:flex; gap:15px; flex-wrap:wrap; align-items:center; justify-content:center; border:1px solid #000; padding:10px;">
-  <div>
-    <label>Main Discount Amount:</label>
-    <input type="number" id="mainDiscAmt" value="0"
-      oninput="applyMainDiscount(getSubTotal());syncDiscFromAmt();">
-  </div>
-  <div>
-    <label>Main Discount %:</label>
-    <input type="number" id="mainDiscPct" value="0"
-      oninput="applyMainDiscount(getSubTotal());syncDiscFromPct();">
-  </div>
-  <div style="padding:10px; font-weight:bold; text-align:center; border-left:2px solid #000;">
-    <label><b>Total:</b></label><br>
-    <span style="font-size:22px;"><b id="invTotal">0</b> PKR</span>
-  </div>
-</div>
+    <!-- ===== DISCOUNT & TOTAL ===== -->
+    <div style="margin-top:10px;display:flex;gap:15px;flex-wrap:wrap;align-items:center;justify-content:center;border:1px solid #000;padding:10px;">
+      <div>
+        <label>Main Discount Amount:</label>
+        <input type="number" id="mainDiscAmt" value="0" oninput="syncDiscFromAmt();recalcInvoiceFast();">
+      </div>
+      <div>
+        <label>Main Discount %:</label>
+        <input type="number" id="mainDiscPct" value="0" oninput="syncDiscFromPct();recalcInvoiceFast();">
+      </div>
+      <div style="padding:10px;font-weight:bold;text-align:center;border-left:2px solid #000;">
+        <label>Total:</label><br>
+        <span style="font-size:22px;"><b id="invTotal">0.00</b> PKR</span>
+      </div>
+    </div>
 
-    <!-- ===== SAVE INVOICE ===== -->
     <div style="margin-top:10px;">
       <button class="blue" onclick="saveInvoice()">Save Invoice</button>
     </div>
@@ -700,7 +688,6 @@ document.addEventListener("DOMContentLoaded",()=>{
   <div class="card" style="margin-top:20px;">
     <h2>Previous Invoices</h2>
 
-    <!-- Filter -->
     <div style="margin-bottom:10px;">
       <label>From:</label><input type="date" id="invFrom">
       <label>To:</label><input type="date" id="invTo">
@@ -714,7 +701,7 @@ document.addEventListener("DOMContentLoaded",()=>{
           <th>Invoice No</th>
           <th>Date</th>
           <th>Time</th>
-          <th>Total (PKR)</th>
+          <th>Total</th>
           <th>Print</th>
           <th>Edit</th>
           <th>Delete</th>
@@ -723,8 +710,7 @@ document.addEventListener("DOMContentLoaded",()=>{
       <tbody id="invoiceList"></tbody>
     </table>
 
-    <!-- Pagination -->
-    <div style="margin-top:10px; display:flex; gap:10px;">
+    <div style="margin-top:10px;display:flex;gap:10px;">
       <button onclick="prevInvPage()">Prev</button>
       <button onclick="nextInvPage()">Next</button>
     </div>
@@ -733,302 +719,330 @@ document.addEventListener("DOMContentLoaded",()=>{
 
 <script>
 /* ================= INVOICE LOGIC ================= */
+
 let invoiceDraft = [];
 let editingInvoiceId = null;
-let invPage = 1, invPerPage = 100;
+let invPage = 1;
+const invPerPage = 100;
 let invFiltered = null;
 
-/* ===== FORMAT NUMBER WITH COMMAS ===== */
+/* ===== FORMAT ===== */
 function formatNumber(x){
-  return Number(x).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2});
+  return Number(x).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 
-/* ===== SEQUENTIAL INVOICE NUMBER ===== */
+/* ===== INVOICE NO ===== */
 function getNextInvoiceNumber(){
   if(!DB.invoices || !DB.invoices.length) return "INV000001";
-  const nums = DB.invoices.map(inv=>parseInt(inv.id.replace("INV",""),10)||0);
-  return "INV" + String(Math.max(...nums)+1).padStart(6,'0');
+  const max = Math.max(...DB.invoices.map(i=>+i.id.replace("INV","")));
+  return "INV"+String(max+1).padStart(6,"0");
+}
+function updateLiveInvoiceNo(){
+  const el = document.getElementById("liveInvoiceNo");
+  if(el) el.innerText = editingInvoiceId || getNextInvoiceNumber();
 }
 
 /* ===== ADD ROW ===== */
 function addInvoiceRow(){
-  invoiceDraft.push({ productId:"", barcode:"", itemNo:"", desc:"", qty:1, rate:0, valid:false });
+  invoiceDraft.push({productId:"",barcode:"",itemNo:"",desc:"",qty:1,rate:0,valid:false});
   renderInvoice();
 }
 
-/* ===== RENDER INVOICE ROWS ===== */
+/* ===== RENDER INVOICE ===== */
 function renderInvoice(){
   const tbody = document.getElementById("invoiceRows");
-  if(!tbody) return;
   tbody.innerHTML="";
-  let subtotal=0;
 
   invoiceDraft.forEach((r,i)=>{
-    if(r.valid) subtotal += r.qty*r.rate;
-    tbody.innerHTML += `
+    tbody.innerHTML+=`
       <tr>
-        <td style="position:relative;">
-          <input value="${r.barcode}" placeholder="Barcode" oninput="searchInvProduct(${i}, this.value,'barcode')">
+        <td>
+          <input value="${r.barcode}" oninput="searchInvProduct(${i},this.value,'barcode')">
           <div id="invSugB${i}" class="invSug"></div>
         </td>
-        <td style="position:relative;">
-          <input value="${r.itemNo}" placeholder="Item No" oninput="searchInvProduct(${i}, this.value,'itemNo')">
+        <td>
+          <input value="${r.itemNo}" oninput="searchInvProduct(${i},this.value,'itemNo')">
           <div id="invSugI${i}" class="invSug"></div>
         </td>
-        <td style="position:relative;">
-          <input value="${r.desc}" placeholder="Description" oninput="searchInvProduct(${i}, this.value,'desc')">
+        <td>
+          <input value="${r.desc}" oninput="searchInvProduct(${i},this.value,'desc')">
           <div id="invSugD${i}" class="invSug"></div>
         </td>
-        <td><input type="number" min="1" value="${r.qty}" onchange="setInvQty(${i},this.value)"></td>
+        <td><input type="number" min="1" step="1" value="${r.qty}" onchange="setInvQty(${i},this.value)"></td>
         <td><input type="number" value="${r.rate}" onchange="setInvRate(${i},this.value)"></td>
-        <td>${r.valid ? formatNumber(r.qty*r.rate) : "<span style='color:red'>Invalid</span>"}</td>
+        <td>${r.valid?formatNumber(r.qty*r.rate):"<span style='color:red'>Invalid</span>"}</td>
         <td><button class="red" onclick="delInvRow(${i})">X</button></td>
       </tr>`;
   });
 
-  applyMainDiscount(subtotal);
+  recalcInvoiceFast();
+  updateLiveInvoiceNo();
 }
 
-/* ===== SEARCH DROPDOWN ===== */
+/* ===== SEARCH PRODUCT ===== */
 function searchInvProduct(i,val,field){
   const q = val.trim().toLowerCase();
   const row = invoiceDraft[i];
-  row.valid = false;
+  row.valid=false;
 
-  const box = document.getElementById(
-    field==="barcode" ? "invSugB"+i :
-    field==="itemNo"  ? "invSugI"+i :
-                         "invSugD"+i
+  const box=document.getElementById(
+    field==="barcode"?"invSugB"+i:field==="itemNo"?"invSugI"+i:"invSugD"+i
   );
-
-  box.innerHTML = "";
+  box.innerHTML="";
   if(!q) return;
 
-  const results = DB.products.filter(p =>
-    (field==="barcode" && (p.barcode||"").toLowerCase().includes(q)) ||
-    (field==="itemNo"  && (p.itemNo||"").toLowerCase().includes(q)) ||
-    (field==="desc"    && (p.desc||"").toLowerCase().includes(q))
+  const results=DB.products.filter(p=>
+    (field==="barcode"&&(p.barcode||"").toLowerCase().includes(q))||
+    (field==="itemNo"&&(p.itemNo||"").toLowerCase().includes(q))||
+    (field==="desc"&&(p.desc||"").toLowerCase().includes(q))
   );
 
   if(!results.length){
-    box.innerHTML = `<div style="padding:4px;color:red">Product not found</div>`;
+    box.innerHTML="<div style='padding:4px;color:red'>Product not found</div>";
     return;
   }
 
   results.forEach(p=>{
-    const d = document.createElement("div");
-    d.style.padding = "4px";
-    d.style.cursor = "pointer";
-    d.innerText = `${p.itemNo} - ${p.desc} (Stock: ${p.stock})`;
-
-    d.onclick = ()=>{
-      if(invoiceDraft.some((x,idx)=>idx!==i && x.productId===p.id)){
-        ruleMessage("This product already exists in invoice");
+    const d=document.createElement("div");
+    d.innerText=`${p.itemNo} - ${p.desc} (Stock: ${p.stock})`;
+    d.style.padding="4px";
+    d.style.cursor="pointer";
+    d.onclick=()=>{
+      if(invoiceDraft.some((x,idx)=>idx!==i&&x.productId===p.id)){
+        alert("Product already added");
         return;
       }
-
-      invoiceDraft[i] = {
-        productId: p.id,
-        barcode: p.barcode || "",
-        itemNo: p.itemNo,
-        desc: p.desc,
-        qty: 1,
-        rate: p.rate,
-        valid: true
-      };document.addEventListener("DOMContentLoaded", ()=>{
-  openTab("invoice");
-});
-
+      invoiceDraft[i]={productId:p.id,barcode:p.barcode||"",itemNo:p.itemNo,desc:p.desc,qty:1,rate:p.rate,valid:true};
       renderInvoice();
     };
     box.appendChild(d);
   });
 }
-function setInvRate(i,v){ invoiceDraft[i].rate=+v; renderInvoice(); }
-function delInvRow(i){ invoiceDraft.splice(i,1); renderInvoice(); }
 
-/* ===== TOTAL / DISCOUNT ===== */
-function getSubTotal(){ return invoiceDraft.reduce((s,r)=>r.valid?s+(r.qty*r.rate):s,0); }
+/* ===== QTY / RATE ===== */
+function setInvQty(i,v){
+  v=Math.floor(+v);
+  if(v<=0||isNaN(v)) v=1;
+  invoiceDraft[i].qty=v;
+  recalcInvoiceFast();
+}
+function setInvRate(i,v){
+  v=+v;
+  if(v<0||isNaN(v)) v=0;
+  invoiceDraft[i].rate=v;
+  recalcInvoiceFast();
+}
+function delInvRow(i){
+  invoiceDraft.splice(i,1);
+  renderInvoice();
+}
+
+/* ===== TOTAL ===== */
+function recalcInvoiceFast(){
+  let sub=0;
+  invoiceDraft.forEach(r=>{ if(r.valid) sub+=r.qty*r.rate; });
+  applyMainDiscount(sub);
+}
 function applyMainDiscount(sub){
-  let amt=+document.getElementById("mainDiscAmt")?.value||0;
-  const pct=+document.getElementById("mainDiscPct")?.value||0;
+  let amt=+mainDiscAmt.value||0;
+  let pct=+mainDiscPct.value||0;
   if(pct>0) amt=sub*pct/100;
-  document.getElementById("invTotal").innerText=formatNumber(sub-amt);
+  if(amt>sub) amt=sub;
+  invTotal.innerText=formatNumber(Math.max(0,sub-amt));
+}
+function syncDiscFromAmt(){
+  const sub=invoiceDraft.reduce((s,r)=>r.valid?s+r.qty*r.rate:s,0);
+  if(sub>0) mainDiscPct.value=((+mainDiscAmt.value/sub)*100).toFixed(2);
+}
+function syncDiscFromPct(){
+  const sub=invoiceDraft.reduce((s,r)=>r.valid?s+r.qty*r.rate:s,0);
+  if(sub>0) mainDiscAmt.value=((sub*+mainDiscPct.value)/100).toFixed(2);
 }
 
 /* ===== SAVE INVOICE ===== */
 function saveInvoice(){
   if(!invoiceDraft.length) return alert("Invoice empty");
-  if(invoiceDraft.some(r=>!r.valid)) return alert("Invoice contains invalid product. Select from list only.");
+  if(invoiceDraft.some(r=>!r.valid)) return alert("Invalid product");
+
+  for(const r of invoiceDraft){
+    const p=DB.products.find(x=>x.id===r.productId);
+    if(p.stock<r.qty) return alert("Low stock: "+r.desc);
+  }
 
   const id=editingInvoiceId||getNextInvoiceNumber();
-  const dt=new Date(); const dateTime=dt.toISOString();
-  const total=+document.getElementById("invTotal").innerText.replace(/,/g,'');
+  const dateTime=new Date().toISOString();
+  const total=+invTotal.innerText.replace(/,/g,"");
 
-  // Check stock
-  for(const r of invoiceDraft){ const p=DB.products.find(x=>x.id===r.productId); if(!p){alert("Product missing: "+r.desc); return;} if(p.stock<r.qty){alert("Insufficient stock for: "+r.desc); return;} }
-
-  // Deduct stock
-  invoiceDraft.forEach(r=>{ const p=DB.products.find(x=>x.id===r.productId); if(p) p.stock-=r.qty; });
-
-  // Save invoice
   DB.invoices=DB.invoices.filter(i=>i.id!==id);
-  DB.invoices.push({id,dateTime,total,items:JSON.parse(JSON.stringify(invoiceDraft)), discountAmt:+document.getElementById("mainDiscAmt").value, discountPct:+document.getElementById("mainDiscPct").value});
-  DB.cash.push({
-  id: uid("C"),
-  type: "IN",
-  amount: total,
-  ref: id,
-  dateTime: dateTime
-});
-  saveDB(); invoiceDraft=[]; editingInvoiceId=null;
+  DB.invoices.push({
+    id,dateTime,total,
+    items:JSON.parse(JSON.stringify(invoiceDraft)),
+    discountAmt:+mainDiscAmt.value,
+    discountPct:+mainDiscPct.value
+  });
 
-document.getElementById("liveInvoiceNo").innerText = getNextInvoiceNumber();
+  invoiceDraft.forEach(r=>{
+    DB.products.find(p=>p.id===r.productId).stock-=r.qty;
+  });
 
-document.getElementById("mainDiscAmt").value=document.getElementById("mainDiscPct").value=0;
+  DB.cash.push({id:uid("C"),type:"IN",amount:total,ref:id,dateTime});
 
-renderInvoice(); renderInvoiceList(); renderCash();
-alert("Invoice saved successfully");
+  saveDB();
 
+  invoiceDraft=[];
+  editingInvoiceId=null;
+  mainDiscAmt.value=mainDiscPct.value=0;
 
-/* ===== RENDER PREVIOUS INVOICES ===== */
+  renderInvoice();
+  renderInvoiceList();
+  updateLiveInvoiceNo();
+  alert("Invoice saved");
+}
+
+/* ===== INVOICE LIST ===== */
 function renderInvoiceList(){
-  const tbody=document.getElementById("invoiceList"); if(!tbody) return;
+  const tbody=document.getElementById("invoiceList");
   tbody.innerHTML="";
-  const invoices=(invFiltered||DB.invoices).slice((invPage-1)*invPerPage,invPage*invPerPage);
 
-  invoices.forEach((i,idx)=>{
-    const dt=new Date(i.dateTime);
-    tbody.innerHTML+=`<tr>
-      <td>${(invPage-1)*invPerPage+idx+1}</td>
-      <td>${i.id}</td>
-      <td>${dt.toLocaleDateString(undefined,{weekday:'long', year:'numeric', month:'short', day:'numeric'})}</td>
-      <td>${dt.toLocaleTimeString()}</td>
-      <td>${formatNumber(i.total)}</td>
-      <td><button onclick="printInvoice('${i.id}')">Print</button></td>
-      <td><button onclick="editInvoice('${i.id}')">Edit</button></td>
-      <td><button class="red" onclick="deleteInvoice('${i.id}')">Delete</button></td>
-    </tr>`;
+  const list=invFiltered||DB.invoices||[];
+  if(!list.length) return;
+
+  const start=(invPage-1)*invPerPage;
+  list.slice().reverse().slice(start,start+invPerPage).forEach((inv,i)=>{
+    const d=new Date(inv.dateTime);
+    tbody.innerHTML+=`
+      <tr>
+        <td>${start+i+1}</td>
+        <td>${inv.id}</td>
+        <td>${d.toLocaleDateString()}</td>
+        <td>${d.toLocaleTimeString()}</td>
+        <td>${formatNumber(inv.total)}</td>
+        <td><button onclick="printInvoice('${inv.id}')">Print</button></td>
+        <td><button onclick="editInvoice('${inv.id}')">Edit</button></td>
+        <td><button class="red" onclick="deleteInvoice('${inv.id}')">Delete</button></td>
+      </tr>`;
   });
 }
 
-/* ===== FILTER / PAGINATION ===== */
-function applyInvoiceFilter(){ const from=document.getElementById("invFrom").value; const to=document.getElementById("invTo").value;
+/* ===== FILTER & PAGE ===== */
+function applyInvoiceFilter(){
+  const f=invFrom.value,t=invTo.value;
   invFiltered=DB.invoices.filter(i=>{
-    const dt=new Date(i.dateTime); const f=from?new Date(from):null; const t=to?new Date(to):null;
-    if(f&&dt<f) return false; if(t&&dt>t) return false; return true;
-  }); invPage=1; renderInvoiceList();
-}
-function nextInvPage(){ invPage++; renderInvoiceList(); }
-function prevInvPage(){ if(invPage>1){ invPage--; renderInvoiceList();} }
-
-/* ===== EDIT / DELETE ===== */
-function editInvoice(id){ const inv=DB.invoices.find(x=>x.id===id); if(!inv) return; editingInvoiceId=id; invoiceDraft=JSON.parse(JSON.stringify(inv.items)); renderInvoice();}
-function deleteInvoice(id){
-  if(!confirm("Delete invoice?")) return;
-  const inv=DB.invoices.find(x=>x.id===id);
-  if(!DB.deletedInvoices) DB.deletedInvoices=[];
-  DB.deletedInvoices.push({
-    id:inv.id, dateTime:new Date().toISOString(), items:inv.items,
-    total:inv.total, discountAmt:inv.discountAmt, discountPct:inv.discountPct, who:"current_user"
+    const d=new Date(i.dateTime);
+    if(f&&d<new Date(f)) return false;
+    if(t&&d>new Date(t+"T23:59:59")) return false;
+    return true;
   });
-  inv.items.forEach(r=>{ const p=DB.products.find(x=>x.id===r.productId); if(p) p.stock+=r.qty; });
-  DB.cash=DB.cash.filter(c=>c.ref!==id);
-  DB.invoices=DB.invoices.filter(i=>i.id!==id);
-  saveDB(); renderInvoiceList();
+  invPage=1;
+  renderInvoiceList();
+}
+function prevInvPage(){ if(invPage>1){invPage--;renderInvoiceList();} }
+function nextInvPage(){ invPage++;renderInvoiceList(); }
+
+/* ===== EDIT INVOICE ===== */
+function editInvoice(id){
+  const inv = DB.invoices.find(i=>i.id===id);
+  if(!inv) return alert("Invoice not found");
+
+  editingInvoiceId = id;
+  invoiceDraft = JSON.parse(JSON.stringify(inv.items));
+
+  mainDiscAmt.value = inv.discountAmt || 0;
+  mainDiscPct.value = inv.discountPct || 0;
+
+  renderInvoice();
+  updateLiveInvoiceNo();
+  window.scrollTo(0,0);
 }
 
-/* ===== PRINT INVOICE PROFESSIONAL ===== */
-function printInvoice(id){
-  const inv = DB.invoices.find(x=>x.id===id);
+/* ===== DELETE INVOICE ===== */
+function deleteInvoice(id){
+  if(!confirm("Delete this invoice?")) return;
+
+  const inv = DB.invoices.find(i=>i.id===id);
   if(!inv) return;
 
-  const dt = new Date(inv.dateTime);
-  const rows = inv.items.map(r=>`
-    <tr>
-      <td>${r.itemNo}</td>
-      <td>${r.qty}</td>
-      <td>${formatNumber(r.qty*r.rate)}</td>
-    </tr>`).join("");
+  inv.items.forEach(r=>{
+    const p = DB.products.find(x=>x.id===r.productId);
+    if(p) p.stock += r.qty;
+  });
 
-  const logo = DB.settings?.logo
-    ? `<img src="${DB.settings.logo}" style="width:40px;position:absolute;top:5px;right:5px;">`
-    : "";
+  DB.cash = DB.cash.filter(c=>c.ref!==id);
+  DB.invoices = DB.invoices.filter(i=>i.id!==id);
 
-  const html = `
-  <html><head><style>
-    body{margin:0;font-family:Arial;}
-    .p{width:80mm;padding:6px;font-size:10px;}
-    .r{height:3px;}
-    .b{background:#2196f3;}
-    .r2{background:#f44336;}
-    .g{background:#4caf50;}
-    .p2{background:#9c27b0;}
-    table{width:100%;border-collapse:collapse;}
-    td{border-bottom:1px dotted #000;padding:2px;}
-    .f{text-align:center;margin-top:6px;font-size:9px;}
-  </style></head>
-  <body>
-    <div class="p">
-      ${logo}
-      <div class="r b"></div>
-      <div class="r r2"></div>
-      <div class="r g"></div>
-      <div class="r p2"></div>
+  saveDB();
+  renderInvoiceList();
+  renderInvoice();
+  updateLiveInvoiceNo();
+}
 
-      <div style="text-align:center;font-weight:bold;margin:4px 0;">INVOICE</div>
-
-      <div>
-        <b>No:</b> ${inv.id}<br>
-        <b>Date:</b> ${dt.toLocaleDateString()}<br>
-        <b>Time:</b> ${dt.toLocaleTimeString()}
-      </div>
-
-      <table>
-        ${rows}
-      </table>
-
-      <div style="text-align:right;">
-        <b>Total:</b> PKR ${formatNumber(inv.total)}<br>
-        <small>Location: Main Counter</small>
-      </div>
-
-      <div class="f">
-        Thanks For Shopping From Us<br>
-        Visit Us Again<br>
-        <small>Printed: ${new Date().toLocaleString()}</small>
-      </div>
-    </div>
-  </body></html>`;
+/* ===== PRINT INVOICE ===== */
+function printInvoice(id){
+  const inv = DB.invoices.find(i=>i.id===id);
+  if(!inv) return;
 
   const w = window.open("");
-  w.document.write(html);
+  w.document.write(`
+<html>
+<head>
+  <title>Invoice ${inv.id}</title>
+  <style>
+    body{font-family:Arial;font-size:12px}
+    table{width:100%;border-collapse:collapse}
+    th,td{border:1px solid #000;padding:4px;text-align:center}
+    h2{text-align:center}
+    .right{text-align:right}
+  </style>
+</head>
+<body>
+  <h2>INVOICE</h2>
+  <div>Invoice No: ${inv.id}</div>
+  <div>Date: ${new Date(inv.dateTime).toLocaleString()}</div>
+  <br>
+
+  <table>
+    <tr>
+      <th>#</th>
+      <th>Item</th>
+      <th>Qty</th>
+      <th>Rate</th>
+      <th>Total</th>
+    </tr>
+    ${inv.items.map((r,i)=>`
+      <tr>
+        <td>${i+1}</td>
+        <td>${r.desc}</td>
+        <td>${r.qty}</td>
+        <td class="right">${formatNumber(r.rate)}</td>
+        <td class="right">${formatNumber(r.qty*r.rate)}</td>
+      </tr>
+    `).join("")}
+  </table>
+
+  <h3 style="text-align:right">
+    Total: ${formatNumber(inv.total)}
+  </h3>
+</body>
+</html>
+  `);
   w.document.close();
+  w.focus();
   w.print();
+  w.close();
 }
+
 /* ===== INITIAL RENDER ===== */
-renderInvoice();
-renderInvoiceList();
-document.getElementById("liveInvoiceNo").innerText = editingInvoiceId || getNextInvoiceNumber();
-
-function syncDiscFromAmt(){
-  const sub=getSubTotal();
-  const amt=+document.getElementById("mainDiscAmt").value||0;
-  if(sub>0) document.getElementById("mainDiscPct").value=((amt/sub)*100).toFixed(2);
-}
-
-function syncDiscFromPct(){
-  const sub=getSubTotal();
-  const pct=+document.getElementById("mainDiscPct").value||0;
-  if(sub>0) document.getElementById("mainDiscAmt").value=((sub*pct)/100).toFixed(2);
-}
-
+document.addEventListener("DOMContentLoaded",()=>{
+  renderInvoice();
+  renderInvoiceList();
+  updateLiveInvoiceNo();
+});
 </script>
 
 <style>
-.invSug{position:absolute;background:#fff;border:1px solid #ccc;max-height:160px;overflow:auto;z-index:50;}
-.invSug div:hover{background:#eee;}
-td{position:relative;}
+.invSug{position:absolute;background:#fff;border:1px solid #ccc;max-height:160px;overflow:auto;z-index:100}
+.invSug div:hover{background:#eee;cursor:pointer;}
+td{position:relative}
 </style>
 
 <!-- ================= CASH ================= -->
@@ -1599,7 +1613,12 @@ renderProducts();
 <section id="vendors">
   <div class="card">
     <h2>Vendors</h2>
-<input id="vendorSearch" placeholder="Search vendor (No, Name)" oninput="renderVendors()" style="margin-bottom:10px;width:100%;">
+
+    <input id="vendorSearch"
+           placeholder="Search vendor (No, Name)"
+           oninput="renderVendors()"
+           style="margin-bottom:10px;width:100%;">
+
     <div style="display:flex;gap:10px;margin-bottom:12px;">
       <input id="vendorName" placeholder="Vendor Name" style="flex:1">
       <button onclick="addVendor()">Add Vendor</button>
@@ -1613,35 +1632,49 @@ renderProducts();
           <th>Name</th>
           <th>Balance</th>
           <th>Ledger</th>
+          <th>Edit</th>
+          <th>Delete</th>
         </tr>
       </thead>
       <tbody id="vendorRows"></tbody>
     </table>
+
+    <div style="margin-top:10px;display:flex;gap:10px;">
+      <button onclick="prevVendorPage()">Prev</button>
+      <button onclick="nextVendorPage()">Next</button>
+    </div>
   </div>
 </section>
 
 <script>
-/* ================= HELPERS ================= */
+/* ================= VENDOR LOGIC ================= */
+
+let vendorPage = 1;
+const vendorsPerPage = 20;
+
+/* ===== MONEY FORMAT ===== */
 function money(v){
   const n = Number(v || 0);
-  return (n < 0 ? "-" : "") + Math.abs(n).toLocaleString("en-PK",{minimumFractionDigits:2});
-}
-// Vendor No VEN1001, VEN1002 ...
-function nextVendorNo(){
-  if(!DB.vendors.length) return "VEN1001";
-  const nums = DB.vendors
-    .map(v => parseInt(String(v.no||"").replace("VEN","")))
-    .filter(n => !isNaN(n));
-  return "VEN" + (Math.max(...nums,1000) + 1);
+  return (n < 0 ? "-" : "") +
+    Math.abs(n).toLocaleString("en-PK",{minimumFractionDigits:2});
 }
 
-/* ================= ADD VENDOR ================= */
+/* ===== NEXT VENDOR NO ===== */
+function nextVendorNo(){
+  if(!DB.vendors || !DB.vendors.length) return "VEN1001";
+  const nums = DB.vendors
+    .map(v=>parseInt(String(v.no||"").replace("VEN","")))
+    .filter(n=>!isNaN(n));
+  return "VEN"+(Math.max(...nums,1000)+1);
+}
+
+/* ===== ADD VENDOR ===== */
 function addVendor(){
   const name = vendorName.value.trim();
-  if(!name) return;
+  if(!name) return alert("Vendor name required");
 
   if(DB.vendors.some(v=>v.name.toLowerCase()===name.toLowerCase())){
-    ruleMessage("Vendor already exists");
+    alert("Vendor already exists");
     return;
   }
 
@@ -1652,113 +1685,109 @@ function addVendor(){
     createdDate: new Date().toISOString()
   });
 
-  logAction("Vendor Created", name);
-  saveDB();
-  renderVendors();
-}
-
-
   saveDB();
   vendorName.value="";
   renderVendors();
-  loadVendorOptions(); // refresh cash dropdown
+  loadVendorOptions();
 }
 
-/* ================= EDIT VENDOR ================= */
+/* ===== EDIT VENDOR ===== */
 function editVendor(id){
   const v = DB.vendors.find(x=>x.id===id);
   if(!v) return;
+
   const name = prompt("Edit vendor name", v.name);
   if(!name) return;
+
   v.name = name.trim();
   saveDB();
   renderVendors();
   loadVendorOptions();
 }
 
-/* ================= DELETE VENDOR ================= */
+/* ===== DELETE VENDOR ===== */
 function deleteVendor(id){
   const v = DB.vendors.find(x=>x.id===id);
   if(!v) return;
+
   const bal = vendorBalance(v);
   if(bal !== 0){
     alert("Cannot delete vendor. Balance must be zero.");
     return;
   }
+
   if(!confirm("Delete this vendor?")) return;
+
   DB.vendors = DB.vendors.filter(x=>x.id!==id);
   saveDB();
   renderVendors();
   loadVendorOptions();
 }
 
-/* ================= VENDOR BALANCE ================= */
+/* ===== VENDOR BALANCE ===== */
 function vendorBalance(v){
   const purchase = DB.purchases
-    .filter(p => p.vendorId === v.id)
+    .filter(p=>p.vendorId===v.id)
     .reduce((s,p)=>s+(p.total||0),0);
 
   const paid = DB.cash
-    .filter(c => c.type==="OUT" && c.vendor === v.name)
+    .filter(c=>c.type==="OUT" && c.vendorId===v.id)
     .reduce((s,c)=>s+(c.amount||0),0);
 
   return purchase - paid;
 }
 
-/* ================= RENDER VENDORS ================= */
+/* ===== RENDER VENDORS ===== */
 function renderVendors(){
   const tbody = document.getElementById("vendorRows");
-  tbody.innerHTML = "";
-let vendorPage = 1;
-const vendorsPerPage = 20;
+  tbody.innerHTML="";
 
-  // Sort newest to oldest
-  const q = (document.getElementById("vendorSearch")?.value || "").toLowerCase();
-const vendorsSorted = DB.vendors
-  .filter(v => !q || v.name.toLowerCase().includes(q) || v.no.toLowerCase().includes(q))
-  .sort((a,b)=>new Date(b.createdDate)-new Date(a.createdDate));
+  const q = (vendorSearch.value||"").toLowerCase();
 
+  const vendors = DB.vendors
+    .filter(v=>!q || v.name.toLowerCase().includes(q) || v.no.toLowerCase().includes(q))
+    .sort((a,b)=>new Date(b.createdDate)-new Date(a.createdDate));
 
-  vendorsSorted
-  .slice((vendorPage-1)*vendorsPerPage, vendorPage*vendorsPerPage)
-  .forEach((v,i)=>{
-
-    const bal = vendorBalance(v);
-    const created = new Date(v.createdDate).toLocaleString();
-<div style="margin-top:10px;">
-  <button onclick="vendorPage=Math.max(1,vendorPage-1);renderVendors()">Prev</button>
-  <button onclick="vendorPage++;renderVendors()">Next</button>
-</div>
-
-    tbody.innerHTML += `
-      <tr>
-        <td>${i+1}</td>
-        <td>${v.no}</td>
-        <td>${v.name}</td>
-        <td>₨ ${money(bal)}</td>
-        <td><button onclick="openVendorLedger('${v.id}')">Open</button></td>
-        <td><button onclick="editVendor('${v.id}')">Edit</button></td>
-        <td><button onclick="deleteVendor('${v.id}')">Delete</button></td>
-        <td>${created}</td>
-      </tr>
-    `;
-  });
+  vendors
+    .slice((vendorPage-1)*vendorsPerPage, vendorPage*vendorsPerPage)
+    .forEach((v,i)=>{
+      const bal = vendorBalance(v);
+      tbody.innerHTML+=`
+        <tr>
+          <td>${(vendorPage-1)*vendorsPerPage+i+1}</td>
+          <td>${v.no}</td>
+          <td>${v.name}</td>
+          <td>₨ ${money(bal)}</td>
+          <td><button onclick="openVendorLedger('${v.id}')">Open</button></td>
+          <td><button onclick="editVendor('${v.id}')">Edit</button></td>
+          <td><button class="red" onclick="deleteVendor('${v.id}')">Delete</button></td>
+        </tr>
+      `;
+    });
 }
 
-/* ================= VENDOR LEDGER ================= */
+/* ===== PAGINATION ===== */
+function nextVendorPage(){ vendorPage++; renderVendors(); }
+function prevVendorPage(){
+  if(vendorPage>1){ vendorPage--; renderVendors(); }
+}
+
+/* ===== VENDOR LEDGER ===== */
 function openVendorLedger(vendorId){
   const v = DB.vendors.find(x=>x.id===vendorId);
   if(!v) return;
 
   const rows = [];
 
-  DB.purchases.filter(p=>p.vendorId===v.id).forEach(p=>{
-    rows.push({ date:p.dateTime||p.date, type:"Purchase", ref:p.id, debit:p.total, credit:0 });
-  });
+  DB.purchases.filter(p=>p.vendorId===v.id)
+    .forEach(p=>{
+      rows.push({date:p.dateTime,type:"Purchase",ref:p.id,debit:p.total,credit:0});
+    });
 
-  DB.cash.filter(c=>c.type==="OUT" && c.vendor===v.name).forEach(c=>{
-    rows.push({ date:c.dateTime, type:"Payment", ref:c.ref||c.id, debit:0, credit:c.amount });
-  });
+  DB.cash.filter(c=>c.type==="OUT" && c.vendorId===v.id)
+    .forEach(c=>{
+      rows.push({date:c.dateTime,type:"Payment",ref:c.ref||c.id,debit:0,credit:c.amount});
+    });
 
   rows.sort((a,b)=>new Date(a.date)-new Date(b.date));
 
@@ -1770,11 +1799,6 @@ function openVendorLedger(vendorId){
 <html><head><title>Vendor Ledger</title>
 <style>
 body{font-family:Arial;padding:10px}
-.r{height:4px}
-.b{background:#2196f3}
-.r2{background:#f44336}
-.g{background:#4caf50}
-.p{background:#9c27b0}
 table{width:100%;border-collapse:collapse;font-size:12px}
 th,td{border:1px solid #000;padding:4px;text-align:center}
 .right{text-align:right}
@@ -1784,22 +1808,19 @@ th,td{border:1px solid #000;padding:4px;text-align:center}
 </head>
 <body>
 
-<div class="r b"></div>
-<div class="r r2"></div>
-<div class="r g"></div>
-<div class="r p"></div>
-
 <h2>${v.name}</h2>
 <div>${v.no}</div>
 
 <table>
-<tr><th>#</th><th>Date & Time</th><th>Type</th><th>Ref</th><th>Debit</th><th>Credit</th><th>Balance</th></tr>
+<tr>
+<th>#</th><th>Date & Time</th><th>Type</th><th>Ref</th>
+<th>Debit</th><th>Credit</th><th>Balance</th>
+</tr>
 ${rows.map((r,i)=>{
   bal += r.debit - r.credit;
-  const d = new Date(r.date).toLocaleString();
   return `<tr>
 <td>${i+1}</td>
-<td>${d}</td>
+<td>${new Date(r.date).toLocaleString()}</td>
 <td>${r.type}</td>
 <td>${r.ref}</td>
 <td class="right">${money(r.debit)}</td>
@@ -1819,19 +1840,22 @@ Present Balance: ₨ ${money(bal)}
   w.print();
 }
 
-/* ================= CASH IN HAND LINK ================= */
+/* ===== CASH DROPDOWNS ===== */
 function loadVendorOptions(){
-  const selectAdd = document.getElementById("payVendor");
-  const selectFilter = document.getElementById("cashVendorFilter");
-  selectAdd.innerHTML='<option value="">Select Vendor</option>';
-  selectFilter.innerHTML='<option value="">All Vendors</option>';
+  const add = document.getElementById("payVendor");
+  const filter = document.getElementById("cashVendorFilter");
+  if(!add || !filter) return;
+
+  add.innerHTML='<option value="">Select Vendor</option>';
+  filter.innerHTML='<option value="">All Vendors</option>';
+
   DB.vendors.forEach(v=>{
-    selectAdd.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
-    selectFilter.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
+    add.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
+    filter.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
   });
 }
 
-/* ================= INIT ================= */
+/* ===== INIT ===== */
 renderVendors();
 loadVendorOptions();
 </script>
@@ -2152,201 +2176,111 @@ loadPurchaseVendors();
 addPurchaseRow();
 renderPurchaseHistory();
 </script>
-
-
-<!-- ================= REPORTS ================= -->
-<section id="reports">
-  <div class="card">
-    <h2>Reports</h2>
-    <button onclick="generateReport()">Generate</button>
-    <pre id="reportOutput"></pre>
-  </div>
-  <h3>Invoice Wise Profit</h3>
-
-<div class="r-filter">
-  <input type="date" id="profitFrom">
-  <input type="date" id="profitTo">
-
-  <select id="profitUser">
-    <option value="">All Users</option>
-  </select>
-
-  <button onclick="applyProfitReport()">Apply</button>
-</div>
-
-<table class="r-table">
-  <thead>
-    <tr>
-      <th>Invoice</th>
-      <th>Date</th>
-      <th>Person</th>
-      <th>Invoice Amt</th>
-      <th>Cost</th>
-      <th>Profit</th>
-    </tr>
-  </thead>
-  <tbody id="profitRows"></tbody>
-</table>
-
-<div id="profitDetail"></div>
-
-</section>
-
 <script>
-function generateReport(){ document.getElementById("reportOutput").innerText=JSON.stringify(DB,null,2);}
-</script>
-<script>
-function getPurchaseCost(productId, invDate){
-  const list = DB.purchases
-    .filter(p=>p.productId===productId && new Date(p.date)<=new Date(invDate))
-    .sort((a,b)=>new Date(b.date)-new Date(a.date));
-  return list.length ? list[0].rate : 0;
+DB.logs = DB.logs || [];
+
+function openReport(type){
+  document.querySelectorAll(".report-page").forEach(d=>d.style.display="none");
+  document.getElementById(type+"Report").style.display="block";
 }
-</script>
-<script>
+
+/* ===== GET COST FROM LAST PURCHASE ===== */
+function getPurchaseCost(itemNo, invDate){
+  const list = (DB.purchases||[])
+    .filter(p=>p.itemNo===itemNo && new Date(p.date)<=new Date(invDate))
+    .sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  return list.length ? Number(list[0].rate) : 0;
+}
+
+/* ===== PROFIT REPORT ===== */
 function applyProfitReport(){
-  const from = profitFrom.value;
-  const to = profitTo.value;
-  const user = profitUser.value;
+  profitRows.innerHTML="";
+  profitDetail.innerHTML="";
 
-  profitRows.innerHTML = "";
-  profitDetail.innerHTML = "";
+  const from=profitFrom.value, to=profitTo.value, user=profitUser.value;
 
-  DB.invoices.forEach(inv=>{
-    if(from && inv.date < from) return;
-    if(to && inv.date > to) return;
-    if(user && inv.createdBy !== user) return;
+  (DB.invoices||[]).forEach(inv=>{
+    if(from && inv.date<from) return;
+    if(to && inv.date>to) return;
+    if(user && inv.user!==user) return;
 
     let cost=0, profit=0;
 
     inv.items.forEach(it=>{
-      const c = getPurchaseCost(it.productId, inv.date);
+      const c = getPurchaseCost(it.itemNo, inv.date);
       cost += c * it.qty;
       profit += (it.rate - c) * it.qty;
     });
 
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
       <td>${inv.no}</td>
       <td>${inv.date}</td>
-      <td>${inv.createdBy}</td>
+      <td>${inv.user||""}</td>
       <td>${inv.total}</td>
-      <td>${cost}</td>
-      <td class="${profit>=0?'profit-pos':'profit-neg'}">${profit}</td>
+      <td>${cost.toFixed(2)}</td>
+      <td class="${profit>=0?'profit-pos':'profit-neg'}">${profit.toFixed(2)}</td>
     `;
-    tr.onclick = ()=>showProfitDetail(inv);
+    tr.onclick=()=>showProfitDetail(inv);
     profitRows.appendChild(tr);
   });
 }
-</script>
-<script>
+
 function showProfitDetail(inv){
-  let html = `<h4>Invoice ${inv.no} Detail</h4>
+  let html=`<h4>Invoice ${inv.no}</h4>
   <table class="r-table">
-  <tr><th>Product</th><th>Qty</th><th>Sale</th><th>Cost</th><th>Profit</th></tr>`;
+  <tr><th>Item</th><th>Qty</th><th>Sale</th><th>Cost</th><th>Profit</th></tr>`;
 
   inv.items.forEach(it=>{
-    const c = getPurchaseCost(it.productId, inv.date);
-    const p = (it.rate - c) * it.qty;
-    const prod = DB.products.find(x=>x.id===it.productId);
-
-    html += `
+    const c=getPurchaseCost(it.itemNo,inv.date);
+    const p=(it.rate-c)*it.qty;
+    html+=`
       <tr>
-        <td>${prod?.desc||""}</td>
+        <td>${it.desc||it.itemNo}</td>
         <td>${it.qty}</td>
         <td>${it.rate}</td>
         <td>${c}</td>
-        <td class="${p>=0?'profit-pos':'profit-neg'}">${p}</td>
+        <td class="${p>=0?'profit-pos':'profit-neg'}">${p.toFixed(2)}</td>
       </tr>`;
   });
 
-  html += "</table>";
-  profitDetail.innerHTML = html;
+  html+="</table>";
+  profitDetail.innerHTML=html;
 }
-</script>
-<script>
-document.addEventListener("DOMContentLoaded",()=>{
-  [...new Set(DB.logs.map(l=>l.user))].forEach(u=>{
-    profitUser.innerHTML += `<option value="${u}">${u}</option>`;
-  });
-});
-<hr style="margin:30px 0">
 
-<h3>Deleted Data Audit</h3>
-
-<div class="r-filter">
-  <input type="date" id="delFrom">
-  <input type="date" id="delTo">
-
-  <select id="delUser">
-    <option value="">All Users</option>
-  </select>
-
-  <select id="delModule">
-    <option value="">All Modules</option>
-    <option>Invoice</option>
-    <option>Product</option>
-    <option>Vendor</option>
-    <option>Purchase</option>
-    <option>Cash</option>
-  </select>
-
-  <button onclick="applyDeletedReport()">Apply</button>
-</div>
-
-<table class="r-table">
-  <thead>
-    <tr>
-      <th>Date & Time</th>
-      <th>User</th>
-      <th>Module</th>
-      <th>Action</th>
-      <th>Reference</th>
-    </tr>
-  </thead>
-  <tbody id="deletedRows"></tbody>
-</table>
-</script>
-<script>
+/* ===== DELETED REPORT ===== */
 function applyDeletedReport(){
-  const from = delFrom.value;
-  const to = delTo.value;
-  const user = delUser.value;
-  const mod = delModule.value;
+  deletedRows.innerHTML="";
+  const from=delFrom.value,to=delTo.value,user=delUser.value,mod=delModule.value;
 
-  deletedRows.innerHTML = "";
-
-  (DB.logs||[]).forEach(l=>{
+  DB.logs.forEach(l=>{
     if(l.action!=="DELETE") return;
 
-    const d = l.dateTime.split("T")[0];
-    if(from && d < from) return;
-    if(to && d > to) return;
+    const d=l.dateTime.split("T")[0];
+    if(from && d<from) return;
+    if(to && d>to) return;
     if(user && l.user!==user) return;
     if(mod && !l.ref.startsWith(mod)) return;
 
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${new Date(l.dateTime).toLocaleString()}</td>
-      <td>${l.user}</td>
-      <td>${l.ref.split(" ")[0]}</td>
-      <td>${l.action}</td>
-      <td>${l.ref}</td>
-    `;
-    deletedRows.appendChild(tr);
+    deletedRows.innerHTML+=`
+      <tr>
+        <td>${new Date(l.dateTime).toLocaleString()}</td>
+        <td>${l.user}</td>
+        <td>${l.ref.split(" ")[0]}</td>
+        <td>${l.ref}</td>
+      </tr>`;
   });
 }
-</script>
-<script>
+
+/* ===== LOAD USERS ===== */
 document.addEventListener("DOMContentLoaded",()=>{
-  const users = [...new Set((DB.logs||[]).map(l=>l.user))];
-  users.forEach(u=>{
-    delUser.innerHTML += `<option value="${u}">${u}</option>`;
+  [...new Set((DB.logs||[]).map(l=>l.user))].forEach(u=>{
+    profitUser.innerHTML+=`<option>${u}</option>`;
+    delUser.innerHTML+=`<option>${u}</option>`;
   });
 });
 </script>
-
-
 <!-- ================= LOGIN ================= -->
 <section id="loginScreen" style="display:flex; align-items:center; justify-content:center; height:100vh; background:#f5f5f5; flex-direction:column;">
   <h1>Login</h1>
@@ -2750,4 +2684,109 @@ logAction("DELETE", `Product ${prod.itemNo}`);
 logAction("DELETE", `Vendor ${vendor.name}`);
 logAction("DELETE", `Purchase ${purchase.id}`);
 
+</script>
+<script>
+DB.logs = DB.logs || [];
+
+function openReport(type){
+  document.querySelectorAll(".report-page").forEach(d=>d.style.display="none");
+  document.getElementById(type+"Report").style.display="block";
+}
+
+/* ===== GET COST FROM LAST PURCHASE ===== */
+function getPurchaseCost(itemNo, invDate){
+  const list = (DB.purchases||[])
+    .filter(p=>p.itemNo===itemNo && new Date(p.date)<=new Date(invDate))
+    .sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  return list.length ? Number(list[0].rate) : 0;
+}
+
+/* ===== PROFIT REPORT ===== */
+function applyProfitReport(){
+  profitRows.innerHTML="";
+  profitDetail.innerHTML="";
+
+  const from=profitFrom.value, to=profitTo.value, user=profitUser.value;
+
+  (DB.invoices||[]).forEach(inv=>{
+    if(from && inv.date<from) return;
+    if(to && inv.date>to) return;
+    if(user && inv.user!==user) return;
+
+    let cost=0, profit=0;
+
+    inv.items.forEach(it=>{
+      const c = getPurchaseCost(it.itemNo, inv.date);
+      cost += c * it.qty;
+      profit += (it.rate - c) * it.qty;
+    });
+
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
+      <td>${inv.no}</td>
+      <td>${inv.date}</td>
+      <td>${inv.user||""}</td>
+      <td>${inv.total}</td>
+      <td>${cost.toFixed(2)}</td>
+      <td class="${profit>=0?'profit-pos':'profit-neg'}">${profit.toFixed(2)}</td>
+    `;
+    tr.onclick=()=>showProfitDetail(inv);
+    profitRows.appendChild(tr);
+  });
+}
+
+function showProfitDetail(inv){
+  let html=`<h4>Invoice ${inv.no}</h4>
+  <table class="r-table">
+  <tr><th>Item</th><th>Qty</th><th>Sale</th><th>Cost</th><th>Profit</th></tr>`;
+
+  inv.items.forEach(it=>{
+    const c=getPurchaseCost(it.itemNo,inv.date);
+    const p=(it.rate-c)*it.qty;
+    html+=`
+      <tr>
+        <td>${it.desc||it.itemNo}</td>
+        <td>${it.qty}</td>
+        <td>${it.rate}</td>
+        <td>${c}</td>
+        <td class="${p>=0?'profit-pos':'profit-neg'}">${p.toFixed(2)}</td>
+      </tr>`;
+  });
+
+  html+="</table>";
+  profitDetail.innerHTML=html;
+}
+
+/* ===== DELETED REPORT ===== */
+function applyDeletedReport(){
+  deletedRows.innerHTML="";
+  const from=delFrom.value,to=delTo.value,user=delUser.value,mod=delModule.value;
+
+  DB.logs.forEach(l=>{
+    if(l.action!=="DELETE") return;
+
+    const d=l.dateTime.split("T")[0];
+    if(from && d<from) return;
+    if(to && d>to) return;
+    if(user && l.user!==user) return;
+    if(mod && !l.ref.startsWith(mod)) return;
+
+    deletedRows.innerHTML+=`
+      <tr>
+        <td>${new Date(l.dateTime).toLocaleString()}</td>
+        <td>${l.user}</td>
+        <td>${l.ref.split(" ")[0]}</td>
+        <td>${l.ref}</td>
+      </tr>`;
+  });
+}
+
+/* ===== LOAD USERS ===== */
+document.addEventListener("DOMContentLoaded",()=>{
+  [...new Set((DB.logs||[]).map(l=>l.user))].forEach(u=>{
+    profitUser.innerHTML+=`<option>${u}</option>`;
+    delUser.innerHTML+=`<option>${u}</option>`;
+  });
+});
 </script>
