@@ -502,7 +502,7 @@ function searchReturn(inp,type){
   const q = inp.value.trim().toLowerCase();
   if(!q) return;
 
-  const products = DB.products.filter(p=>p.stock > 0);
+  const products = DB.products;
 
   products.forEach(p=>{
     let match = false;
@@ -526,7 +526,6 @@ function searchReturn(inp,type){
         break;
       }
     }
-
     const d = document.createElement("div");
     d.innerHTML = `
       ${p.itemNo} | ${p.desc}<br>
@@ -545,7 +544,10 @@ function searchReturn(inp,type){
       if(!vendorMatched){
         ruleMessage("Product not purchased from this vendor. Cost set to 0");
       }
-
+if(q > +r.querySelector(".stk").innerText){
+  ruleMessage("Return quantity exceeds stock");
+  r.children[4].children[0].value = r.querySelector(".stk").innerText;
+}
       box.innerHTML="";
       calcReturn();
     };
