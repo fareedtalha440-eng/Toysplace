@@ -304,23 +304,6 @@ function uid(prefix){
 }
 </script>
 <script>
-function loadReturnVendors(){
-  const sel = document.getElementById("returnVendor");
-  const filter = document.getElementById("filterReturnVendor");
-  if(!sel) return;
-
-  sel.innerHTML = `<option value="">Select Vendor</option>`;
-  if(filter) filter.innerHTML = `<option value="">All Vendors</option>`;
-
-  DB.vendors.forEach(v=>{
-    sel.innerHTML += `<option value="${v.name}">${v.name}</option>`;
-    if(filter){
-      filter.innerHTML += `<option value="${v.name}">${v.name}</option>`;
-    }
-  });
-}
-</script>
-<script>
 /* ================= RULE ENGINE ================= */
 const RULES = {
   qtyIntegerOnly: true,
