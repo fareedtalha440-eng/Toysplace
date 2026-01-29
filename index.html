@@ -393,8 +393,7 @@ function logAction(action, ref=""){
 <table width="100%" border="1" cellpadding="6">
 <thead>
 <tr>
-  <th>Item No</th>
-  <th>Barcode</th>
+ <th>Item No</th>
   <th>Description</th>
   <th>Stock</th>
   <th>Qty</th>
@@ -446,7 +445,7 @@ function logAction(action, ref=""){
 <script>
 /* ================= SAFETY ================= */
 if(!DB.vendorLedger) DB.vendorLedger=[];
-
+let editingReturnIndex = null;
 /* ================= LOAD VENDORS ================= */
 function loadReturnVendors(){
   const sel=document.getElementById("returnVendor");
@@ -497,7 +496,6 @@ function removeReturnRow(btn){
   btn.closest("tr").remove();
   calcReturn();
 }
-/* ================= SEARCH ================= */
 function searchReturn(inp,type){
   const vendorName = returnVendor.value;
   if(!vendorName){
@@ -505,13 +503,6 @@ function searchReturn(inp,type){
     inp.value="";
     return;
   }
-const existing = [...document.querySelectorAll("#returnBody tr")]
-  .some(tr => tr.children[1].children[0].value === p.itemNo);
-
-if(existing){
-  ruleMessage("Duplicate product not allowed");
-  return;
-}
 
   const vendor = DB.vendors.find(v=>v.name===vendorName);
   const box = inp.nextElementSibling;
@@ -520,14 +511,17 @@ if(existing){
   const q = inp.value.trim().toLowerCase();
   if(!q) return;
 
-  const products = DB.products;
-
-  products.forEach(p=>{
-    let match = false;
+  DB.products.forEach(p=>{
+    let match=false;
     if(type===0 && (p.itemNo||"").toLowerCase().includes(q)) match=true;
     if(type===1 && (p.barcode||"").toLowerCase().includes(q)) match=true;
     if(type===2 && (p.desc||"").toLowerCase().includes(q)) match=true;
     if(!match) return;
+
+    // DUPLICATE CHECK (CORRECT PLACE)
+    const exists = [...document.querySelectorAll("#returnBody tr")]
+      .some(tr => tr.children[1].children[0].value === p.itemNo);
+    if(exists) return;
 
     let lastCost = 0;
     let vendorMatched = false;
@@ -537,13 +531,14 @@ if(existing){
       .sort((a,b)=>new Date(b.date)-new Date(a.date));
 
     for(const pur of vendorPurchases){
-      const found = pur.items.find(i=>i.itemNo===p.itemNo);
-      if(found){
-        lastCost = found.cost || 0;
+      const f = pur.items.find(i=>i.itemNo===p.itemNo);
+      if(f){
+        lastCost = f.cost || 0;
         vendorMatched = true;
         break;
       }
     }
+
     const d = document.createElement("div");
     d.innerHTML = `
       ${p.itemNo} | ${p.desc}<br>
@@ -551,21 +546,13 @@ if(existing){
       ${vendorMatched ? "" : "<br><small style='color:red'>Different Vendor</small>"}
     `;
 
-    d.onclick = ()=>{
+    d.onclick=()=>{
       const r = inp.closest("tr");
-      r.children[0].children[0].value = p.itemNo;
-      r.children[1].children[0].value = p.barcode || "";
+      r.children[0].children[0].value = p.barcode || "";
+      r.children[1].children[0].value = p.itemNo;
       r.children[2].children[0].value = p.desc;
-      r.querySelector(".stk").innerText = p.stock;
+      r.querySelector(".stk").innerText = p.stock || 0;
       r.children[5].children[0].value = vendorMatched ? lastCost : 0;
-
-      if(!vendorMatched){
-        ruleMessage("Product not purchased from this vendor. Cost set to 0");
-      }
-if(q > +r.querySelector(".stk").innerText){
-  ruleMessage("Return quantity exceeds stock");
-  r.children[4].children[0].value = r.querySelector(".stk").innerText;
-}
       box.innerHTML="";
       calcReturn();
     };
@@ -604,6 +591,14 @@ function calcReturn(){
 function saveReturn(){
   const vendor=returnVendor.value;
   if(!vendor) return ruleMessage("Vendor required");
+if(editingReturnIndex !== null){
+  const old = DB.returns[editingReturnIndex];
+  old.items.forEach(it=>{
+    const p = DB.products.find(x=>x.itemNo===it.itemNo);
+    if(p) p.stock += it.qty;
+  });
+  DB.vendorLedger = DB.vendorLedger.filter(l=>l.ref !== old.no);
+}
 
   const items=[];
   document.querySelectorAll("#returnBody tr").forEach(r=>{
@@ -618,8 +613,12 @@ function saveReturn(){
   if(!items.length) return ruleMessage("No items");
 
   const amount=items.reduce((s,i)=>s+i.qty*i.cost,0);
-  const no=generateReturnNo();
-
+  let no;
+if(editingReturnIndex !== null){
+  no = DB.returns[editingReturnIndex].no;
+}else{
+  no = generateReturnNo();
+}
   /* STOCK DECREASE */
   items.forEach(i=>{
     const p=DB.products.find(x=>x.itemNo===i.itemNo);
@@ -639,20 +638,25 @@ function saveReturn(){
 
   const v=DB.vendors.find(x=>x.name===vendor);
   if(v) v.balance=(v.balance||0)-amount;
-
- DB.returns.push({
+const retObj={
   no,
   vendor,
-  dateTime: new Date().toISOString(),
+  dateTime:new Date().toISOString(),
   amount,
   items
-});
+};
 
-
+if(editingReturnIndex !== null){
+  DB.returns[editingReturnIndex]=retObj;
+  editingReturnIndex=null;
+}else{
+  DB.returns.push(retObj);
+}
   saveDB();
   resetReturnForm();
   loadReturnNo();
   loadReturns();
+  editingReturnIndex = i;
 }
 
 /* ================= DELETE ================= */
@@ -746,18 +750,14 @@ ${r.items.map((it,idx)=>{
 
 </table>
 <div style="
-  margin-top:20px;
-  padding-top:10px;
-  border-top:2px solid #000;
-  font-size:18px;
-  font-weight:800;
+  margin-top:15px;
+  padding-top:6px;
+  border-top:1.5px solid #000;
+  font-size:15px;
+  font-weight:700;
   text-align:right">
-TOTAL RETURN AMOUNT: ${r.amount.toFixed(2)}
+<strong>Total Return:</strong> ${r.amount.toFixed(2)}
 </div>
-</body>
-</html>
-  `);
-
   w.document.close();
   w.focus();
   w.print();
