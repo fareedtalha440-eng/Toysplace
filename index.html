@@ -393,7 +393,8 @@ function logAction(action, ref=""){
 <table width="100%" border="1" cellpadding="6">
 <thead>
 <tr>
- <th>Item No</th>
+  <th>Barcode</th>
+  <th>Item No</th>
   <th>Description</th>
   <th>Stock</th>
   <th>Qty</th>
@@ -402,6 +403,7 @@ function logAction(action, ref=""){
   <th></th>
 </tr>
 </thead>
+
 <tbody id="returnBody"></tbody>
 </table>
 
@@ -445,12 +447,13 @@ function logAction(action, ref=""){
 <script>
 /* ================= SAFETY ================= */
 if(!DB.vendorLedger) DB.vendorLedger=[];
+if(!DB.returns) DB.returns=[];
 let editingReturnIndex = null;
 /* ================= LOAD VENDORS ================= */
 function loadReturnVendors(){
   const sel=document.getElementById("returnVendor");
   sel.innerHTML='<option value="">Select Vendor</option>';
-  DB.vendors.forEach(v=>{
+  DB.vendor.forEach(v=>{
     sel.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
   });
 }
@@ -482,12 +485,12 @@ function loadReturnNo(){
 function addReturnRow(){
   const tr=document.createElement("tr");
   tr.innerHTML=`
-<td><input oninput="searchReturn(this,1)"><div class="dropdown"></div></td>
-<td><input oninput="searchReturn(this,0)"><div class="dropdown"></div></td>
-<td><input oninput="searchReturn(this,2)"><div class="dropdown"></div></td>
+<td><input placeholder="Barcode" oninput="searchReturn(this,1)"><div class="dropdown"></div></td>
+<td><input placeholder="Item No" oninput="searchReturn(this,0)"><div class="dropdown"></div></td>
+<td><input placeholder="Description" oninput="searchReturn(this,2)"><div class="dropdown"></div></td>
 <td class="stk">0</td>
 <td><input type="number" min="1" oninput="calcReturn()"></td>
-<td><input oninput="calcReturn()"></td>
+<td><input type="number" min="0.01" oninput="calcReturn()"></td>
 <td class="amt">0</td>
 <td><button type="button" onclick="removeReturnRow(this)">X</button></td>`;
   document.getElementById("returnBody").appendChild(tr);
@@ -504,7 +507,7 @@ function searchReturn(inp,type){
     return;
   }
 
-  const vendor = DB.vendors.find(v=>v.name===vendorName);
+  const vendor = DB.vendor.find(v=>v.name===vendorName);
   const box = inp.nextElementSibling;
   box.innerHTML="";
 
@@ -636,7 +639,7 @@ if(editingReturnIndex !== null){
     date:new Date().toISOString()
   });
 
-  const v=DB.vendors.find(x=>x.name===vendor);
+  const v=DB.vendor.find(x=>x.name===vendor);
   if(v) v.balance=(v.balance||0)-amount;
 const retObj={
   no,
@@ -675,7 +678,7 @@ function deleteReturn(i){
   DB.vendorLedger = DB.vendorLedger.filter(l=>l.ref !== r.no);
 
   // VENDOR BALANCE ROLLBACK
-  const v = DB.vendors.find(x=>x.name===r.vendor);
+  const v = DB.vendor.find(x=>x.name===r.vendor);
   if(v) v.balance = (v.balance||0) + r.amount;
 
   // CASH ROLLBACK (SAFETY)
@@ -691,7 +694,7 @@ function printReturn(i){
   if(!r) return;
 
   const dt = new Date(r.dateTime || r.date);
-  const vendor = DB.vendors.find(v=>v.name===r.vendor);
+  const vendor = DB.vendor.find(v=>v.name===r.vendor);
 
   const w = window.open("");
   w.document.write(`
@@ -817,7 +820,9 @@ function editReturn(i){
 function resetReturnForm(){
   document.getElementById("returnBody").innerHTML="";
   document.getElementById("returnTotal").innerText=0;
-  loadReturnNo(); // always generate fresh number
+  if(editingReturnIndex === null){
+    loadReturnNo();
+  }
 }
 /* ================= INIT ================= */
 document.addEventListener("DOMContentLoaded",()=>{
@@ -825,7 +830,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   loadReturnNo();
   loadReturns();
   const fv = document.getElementById("filterReturnVendor");
-DB.vendors.forEach(v=>{
+DB.vendor.forEach(v=>{
   fv.innerHTML += `<option value="${v.name}">${v.name}</option>`;
 });
 });
