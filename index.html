@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -489,13 +488,6 @@ function addReturnRow(){
 
 /* ================= SEARCH ================= */
 function searchReturn(inp,type){
-  const vendor=returnVendor.value;
-  if(!vendor){ ruleMessage("Select vendor first"); inp.value=""; return; }
-
-  const box=inp.nextElementSibling;
-  box.innerHTML="";
-
-function searchReturn(inp,type){
   const vendorName = returnVendor.value;
   if(!vendorName){
     ruleMessage("Select vendor first");
@@ -510,7 +502,6 @@ function searchReturn(inp,type){
   const q = inp.value.trim().toLowerCase();
   if(!q) return;
 
-  // ONLY PRODUCTS WITH STOCK
   const products = DB.products.filter(p=>p.stock > 0);
 
   products.forEach(p=>{
@@ -520,7 +511,6 @@ function searchReturn(inp,type){
     if(type===2 && (p.desc||"").toLowerCase().includes(q)) match=true;
     if(!match) return;
 
-    // LAST PURCHASE FROM THIS VENDOR
     let lastCost = 0;
     let vendorMatched = false;
 
@@ -539,10 +529,9 @@ function searchReturn(inp,type){
 
     const d = document.createElement("div");
     d.innerHTML = `
-      ${p.itemNo} | ${p.desc}
-      <br>
+      ${p.itemNo} | ${p.desc}<br>
       <small>Stock: ${p.stock}</small>
-      ${vendorMatched ? "" : "<small style='color:red'>Different Vendor</small>"}
+      ${vendorMatched ? "" : "<br><small style='color:red'>Different Vendor</small>"}
     `;
 
     d.onclick = ()=>{
