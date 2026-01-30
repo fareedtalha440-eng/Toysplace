@@ -436,7 +436,7 @@ let editingReturnIndex = null;
 function loadReturnVendors(){
   const sel=document.getElementById("returnVendor");
   sel.innerHTML='<option value="">Select Vendor</option>';
-  DB.vendor.forEach(v=>{
+  DB.vendors.forEach(v=>{
     sel.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
   });
 }
@@ -631,7 +631,7 @@ function deleteReturn(i){
   DB.vendorLedger = DB.vendorLedger.filter(l=>l.ref !== r.no);
 
   // VENDOR BALANCE ROLLBACK
-  const v = DB.vendor.find(x=>x.name===r.vendor);
+  const v = DB.vendors.find(x=>x.name===r.vendor);
   if(v) v.balance = (v.balance||0) + r.amount;
 
   // CASH ROLLBACK (SAFETY)
@@ -784,7 +784,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   loadReturnNo();
   loadReturns();
   const fv = document.getElementById("filterReturnVendor");
-DB.vendor.forEach(v=>{
+DB.vendors.forEach(v=>{
   fv.innerHTML += `<option value="${v.name}">${v.name}</option>`;
 });
 });
