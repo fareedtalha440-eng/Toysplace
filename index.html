@@ -353,12 +353,11 @@ function logAction(action, ref=""){
   saveDB();
 }
 </script>
-<!-- ================= VENDOR RETURNS ================= -->
+<!-- ================= VENDOR RETURN (FINAL) ================= -->
 <section id="returns" style="display:none;padding:30px">
 
 <h2 style="font-size:26px;font-weight:800">Vendor Return</h2>
 
-<!-- Vendor / Return No -->
 <div style="display:flex;gap:30px;margin-bottom:15px">
   <div>
     <label>Vendor</label><br>
@@ -369,7 +368,6 @@ function logAction(action, ref=""){
   </div>
 </div>
 
-<!-- ITEMS -->
 <table width="100%" border="1" cellpadding="6">
 <thead>
 <tr>
@@ -386,22 +384,13 @@ function logAction(action, ref=""){
 <tbody id="retBody"></tbody>
 </table>
 
-<button type="button" onclick="retAddRow()">Add Item</button>
+<button onclick="retAddRow()">Add Item</button>
 <h3>Total: <span id="retTotal">0.00</span></h3>
-<button type="button" onclick="retSave()">Save Return</button>
+<button onclick="retSave()">Save Return</button>
 
 <hr>
 
-<!-- PREVIOUS -->
 <h3>Previous Returns</h3>
-
-<div style="display:flex;gap:10px;margin-bottom:10px">
-  <input type="date" id="rfFrom">
-  <input type="date" id="rfTo">
-  <select id="rfVendor"></select>
-  <button onclick="retLoad()">Apply</button>
-  <button onclick="retClear()">Clear</button>
-</div>
 
 <table width="100%" border="1" cellpadding="6">
 <thead>
@@ -423,33 +412,28 @@ function logAction(action, ref=""){
 </section>
 
 <script>
-/* ================= SAFETY ================= */
+/* ================= HARD SAFETY ================= */
 if(!DB.returns) DB.returns=[];
 if(!DB.vendorLedger) DB.vendorLedger=[];
-let retEditIndex=null;
+let retEditIndex = null;
 
 /* ================= INIT ================= */
-document.addEventListener("DOMContentLoaded",()=>{
+document.addEventListener("DOMContentLoaded", ()=>{
   retLoadVendors();
-  retSetNo();
-  retLoad();
+  retGenerateNo();
+  retLoadPrevious();
 });
 
 /* ================= VENDORS ================= */
 function retLoadVendors(){
-  const vSel=document.getElementById("retVendor");
-  const fSel=document.getElementById("rfVendor");
-  vSel.innerHTML='<option value="">Select Vendor</option>';
-  fSel.innerHTML='<option value="">All Vendors</option>';
-
+  retVendor.innerHTML='<option value="">Select Vendor</option>';
   DB.vendors.forEach(v=>{
-    vSel.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
-    fSel.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
+    retVendor.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
   });
 }
 
 /* ================= RETURN NO ================= */
-function retSetNo(){
+function retGenerateNo(){
   let max=0;
   DB.returns.forEach(r=>{
     const n=parseInt((r.no||"").replace("RT",""));
@@ -474,7 +458,7 @@ function retAddRow(){
 <td><input type="number" min="1" oninput="retCalc()"></td>
 <td><input type="number" min="0.01" step="0.01" oninput="retCalc()"></td>
 <td class="amt">0.00</td>
-<td><button onclick="retRemoveRow(this)">X</button></td>`;
+<td><button onclick="this.closest('tr').remove();retCalc()">X</button></td>`;
   retBody.appendChild(tr);
 }
 
@@ -486,34 +470,46 @@ function retSearch(inp,type){
   if(!q) return;
 
   DB.products.forEach(p=>{
-    let match=false;
-    if(type==="barcode" && (p.barcode||"").toLowerCase().includes(q)) match=true;
-    if(type==="item" && (p.itemNo||"").toLowerCase().includes(q)) match=true;
-    if(type==="desc" && (p.desc||"").toLowerCase().includes(q)) match=true;
-    if(!match) return;
+    let ok=false;
+    if(type==="barcode" && (p.barcode||"").toLowerCase().includes(q)) ok=true;
+    if(type==="item" && (p.itemNo||"").toLowerCase().includes(q)) ok=true;
+    if(type==="desc" && (p.desc||"").toLowerCase().includes(q)) ok=true;
+    if(!ok) return;
 
-    // duplicate block
+    // HARD DUPLICATE BLOCK
     if([...retBody.children].some(r=>r!==inp.closest("tr") && r.children[1].children[0].value===p.itemNo)) return;
 
     const d=document.createElement("div");
     d.innerHTML=`${p.itemNo} | ${p.desc}<br><small>Stock: ${p.stock}</small>`;
     d.onclick=()=>{
       const r=inp.closest("tr");
+
+      // VENDOR CONSISTENCY CHECK
+      const lastPurchase = DB.purchases
+        .filter(x=>x.items.some(i=>i.itemNo===p.itemNo))
+        .sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
+
+      if(lastPurchase && lastPurchase.vendor !== retVendor.value){
+        ruleMessage("Item was purchased from a different vendor");
+        return;
+      }
+
       r.children[0].children[0].value=p.barcode||"";
       r.children[1].children[0].value=p.itemNo;
       r.children[2].children[0].value=p.desc;
-      r.querySelector(".stk").innerText=p.stock||0;
+      r.querySelector(".stk").innerText=p.stock;
 
-      // AUTO COST PICK (vendor-wise last purchase)
+      // AUTO COST PICK (LAST PURCHASE)
       let lastCost=0;
       DB.purchases
         .filter(x=>x.vendor===retVendor.value)
         .sort((a,b)=>new Date(b.date)-new Date(a.date))
         .some(pu=>{
           const it=pu.items.find(i=>i.itemNo===p.itemNo);
-          if(it){ lastCost=it.cost; return true;}
+          if(it){ lastCost=it.cost; return true; }
         });
       r.children[5].children[0].value=lastCost||0;
+
       box.innerHTML="";
       retCalc();
     };
@@ -534,7 +530,7 @@ function retCalc(){
       q=stk;
       r.children[4].children[0].value=stk;
     }
-    if(c<=0){ r.querySelector(".amt").innerText="0.00"; return;}
+    if(c<=0){ r.querySelector(".amt").innerText="0.00"; return; }
 
     const a=q*c;
     r.querySelector(".amt").innerText=a.toFixed(2);
@@ -543,7 +539,7 @@ function retCalc(){
   retTotal.innerText=total.toFixed(2);
 }
 
-/* ================= SAVE ================= */
+/* ================= SAVE / OVERWRITE ================= */
 function retSave(){
   if(!retVendor.value) return ruleMessage("Vendor required");
 
@@ -556,14 +552,17 @@ function retSave(){
   });
   if(!items.length) return ruleMessage("No items");
 
+  // ROLLBACK IF EDIT
   if(retEditIndex!==null){
-    DB.returns[retEditIndex].items.forEach(it=>{
+    const old=DB.returns[retEditIndex];
+    old.items.forEach(it=>{
       const p=DB.products.find(x=>x.itemNo===it.itemNo);
       if(p) p.stock+=it.qty;
     });
-    DB.vendorLedger=DB.vendorLedger.filter(l=>l.ref!==DB.returns[retEditIndex].no);
+    DB.vendorLedger=DB.vendorLedger.filter(l=>l.ref!==old.no);
   }
 
+  // APPLY
   items.forEach(it=>{
     const p=DB.products.find(x=>x.itemNo===it.itemNo);
     p.stock-=it.qty;
@@ -573,6 +572,7 @@ function retSave(){
   const no=retEditIndex!==null?DB.returns[retEditIndex].no:retNo.innerText;
 
   DB.vendorLedger.push({
+    id:uid("VL"),
     vendor:retVendor.value,
     type:"RETURN",
     ref:no,
@@ -580,16 +580,16 @@ function retSave(){
     date:new Date().toISOString()
   });
 
-  const obj={no,vendor:retVendor.value,amount,dateTime:new Date().toISOString(),items};
+  const obj={no,vendor:retVendor.value,items,amount,dateTime:new Date().toISOString()};
   retEditIndex!==null?DB.returns[retEditIndex]=obj:DB.returns.push(obj);
 
   saveDB();
   resetReturnForm();
-  retLoad();
+  retLoadPrevious();
 }
 
-/* ================= LOAD / EDIT / DELETE / PRINT ================= */
-function retLoad(){
+/* ================= LOAD ================= */
+function retLoadPrevious(){
   retPrev.innerHTML="";
   DB.returns.forEach((r,i)=>{
     const d=new Date(r.dateTime);
@@ -601,21 +601,76 @@ function retLoad(){
 <td>${d.toLocaleTimeString()}</td>
 <td>${r.vendor}</td>
 <td>${r.amount.toFixed(2)}</td>
-<td><button onclick="printReturn(${i})">Print</button></td>
+<td><button onclick="retPrint(${i})">Print</button></td>
 <td><button onclick="retEdit(${i})">Edit</button></td>
 <td><button onclick="retDelete(${i})">Delete</button></td>
 </tr>`;
   });
 }
-function retEdit(i){ retEditIndex=i; location.hash="#returns"; resetReturnForm(); }
-function retDelete(i){ if(confirm("Delete?")){ deleteReturn(i); retLoad(); } }
-function retClear(){ rfFrom.value=""; rfTo.value=""; rfVendor.value=""; retLoad(); }
 
-function resetReturnForm(){
+/* ================= EDIT ================= */
+function retEdit(i){
+  const r=DB.returns[i];
+  retEditIndex=i;
+  retVendor.value=r.vendor;
+  retNo.innerText=r.no;
   retBody.innerHTML="";
-  retTotal.innerText="0.00";
-  retEditIndex=null;
-  retSetNo();
+
+  r.items.forEach(it=>{
+    retAddRow();
+    const tr=retBody.lastChild;
+    const p=DB.products.find(x=>x.itemNo===it.itemNo);
+    tr.children[1].children[0].value=it.itemNo;
+    tr.children[2].children[0].value=p?.desc||"";
+    tr.querySelector(".stk").innerText=p?.stock||0;
+    tr.children[4].children[0].value=it.qty;
+    tr.children[5].children[0].value=it.cost;
+  });
+  retCalc();
+}
+
+/* ================= DELETE ================= */
+function retDelete(i){
+  if(!confirm("Delete return permanently?")) return;
+  const r=DB.returns[i];
+
+  r.items.forEach(it=>{
+    const p=DB.products.find(x=>x.itemNo===it.itemNo);
+    if(p) p.stock+=it.qty;
+  });
+
+  DB.vendorLedger=DB.vendorLedger.filter(l=>l.ref!==r.no);
+  DB.returns.splice(i,1);
+  saveDB();
+  retLoadPrevious();
+}
+
+/* ================= PRINT ================= */
+function retPrint(i){
+  const r=DB.returns[i];
+  const d=new Date(r.dateTime);
+  const w=window.open("");
+  w.document.write(`
+<h2 style="text-align:center">VENDOR RETURN</h2>
+<b>No:</b> ${r.no}<br>
+<b>Vendor:</b> ${r.vendor}<br>
+<b>Date:</b> ${d.toLocaleString()}
+<hr>
+<table border="1" width="100%" cellpadding="6">
+<tr><th>#</th><th>Item</th><th>Qty</th><th>Cost</th><th>Amount</th></tr>
+${r.items.map((it,i)=>`
+<tr>
+<td>${i+1}</td>
+<td>${it.itemNo}</td>
+<td>${it.qty}</td>
+<td>${it.cost.toFixed(2)}</td>
+<td>${(it.qty*it.cost).toFixed(2)}</td>
+</tr>`).join("")}
+</table>
+<div style="margin-top:15px;font-size:18px;font-weight:800;border-top:2px solid #000;text-align:right">
+TOTAL RETURN: ${r.amount.toFixed(2)}
+</div>`);
+  w.print();
 }
 </script>
 <!-- ================= INVOICE ================= -->
