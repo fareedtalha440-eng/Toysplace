@@ -466,23 +466,23 @@ function loadReturnNo(){
 
 /* ================= ADD ROW ================= */
 function addReturnRow(){
-  const tr=document.createElement("tr");
-  tr.innerHTML=`
-<td><input placeholder="Barcode" oninput="searchReturn(this,1)"><div class="dropdown"></div></td>
-<td><input placeholder="Item No" oninput="searchReturn(this,0)"><div class="dropdown"></div></td>
-<td><input placeholder="Description" oninput="searchReturn(this,2)"><div class="dropdown"></div></td>
-<td class="stk">0</td>
-<td><input type="number" min="1" oninput="calcReturn()"></td>
-<td><input type="number" min="0.01" oninput="calcReturn()"></td>
-<td class="amt">0</td>
-<td><button type="button" onclick="removeReturnRow(this)">X</button></td>`;
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><input oninput="searchReturn(this)"><div class="dropdown"></div></td>
+    <td class="desc"></td>
+    <td class="stk">0</td>
+    <td><input type="number" min="1" oninput="calcReturn()"></td>
+    <td><input type="number" min="0.01" step="0.01" oninput="calcReturn()"></td>
+    <td class="amt">0</td>
+    <td><button type="button" onclick="removeReturnRow(this)">X</button></td>
+  `;
   document.getElementById("returnBody").appendChild(tr);
 }
 function removeReturnRow(btn){
   btn.closest("tr").remove();
   calcReturn();
 }
-function searchReturn(inp,type){
+function searchReturn(inp){
   const vendorName = returnVendor.value;
   if(!vendorName){
     ruleMessage("Select vendor first");
@@ -490,59 +490,30 @@ function searchReturn(inp,type){
     return;
   }
 
-  const vendor = DB.vendor.find(v=>v.name===vendorName);
+  const q = inp.value.trim().toLowerCase();
   const box = inp.nextElementSibling;
   box.innerHTML="";
-
-  const q = inp.value.trim().toLowerCase();
   if(!q) return;
 
   DB.products.forEach(p=>{
-    let match=false;
-    if(type===0 && (p.itemNo||"").toLowerCase().includes(q)) match=true;
-    if(type===1 && (p.barcode||"").toLowerCase().includes(q)) match=true;
-    if(type===2 && (p.desc||"").toLowerCase().includes(q)) match=true;
-    if(!match) return;
+    if(!(p.itemNo||"").toLowerCase().includes(q)) return;
 
-    // DUPLICATE CHECK (CORRECT PLACE)
+    // DUPLICATE BLOCK
     const exists = [...document.querySelectorAll("#returnBody tr")]
-      .some(tr => tr.children[1].children[0].value === p.itemNo);
+      .some(tr => tr !== inp.closest("tr") && tr.children[0].children[0].value === p.itemNo);
     if(exists) return;
 
-    let lastCost = 0;
-    let vendorMatched = false;
-
-    const vendorPurchases = DB.purchases
-      .filter(x=>x.vendorId===vendor?.id)
-      .sort((a,b)=>new Date(b.date)-new Date(a.date));
-
-    for(const pur of vendorPurchases){
-      const f = pur.items.find(i=>i.itemNo===p.itemNo);
-      if(f){
-        lastCost = f.cost || 0;
-        vendorMatched = true;
-        break;
-      }
-    }
-
     const d = document.createElement("div");
-    d.innerHTML = `
-      ${p.itemNo} | ${p.desc}<br>
-      <small>Stock: ${p.stock}</small>
-      ${vendorMatched ? "" : "<br><small style='color:red'>Different Vendor</small>"}
-    `;
+    d.innerHTML = `${p.itemNo} | ${p.desc}<br><small>Stock: ${p.stock}</small>`;
 
-    d.onclick=()=>{
+    d.onclick = ()=>{
       const r = inp.closest("tr");
-      r.children[0].children[0].value = p.barcode || "";
-      r.children[1].children[0].value = p.itemNo;
-      r.children[2].children[0].value = p.desc;
-      r.querySelector(".stk").innerText = p.stock || 0;
-      r.children[5].children[0].value = vendorMatched ? lastCost : 0;
+      r.children[0].children[0].value = p.itemNo;
+      r.children[1].innerText = p.desc;
+      r.children[2].innerText = p.stock;
       box.innerHTML="";
       calcReturn();
     };
-
     box.appendChild(d);
   });
 }
@@ -642,7 +613,6 @@ if(editingReturnIndex !== null){
   resetReturnForm();
   loadReturnNo();
   loadReturns();
-  editingReturnIndex = i;
 }
 
 /* ================= DELETE ================= */
@@ -782,8 +752,10 @@ function editReturn(i){
   const r = DB.returns[i];
   if(!r) return;
 
+  editingReturnIndex = i;
   resetReturnForm();
   returnVendor.value = r.vendor;
+  document.getElementById("returnNo").innerText = r.no;
 
   r.items.forEach(it=>{
     addReturnRow();
@@ -791,14 +763,13 @@ function editReturn(i){
     const p = DB.products.find(x=>x.itemNo===it.itemNo);
 
     tr.children[0].children[0].value = it.itemNo;
-    tr.children[1].children[0].value = p?.barcode || "";
-    tr.children[2].children[0].value = p?.desc || "";
-    tr.querySelector(".stk").innerText = p?.stock || 0;
-    tr.children[4].children[0].value = it.qty;
-    tr.children[5].children[0].value = it.cost;
+    tr.children[1].innerText = p?.desc || "";
+    tr.children[2].innerText = p?.stock || 0;
+    tr.children[3].children[0].value = it.qty;
+    tr.children[4].children[0].value = it.cost;
   });
 
-  document.getElementById("returnNo").innerText = r.no;
+  calcReturn();
 }
 function resetReturnForm(){
   document.getElementById("returnBody").innerHTML="";
