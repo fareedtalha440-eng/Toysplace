@@ -1440,31 +1440,7 @@ loadVendorOptions(); renderCash();
       <input type="file" accept=".xlsx,.xls" onchange="uploadProductExcel(this)">
       <button class="blue" onclick="exportProductsCSV()">Download CSV</button>
     </div>
-<div class="card" id="barcodePanel" style="display:none">
-  <h2>Print Barcode</h2>
 
-  <div style="display:flex;gap:15px;margin-bottom:10px">
-    <button class="green" onclick="printSelectedBarcodes()">PRINT BARCODE</button>
-    <label><input type="checkbox" id="showItemNo"> Item No</label>
-    <label><input type="checkbox" id="showRate"> Rate</label>
-    <button class="red" onclick="closeBarcodePanel()">Back</button>
-  </div>
-
-  <table>
-    <thead>
-      <tr>
-        <th>Select</th>
-        <th>Barcode</th>
-        <th>Item No</th>
-        <th>Description</th>
-        <th>Rate</th>
-        <th>Stock</th>
-        <th>Qty To Print</th>
-      </tr>
-    </thead>
-    <tbody id="barcodeRows"></tbody>
-  </table>
-</div>
     <!-- ===== ADD PRODUCT ===== -->
     <h3>Add New Product</h3>
     <hr>
@@ -1491,6 +1467,31 @@ loadVendorOptions(); renderCash();
       style="width:100%; padding:8px; margin-bottom:15px;"
     >
   </div>
+<div class="card" id="barcodePanel" style="display:none">
+  <h2>Print Barcode</h2>
+
+  <div style="display:flex;gap:15px;margin-bottom:10px">
+    <button class="green" onclick="printSelectedBarcodes()">PRINT BARCODE</button>
+    <label><input type="checkbox" id="showItemNo"> Item No</label>
+    <label><input type="checkbox" id="showRate"> Rate</label>
+    <button class="red" onclick="closeBarcodePanel()">Back</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th><input type="checkbox" id="selectAllBarcodes"></th>
+        <th>Barcode</th>
+        <th>Item No</th>
+        <th>Description</th>
+        <th>Rate</th>
+        <th>Stock</th>
+        <th>Qty To Print</th>
+      </tr>
+    </thead>
+    <tbody id="barcodeRows"></tbody>
+  </table>
+</div>
 
   <!-- ===== PRODUCTS TABLE ===== -->
   <div class="card">
@@ -1719,20 +1720,31 @@ prodFiltered = DB.products;
 renderProducts();
 </script>
 <script>
-<script>
-function openBarcodePrint(){
+<input
+  id="barcodeSearch"
+  placeholder="Search barcode / item / description"
+  style="width:100%;padding:8px;margin:10px 0"
+  oninput="searchBarcodePanel()"
+>
+let barcodeList = [];
 
+function openBarcodePrint(){
   document.querySelectorAll("#products .card").forEach(c=>c.style.display="none");
   document.getElementById("barcodePanel").style.display="block";
 
+  barcodeList = DB.products.filter(p=>p.stock>0);
+  renderBarcodeRows(barcodeList);
+}
+
+function renderBarcodeRows(list){
   const tbody = document.getElementById("barcodeRows");
   tbody.innerHTML = "";
 
-  DB.products.filter(p=>p.stock>0).forEach((p,i)=>{
+  list.forEach((p,i)=>{
     tbody.innerHTML += `
       <tr>
-        <td><input type="checkbox" data-i="${i}"></td>
-        <td>${p.barcode||""}</td>
+        <td><input type="checkbox" data-i="${i}" ${!p.barcode ? "disabled":""}></td>
+        <td>${p.barcode||"<span style='color:red'>Missing</span>"}</td>
         <td>${p.itemNo||""}</td>
         <td>${p.desc}</td>
         <td>${p.rate}</td>
@@ -1743,14 +1755,36 @@ function openBarcodePrint(){
   });
 }
 
-function closeBarcodePanel(){
-  document.getElementById("barcodePanel").style.display="none";
-  document.querySelectorAll("#products .card").forEach(c=>c.style.display="block");
+function searchBarcodePanel(){
+  const q = barcodeSearch.value.toLowerCase();
+  const filtered = barcodeList.filter(p =>
+    (p.barcode||"").toLowerCase().includes(q) ||
+    (p.itemNo||"").toLowerCase().includes(q) ||
+    (p.desc||"").toLowerCase().includes(q)
+  );
+  renderBarcodeRows(filtered);
 }
 </script>
 <script>
 function printSelectedBarcodes(){
+let hasValid = false;
 
+rows.forEach(r=>{
+  const cb = r.querySelector("input[type=checkbox]");
+  if(!cb.checked) return;
+
+  const i = cb.dataset.i;
+  const p = DB.products.filter(x=>x.stock>0)[i];
+
+  if(p.barcode && p.barcode.trim()){
+    hasValid = true;
+  }
+});
+
+if(!hasValid){
+  alert("No valid barcode selected");
+  return;
+}
   const rows = [...document.querySelectorAll("#barcodeRows tr")];
   const showItem = document.getElementById("showItemNo").checked;
   const showRate = document.getElementById("showRate").checked;
@@ -1760,7 +1794,9 @@ function printSelectedBarcodes(){
 <style>
 body{font-family:Arial}
 .sticker{text-align:center;margin-bottom:12px;page-break-inside:avoid}
-svg{width:100%;height:60px}
+.small svg{height:40px}
+.medium svg{height:60px}
+.large svg{height:90px}
 .desc{font-weight:bold}
 .rate{font-weight:bold}
 </style>
@@ -1778,7 +1814,8 @@ svg{width:100%;height:60px}
 
     for(let x=0;x<q;x++){
       html += `
-<div class="sticker">
+const size = document.getElementById("stickerSize").value;
+<div class="sticker ${size}">
 ${showItem ? `<div>${p.itemNo}</div>` : ""}
 <div class="desc">${p.desc}</div>
 <svg id="b${i}_${x}"></svg>
@@ -1814,6 +1851,19 @@ ${showRate ? `<div class="rate">Rs.${Number(p.rate).toLocaleString(undefined,{mi
     w.print();
   };
 }
+<select id="stickerSize">
+  <option value="small">Small</option>
+  <option value="medium" selected>Medium</option>
+  <option value="large">Large</option>
+</select>
+
+document.addEventListener("change", e=>{
+  if(e.target.id === "selectAllBarcodes"){
+    document
+      .querySelectorAll("#barcodeRows input[type=checkbox]")
+      .forEach(cb=>cb.checked = e.target.checked);
+  }
+});  
 </script>
 <!-- ================= VENDORS ================= -->
 <section id="vendors">
@@ -1851,7 +1901,6 @@ ${showRate ? `<div class="rate">Rs.${Number(p.rate).toLocaleString(undefined,{mi
     </div>
   </div>
 </section>
-
 <script>
 /* ================= VENDOR LOGIC ================= */
 
