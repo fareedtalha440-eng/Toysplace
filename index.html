@@ -1740,7 +1740,8 @@ function renderBarcodeRows(list){
   const tbody = document.getElementById("barcodeRows");
   tbody.innerHTML = "";
 
-  list.forEach((p,i)=>{
+  list.forEach((p)=>{
+    const i = barcodeList.indexOf(p);
     tbody.innerHTML += `
       <tr>
         <td><input type="checkbox" data-i="${i}" ${!p.barcode ? "disabled":""}></td>
@@ -1749,12 +1750,11 @@ function renderBarcodeRows(list){
         <td>${p.desc}</td>
         <td>${p.rate}</td>
         <td>${p.stock}</td>
-        <td><input type="number" min="1" placeholder="${p.stock}" data-q="${i}"></td>
+        <td><input type="number" min="1" placeholder="${p.stock}"></td>
       </tr>
     `;
   });
 }
-
 function searchBarcodePanel(){
   const q = barcodeSearch.value.toLowerCase();
   const filtered = barcodeList.filter(p =>
@@ -1792,7 +1792,7 @@ if(!hasValid){
   const rows = [...document.querySelectorAll("#barcodeRows tr")];
   const showItem = document.getElementById("showItemNo").checked;
   const showRate = document.getElementById("showRate").checked;
-
+const size = document.getElementById("stickerSize").value;
   let html = `
 <html><head>
 <style>
@@ -1812,13 +1812,12 @@ body{font-family:Arial}
     if(!cb.checked) return;
 
     const i = cb.dataset.i;
-    const p = DB.products.filter(x=>x.stock>0)[i];
+    const p = barcodeList[i]
     let q = r.querySelector("input[type=number]").value;
     q = q ? parseInt(q) : p.stock;
 
     for(let x=0;x<q;x++){
       html += `
-const size = document.getElementById("stickerSize").value;
 <div class="sticker ${size}">
 ${showItem ? `<div>${p.itemNo}</div>` : ""}
 <div class="desc">${p.desc}</div>
@@ -1840,7 +1839,7 @@ ${showRate ? `<div class="rate">Rs.${Number(p.rate).toLocaleString(undefined,{mi
       if(!cb.checked) return;
 
       const i = cb.dataset.i;
-      const p = DB.products.filter(x=>x.stock>0)[i];
+      const p = barcodeList[i]
       let q = r.querySelector("input[type=number]").value;
       q = q ? parseInt(q) : p.stock;
 
