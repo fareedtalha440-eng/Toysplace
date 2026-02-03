@@ -5,8 +5,7 @@
 <title>Dani Test Software</title>
 
 <!-- ====== XLSX LIBRARY ====== -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <style>
 :root{
   --primary:#0b1c2d;     /* Deep Dark Blue */
@@ -1697,9 +1696,6 @@ renderProducts();
 </script>
 <script>
 function openBarcodePrint(){
-
-  const products = DB.products.filter(p=>p.stock>0);
-
   const w = window.open("");
   w.document.write(`
 <html>
@@ -1754,8 +1750,6 @@ ${products.map((p,i)=>`
 </tr>`).join("")}
 
 </table>
-
-<script>
 const products = ${JSON.stringify(products)};
 
 function printSelected(){
@@ -1813,8 +1807,6 @@ svg{width:100%;height:60px}
     pw.print();
   }
 }
-</script>
-
 </body>
 </html>
 `);
