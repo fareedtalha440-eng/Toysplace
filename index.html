@@ -730,6 +730,7 @@ TOTAL RETURN: ${r.amount.toFixed(2)}
       <label>From:</label><input type="date" id="invFrom">
       <label>To:</label><input type="date" id="invTo">
       <button onclick="applyInvoiceFilter()">Apply</button>
+      <button onclick="clearInvoiceFilter()">Clear</button>
     </div>
 
     <table style="width:100%;">
@@ -902,25 +903,38 @@ function saveInvoice(){
   if(!invoiceDraft.length) return alert("Invoice empty");
   if(invoiceDraft.some(r=>!r.valid)) return alert("Invalid product");
 
-  for(const r of invoiceDraft){
-    const p=DB.products.find(x=>x.id===r.productId);
-    if(p.stock<r.qty) return alert("Low stock: "+r.desc);
+ for(const r of invoiceDraft){
+  const p=DB.products.find(x=>x.id===r.productId);
+  if(!p) continue;
+  if(p.stock < r.qty){
+    return alert("Low stock: "+r.desc);
   }
-
+}
   const id=editingInvoiceId||getNextInvoiceNumber();
   const dateTime=new Date().toISOString();
   const total=+invTotal.innerText.replace(/,/g,"");
-
-  DB.invoices=DB.invoices.filter(i=>i.id!==id);
+  const index = DB.invoices.findIndex(i=>i.id===id);
+if(index>-1){
+  DB.invoices[index]={
+    id,dateTime,total,
+    items:JSON.parse(JSON.stringify(invoiceDraft)),
+    discountAmt:+mainDiscAmt.value,
+    discountPct:+mainDiscPct.value
+  };
+}else{
   DB.invoices.push({
     id,dateTime,total,
     items:JSON.parse(JSON.stringify(invoiceDraft)),
     discountAmt:+mainDiscAmt.value,
     discountPct:+mainDiscPct.value
   });
-
+}
   invoiceDraft.forEach(r=>{
-    DB.products.find(p=>p.id===r.productId).stock-=r.qty;
+   const prod = DB.products.find(p=>p.id===r.productId);
+if(prod){
+  if(prod.stock < r.qty) return alert("Stock mismatch detected");
+  prod.stock -= r.qty;
+}
   });
 
   DB.cash.push({id:uid("C"),type:"IN",amount:total,ref:id,dateTime});
@@ -974,6 +988,13 @@ function applyInvoiceFilter(){
   invPage=1;
   renderInvoiceList();
 }
+function clearInvoiceFilter(){
+  invFrom.value="";
+  invTo.value="";
+  invFiltered=null;
+  invPage=1;
+  renderInvoiceList();
+}
 function prevInvPage(){ if(invPage>1){invPage--;renderInvoiceList();} }
 function nextInvPage(){ invPage++;renderInvoiceList(); }
 
@@ -981,6 +1002,12 @@ function nextInvPage(){ invPage++;renderInvoiceList(); }
 function editInvoice(id){
   const inv = DB.invoices.find(i=>i.id===id);
   if(!inv) return alert("Invoice not found");
+
+  // RESTORE STOCK FIRST
+  inv.items.forEach(r=>{
+    const p = DB.products.find(x=>x.id===r.productId);
+    if(p) p.stock += r.qty;
+  });
 
   editingInvoiceId = id;
   invoiceDraft = JSON.parse(JSON.stringify(inv.items));
@@ -992,7 +1019,6 @@ function editInvoice(id){
   updateLiveInvoiceNo();
   window.scrollTo(0,0);
 }
-
 /* ===== DELETE INVOICE ===== */
 function deleteInvoice(id){
   if(!confirm("Delete this invoice?")) return;
@@ -1013,62 +1039,84 @@ function deleteInvoice(id){
   renderInvoice();
   updateLiveInvoiceNo();
 }
-
 /* ===== PRINT INVOICE ===== */
 function printInvoice(id){
   const inv = DB.invoices.find(i=>i.id===id);
   if(!inv) return;
 
+  const s = DB.settings || {};
+  const d = new Date(inv.dateTime);
+
   const w = window.open("");
   w.document.write(`
 <html>
 <head>
-  <title>Invoice ${inv.id}</title>
-  <style>
-    body{font-family:Arial;font-size:12px}
-    table{width:100%;border-collapse:collapse}
-    th,td{border:1px solid #000;padding:4px;text-align:center}
-    h2{text-align:center}
-    .right{text-align:right}
-  </style>
+<meta name="viewport" content="width=300">
+<style>
+body{font-family:monospace;font-size:12px;width:300px;margin:0}
+.center{text-align:center}
+.right{text-align:right}
+.line{border-top:1px dotted #000;margin:6px 0}
+.big{font-size:16px;font-weight:bold}
+table{width:100%}
+td{padding:2px 0}
+</style>
 </head>
 <body>
-  <h2>INVOICE</h2>
-  <div>Invoice No: ${inv.id}</div>
-  <div>Date: ${new Date(inv.dateTime).toLocaleString()}</div>
-  <br>
 
-  <table>
-    <tr>
-      <th>#</th>
-      <th>Item</th>
-      <th>Qty</th>
-      <th>Rate</th>
-      <th>Total</th>
-    </tr>
-    ${inv.items.map((r,i)=>`
-      <tr>
-        <td>${i+1}</td>
-        <td>${r.desc}</td>
-        <td>${r.qty}</td>
-        <td class="right">${formatNumber(r.rate)}</td>
-        <td class="right">${formatNumber(r.qty*r.rate)}</td>
-      </tr>
-    `).join("")}
-  </table>
+<div class="center">
+<img src="${s.logo||""}" style="max-width:180px"><br>
+<div class="big">${s.storeName||""}</div>
+<div>${s.addressLine1||""}</div>
+<div>${s.addressLine2||""}</div>
+</div>
 
-  <h3 style="text-align:right">
-    Total: ${formatNumber(inv.total)}
-  </h3>
+<div class="line"></div>
+
+<div class="center big">CASH CUSTOMER</div>
+
+<div class="line"></div>
+
+<table>
+<tr><td>S#</td><td>Item</td><td>Qty</td><td>Rate</td><td class="right">Amt</td></tr>
+${inv.items.map((r,i)=>`
+<tr>
+<td>${i+1}</td>
+<td>${r.itemNo}</td>
+<td>${r.qty}</td>
+<td>${r.rate}</td>
+<td class="right">${(r.qty*r.rate).toFixed(2)}</td>
+</tr>`).join("")}
+</table>
+
+<div class="line"></div>
+
+<table>
+<tr><td>Subtotal</td><td class="right">${inv.items.reduce((s,r)=>s+r.qty*r.rate,0).toFixed(2)}</td></tr>
+<tr><td>Discount (${inv.discountPct||0}%)</td><td class="right">${inv.discountAmt||0}</td></tr>
+<tr><td><b>Total</b></td><td class="right"><b>${inv.total}</b></td></tr>
+</table>
+
+<div class="line"></div>
+
+<div class="center">Thank You For Purchasing</div>
+
+<div class="line"></div>
+
+<div class="center">
+<div>Software By MT Tech</div>
+<div>0327-4947677</div>
+</div>
+
+<div class="line"></div>
+
+<div class="center">${d.toLocaleDateString()} ${d.toLocaleTimeString()}</div>
+
 </body>
 </html>
-  `);
-  w.document.close();
-  w.focus();
+`);
   w.print();
-  w.close();
 }
-
 /* ===== INITIAL RENDER ===== */
 document.addEventListener("DOMContentLoaded",()=>{
   renderInvoice();
