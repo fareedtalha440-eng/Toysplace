@@ -672,6 +672,20 @@ TOTAL RETURN: ${r.amount.toFixed(2)}
 </div>`);
   w.print();
 }
+function downloadVendorLedgerCSV(){
+  let csv = "Date,Type,Ref,Debit,Credit,Balance\n";
+  let bal = 0;
+
+  rows.forEach(r=>{
+    bal += (r.debit||0) - (r.credit||0);
+    csv += `"${new Date(r.date).toLocaleString()}","${r.type}","${r.ref}",${r.debit||0},${r.credit||0},${bal}\n`;
+  });
+
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.download = "vendor_ledger.csv";
+  a.click();
+}
 </script>
 <!-- ================= INVOICE ================= -->
 <section id="invoice">
@@ -1925,7 +1939,22 @@ function nextVendorNo(){
     .filter(n=>!isNaN(n));
   return "VEN"+(Math.max(...nums,1000)+1);
 }
+function downloadVendorLedgerCSV(){
+  if(!window._vendorLedgerRows) return alert("Ledger not ready");
 
+  let csv = "Date,Type,Ref,Debit,Credit,Balance\n";
+  let bal = 0;
+
+  window._vendorLedgerRows.forEach(r=>{
+    bal += (r.debit||0) - (r.credit||0);
+    csv += `"${new Date(r.date).toLocaleString()}","${r.type}","${r.ref}",${r.debit||0},${r.credit||0},${bal}\n`;
+  });
+
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.download = "vendor_ledger.csv";
+  a.click();
+}
 /* ===== ADD VENDOR ===== */
 function addVendor(){
   const name = vendorName.value.trim();
@@ -1989,10 +2018,17 @@ function vendorBalance(v){
     .reduce((s,p)=>s+(p.total||0),0);
 
   const paid = DB.cash
-    .filter(c=>c.type==="OUT" && c.vendorId===v.id)
+    .filter(c =>
+      c.type==="OUT" &&
+      (c.vendorId===v.id || c.vendor===v.id || c.vendor===v.name)
+    )
     .reduce((s,c)=>s+(c.amount||0),0);
 
-  return purchase - paid;
+  const returned = (DB.returns||[])
+    .filter(r=>r.vendorId===v.id)
+    .reduce((s,r)=>s+(r.total||0),0);
+
+  return purchase - paid - returned;
 }
 
 /* ===== RENDER VENDORS ===== */
@@ -2036,17 +2072,36 @@ function openVendorLedger(vendorId){
   if(!v) return;
 
   const rows = [];
-
+window._vendorLedgerRows = rows;
   DB.purchases.filter(p=>p.vendorId===v.id)
     .forEach(p=>{
       rows.push({date:p.dateTime,type:"Purchase",ref:p.id,debit:p.total,credit:0});
     });
-
-  DB.cash.filter(c=>c.type==="OUT" && c.vendorId===v.id)
-    .forEach(c=>{
-      rows.push({date:c.dateTime,type:"Payment",ref:c.ref||c.id,debit:0,credit:c.amount});
+DB.cash
+  .filter(c =>
+    c.type === "OUT" &&
+    (c.vendorId === v.id || c.vendor === v.id || c.vendor === v.name)
+  )
+  .forEach(c=>{
+    rows.push({
+      date: c.dateTime,
+      type: "Payment",
+      ref: c.ref || c.id,
+      debit: 0,
+      credit: c.amount
     });
-
+  });
+(DB.returns || [])
+  .filter(r => r.vendorId === v.id)
+  .forEach(r=>{
+    rows.push({
+      date: r.dateTime,
+      type: "Return",
+      ref: r.no || r.id,
+      debit: r.total || 0,
+      credit: 0
+    });
+  });
   rows.sort((a,b)=>new Date(a.date)-new Date(b.date));
 
   let bal = 0;
@@ -2067,6 +2122,7 @@ th,td{border:1px solid #000;padding:4px;text-align:center}
 <body>
 
 <h2>${v.name}</h2>
+<button onclick="downloadVendorLedgerCSV()">Download CSV</button>
 <div>${v.no}</div>
 
 <table>
@@ -2078,7 +2134,7 @@ ${rows.map((r,i)=>{
   bal += r.debit - r.credit;
   return `<tr>
 <td>${i+1}</td>
-<td>${new Date(r.date).toLocaleString()}</td>
+<td>${new Date(r.date || r.dateTime).toLocaleString()}</td>
 <td>${r.type}</td>
 <td>${r.ref}</td>
 <td class="right">${money(r.debit)}</td>
