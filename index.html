@@ -1433,7 +1433,7 @@ loadVendorOptions(); renderCash();
 <section id="products">
   <div class="card">
     <h2>Products</h2>
-
+<button class="blue" onclick="openBarcodePrint()">Print Barcode</button>
     <!-- ===== FILE ACTIONS ===== -->
     <h3>Import / Export</h3>
     <hr>
@@ -1694,6 +1694,140 @@ function exportProductsCSV(){
 /* ===== INIT ===== */
 prodFiltered = DB.products;
 renderProducts();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+<script>
+function openBarcodePrint(){
+  const w = window.open("");
+  w.document.write(`
+<html>
+<head>
+<title>Barcode Print</title>
+<style>
+body{font-family:Arial;padding:10px}
+table{width:100%;border-collapse:collapse}
+th,td{border:1px solid #000;padding:6px;text-align:center}
+input[type=number]{width:70px}
+.topbar{display:flex;gap:15px;align-items:center;margin-bottom:10px}
+.printBtn{padding:10px 20px;font-size:16px;font-weight:bold}
+.sticker{
+  width:100%;
+  page-break-inside:avoid;
+  text-align:center;
+  margin-bottom:10px;
+}
+.desc{font-weight:bold}
+.rate{font-weight:bold;margin-top:4px}
+@media print{
+  body{margin:0}
+  button{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+<button class="printBtn" onclick="printBarcodes()">PRINT BARCODE</button>
+<label><input type="checkbox" id="optItemNo"> Item No</label>
+<label><input type="checkbox" id="optRate"> Rate</label>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>Select</th>
+<th>Barcode</th>
+<th>Item No</th>
+<th>Description</th>
+<th>Rate</th>
+<th>Stock</th>
+<th>Qty To Print</th>
+</tr>
+</thead>
+<tbody id="bpRows"></tbody>
+</table>
+
+<script>
+const products = ${JSON.stringify(DB.products.filter(p=>p.stock>0))};
+
+const tbody = document.getElementById("bpRows");
+
+products.forEach((p,i)=>{
+  tbody.innerHTML+=\`
+<tr>
+<td><input type="checkbox" data-i="\${i}"></td>
+<td>\${p.barcode||""}</td>
+<td>\${p.itemNo}</td>
+<td>\${p.desc}</td>
+<td>\${p.rate}</td>
+<td>\${p.stock}</td>
+<td><input type="number" min="1" placeholder="\${p.stock}" data-q="\${i}"></td>
+</tr>\`;
+});
+
+function printBarcodes(){
+  const sel = [...document.querySelectorAll("input[type=checkbox]:checked")];
+  if(!sel.length){ alert("Select product"); return; }
+
+  const showItem = document.getElementById("optItemNo").checked;
+  const showRate = document.getElementById("optRate").checked;
+
+  let html = "<html><head><style>\
+  body{font-family:Arial}\
+  .sticker{width:100%;text-align:center;margin-bottom:12px;page-break-inside:avoid}\
+  .desc{font-weight:bold}\
+  .rate{font-weight:bold}\
+  svg{width:100%;height:60px}\
+  </style></head><body>";
+
+  sel.forEach(c=>{
+    const i = c.dataset.i;
+    const p = products[i];
+    let qty = document.querySelector('input[data-q="'+i+'"]').value;
+    qty = qty?parseInt(qty):p.stock;
+
+    for(let x=0;x<qty;x++){
+      html += \`
+<div class="sticker">
+\${showItem?'<div>'+p.itemNo+'</div>':''}
+<div class="desc">\${p.desc}</div>
+<svg id="b\${i}_\${x}"></svg>
+\${showRate?'<div class="rate">Rs.'+Number(p.rate).toLocaleString(undefined,{minimumFractionDigits:2})+'</div>':''}
+</div>\`;
+    }
+  });
+
+  html += "</body></html>";
+
+  const pw = window.open("");
+  pw.document.write(html);
+  pw.document.close();
+
+  pw.onload = ()=>{
+    sel.forEach(c=>{
+      const i = c.dataset.i;
+      const p = products[i];
+      let qty = document.querySelector('input[data-q="'+i+'"]').value;
+      qty = qty?parseInt(qty):p.stock;
+
+      for(let x=0;x<qty;x++){
+        JsBarcode(
+          pw.document.getElementById("b"+i+"_"+x),
+          p.barcode,
+          {format:"CODE128",displayValue:true,fontSize:14}
+        );
+      }
+    });
+    pw.print();
+  }
+}
+</script>
+
+</body>
+</html>
+`);
+}
 </script>
 <!-- ================= VENDORS ================= -->
 <section id="vendors">
