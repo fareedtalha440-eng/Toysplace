@@ -1718,14 +1718,14 @@ function exportProductsCSV(){
 /* ===== INIT ===== */
 prodFiltered = DB.products;
 renderProducts();
-</script>
-<script>
+
 <input
   id="barcodeSearch"
   placeholder="Search barcode / item / description"
   style="width:100%;padding:8px;margin:10px 0"
   oninput="searchBarcodePanel()"
 >
+
 let barcodeList = [];
 
 function openBarcodePrint(){
@@ -1763,24 +1763,28 @@ function searchBarcodePanel(){
     (p.desc||"").toLowerCase().includes(q)
   );
   renderBarcodeRows(filtered);
+function closeBarcodePanel(){
+  document.getElementById("barcodePanel").style.display="none";
+  document.querySelectorAll("#products .card").forEach(c=>c.style.display="block");
+}
 }
 </script>
 <script>
 function printSelectedBarcodes(){
 let hasValid = false;
+const rows = [...document.querySelectorAll("#barcodeRows tr")];
 
 rows.forEach(r=>{
   const cb = r.querySelector("input[type=checkbox]");
-  if(!cb.checked) return;
+  if(!cb || !cb.checked) return;
 
   const i = cb.dataset.i;
-  const p = DB.products.filter(x=>x.stock>0)[i];
+  const p = barcodeList[i];
 
-  if(p.barcode && p.barcode.trim()){
+  if(p && p.barcode && p.barcode.trim()){
     hasValid = true;
   }
 });
-
 if(!hasValid){
   alert("No valid barcode selected");
   return;
