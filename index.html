@@ -8,50 +8,34 @@
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <style>
 :root{
-  --primary:#0b1c2d;
-  --secondary:#ffffff;
-  --accent:#1f6feb;
-  --border:#d0d7de;
   --bg:#ffffff;
-  --text:#0b1c2d;
+  --text:#111;
+  --header-bg:#0b1c2d;
+  --header-text:#fff;
+  --card-bg:#fff;
+  --accent:#1f6feb;
+  --border:#ddd;
 }
 /* ===== BODY ===== */
 body{
   margin:0;
-  font-family:Segoe UI, Arial;
+  font-family:Segoe UI,Arial;
   background:var(--bg);
-color:var(--text);
+  color:var(--text);
 }
+.card{background:var(--card-bg)}
+button{background:var(--accent);color:#fff}
 
-/* ===== HEADER ===== */
-header{
+#appHeader{
   display:flex;
-  align-items:center;
   justify-content:space-between;
-  background:var(--primary);
-  color:white;
-  padding:14px 22px;
-  font-size:22px;
-  font-weight:600;
-}
-
-#header-left{
-  display:flex;
   align-items:center;
-  gap:12px;
+  padding:12px 20px;
+  background:var(--header-bg);
+  color:var(--header-text);
+  border-bottom:1px solid var(--border);
 }
-
-#header-logo{
-  height:40px;
-  max-height:60px;
-  width:auto;
-  display:none;
-}
-
-#dateTime{
-  font-size:14px;
-  opacity:0.85;
-}
+.h-left{display:flex;gap:12px;align-items:center}
 
 /* ===== NAV ===== */
 nav{
@@ -149,11 +133,13 @@ button{
 </style>
 </head>
 <body>
-
-<header>
-  <div id="header-left">
-    <img id="header-logo">
-    <span id="softwareName"></span>
+<header id="appHeader">
+  <div class="h-left">
+    <img id="headerLogo" style="display:none;height:42px">
+    <div>
+      <div id="headerName" style="font-size:20px;font-weight:700"></div>
+      <div id="headerLocation" style="font-size:12px;opacity:.8"></div>
+    </div>
   </div>
   <div id="dateTime"></div>
 </header>
@@ -268,9 +254,20 @@ document.addEventListener("DOMContentLoaded", ()=>{
     if(user.role==="developer" || (user.permissions||[]).includes(t)){
       openTab(t);
       break;
+      applySettings();
     }
   }
 });
+  function applySettings(){
+  const s=DB.settings||{};
+  headerName.innerText=s.storeName||"";
+  headerLocation.innerText=s.location||"";
+  if(s.logo){
+    headerLogo.src=s.logo;
+    headerLogo.style.display="block";
+    if(s.theme) applyTheme(s.theme);
+  }
+}
 </script>
 
 <!-- ================= DATABASE ================= -->
@@ -283,13 +280,12 @@ let DB = {
   invoices: JSON.parse(localStorage.getItem("invoices") || "[]"),
   cash: JSON.parse(localStorage.getItem("cash") || "[]"),
   deleted: JSON.parse(localStorage.getItem("deleted") || "[]"),
-  settings: Object.assign({
+  settings:Object.assign({
   storeName:"",
   logo:"",
   location:"",
-  contact:"0327-4947677",
   theme:"default"
-}, JSON.parse(localStorage.getItem("settings") || "{}")),
+},JSON.parse(localStorage.getItem("settings")||"{}")),
   accounts: JSON.parse(localStorage.getItem("accounts") || "[]")  // Added accounts
 };
 
@@ -307,6 +303,26 @@ function saveDB() {
 
 function uid(prefix){ 
   return prefix + "_" + Date.now() + Math.floor(Math.random()*1000); 
+}
+const THEMES={
+  default:{bg:"#ffffff",text:"#111",header:"#0b1c2d",card:"#ffffff",accent:"#1f6feb"},
+  dark:{bg:"#0d1117",text:"#e6edf3",header:"#161b22",card:"#161b22",accent:"#58a6ff"},
+  modern:{bg:"#f4f7fb",text:"#111",header:"#ffffff",card:"#ffffff",accent:"#6f42c1"},
+  neon:{bg:"#000000",text:"#00ffff",header:"#000000",card:"#111111",accent:"#00ffff"},
+  glass:{bg:"#eef2ff",text:"#111",header:"#ffffffcc",card:"#ffffffcc",accent:"#2563eb"}
+};
+
+function applyTheme(name){
+  const t=THEMES[name];
+  if(!t) return;
+  const r=document.documentElement;
+  r.style.setProperty("--bg",t.bg);
+  r.style.setProperty("--text",t.text);
+  r.style.setProperty("--header-bg",t.header);
+  r.style.setProperty("--card-bg",t.card);
+  r.style.setProperty("--accent",t.accent);
+  DB.settings.theme=name;
+  saveDB();
 }
 </script>
 <script>
@@ -1085,12 +1101,9 @@ td{padding:2px 0}
 <body>
 
 <div class="center">
-<img src="${s.logo||""}" style="max-width:180px"><br>
-<div class="big">${s.storeName||""}</div>
-<div>${s.location||""}</div>
-<div>MT Tech</div>
-<div>0327-4947677</div>
-<img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(s.location+' MT Tech 0327-4947677')}">
+<img src="${s.logo||""}" style="max-width:160px"><br>
+<b>${s.storeName||""}</b><br>
+${s.location||""}
 </div>
 <div class="line"></div>
 
@@ -1103,10 +1116,10 @@ td{padding:2px 0}
 ${inv.items.map((r,i)=>`
 <tr>
 <td>${i+1}</td>
-<td>${r.itemNo}</td>
+<td>${r.itemNo}<br><small>${r.desc||""}</small></td>
 <td>${r.qty}</td>
 <td>${r.rate}</td>
-<td class="right">${(r.qty*r.rate).toFixed(2)}</td>
+<td class="right">Rs.${Number(r.qty*r.rate).toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
 </tr>`).join("")}
 </table>
 
@@ -1123,8 +1136,10 @@ ${inv.items.map((r,i)=>`
 <div class="center">Thank You For Purchasing</div>
 
 <div class="line"></div>
-
-<div class="center">
+<div class="left">
+<img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(s.storeName+' '+s.location)}">
+</div>
+<div class="right">
 <div>Software By MT Tech</div>
 <div>0327-4947677</div>
 </div>
@@ -2682,14 +2697,27 @@ if(s.logo){
         <option value="developer">Developer</option>
       </select>
       <select id="newPermissions" multiple style="height:100px;">
-        <option value="invoice">Invoice</option>
-        <option value="cash">Cash In Hand</option>
-        <option value="vendors">Vendors</option>
-        <option value="products">Products</option>
-        <option value="settings">Settings</option>
-        <option value="reports">Reports</option>
-      </select>
-      <button onclick="createAccount()">Create Account</button>
+  <option value="invoice">Invoice</option>
+  <option value="cash">Cash In Hand</option>
+  <option value="vendors">Vendors</option>
+  <option value="products">Products</option>
+  <option value="settings">Settings</option>
+  <option value="reports">Reports</option>
+</select>
+      <div id="permBox" style="display:none">
+  <select id="newPermissions" multiple style="height:120px;">
+    <option value="invoice">Invoice</option>
+    <option value="cash">Cash In Hand</option>
+    <option value="vendors">Vendors</option>
+    <option value="products">Products</option>
+    <option value="settings">Settings</option>
+    <option value="reports">Reports</option>
+    <option value="purchase">Purchase</option>
+    <option value="returns">Returns</option>
+    <option value="delete">Delete Saved Data</option>
+  </select>
+</div>
+    <button onclick="showPerms()">Create Account</button>
     </div>
 
     <table style="width:100%; margin-top:10px;">
@@ -2790,25 +2818,9 @@ function hasAccess(feature){
 }
 
 /* ===== CREATE ACCOUNT ===== */
-function createAccount(){
-  const username=document.getElementById("newUsername").value.trim();
-  const password=document.getElementById("newPassword").value.trim();
-  const role=document.getElementById("newRole").value;
-  const perms=Array.from(document.getElementById("newPermissions").selectedOptions).map(x=>x.value);
-
-  if(!username || !password || !role) return alert("Please fill all fields");
-  if(DB.accounts.find(x=>x.username===username)) return alert("Username exists");
-
-  DB.accounts.push({id: uid("A"), username, password, role, permissions:perms});
-  saveDB();
-  renderAccounts();
-
-  document.getElementById("newUsername").value="";
-  document.getElementById("newPassword").value="";
-  document.getElementById("newRole").value="admin";
-  document.getElementById("newPermissions").selectedIndex=-1;
+function showPerms(){
+  document.getElementById("permBox").style.display="block";
 }
-
 /* ===== RENDER ACCOUNTS TABLE ===== */
 function renderAccounts(){
   const tbody=document.getElementById("accountsTable");
