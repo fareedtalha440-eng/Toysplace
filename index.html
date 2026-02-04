@@ -34,10 +34,11 @@ button{background:var(--accent);color:#fff}
   display:flex;
   justify-content:space-between;
   align-items:center;
-  padding:12px 20px;
+  min-height:70px;
+  padding:14px 24px;
   background:var(--header-bg);
   color:var(--header-text);
-  border-bottom:1px solid var(--border);
+  border-bottom:2px solid var(--border);
 }
 .h-left{display:flex;gap:12px;align-items:center}
 
@@ -146,6 +147,13 @@ button{
     </div>
   </div>
   <div id="dateTime"></div>
+  <script>
+setInterval(()=>{
+  document.getElementById("dateTime").innerText =
+    new Date().toLocaleDateString()+" "+new Date().toLocaleTimeString();
+},1000);
+</script>
+
 </header>
 <!-- ================= TOP MENU ================= -->
 <nav id="mainMenu">
@@ -254,19 +262,19 @@ document.addEventListener("DOMContentLoaded", ()=>{
 
   const user = JSON.parse(acc);
   const order = ["invoice","products","vendors","purchase","returns","cash","reports","settings"];
-
-  for(const t of order){
-    if(user.role==="developer" || (user.permissions||[]).includes(t)){
-      openTab(t);
-      break;
-      applySettings();
-    }
+for(const t of order){
+  if(user.role==="developer" || (user.permissions||[]).includes(t)){
+    openTab(t);
+    applySettings();
+    break;
   }
+}
 });
   function applySettings(){
   const s=DB.settings||{};
-  headerName.innerText=s.storeName||"";
-  headerLocation.innerText=s.location||"";
+ headerName.innerText = s.storeName || "Dani Test Software";
+headerLocation.innerText = s.location || "";
+
   if(s.logo){
     headerLogo.src=s.logo;
     headerLogo.style.display="block";
@@ -299,7 +307,6 @@ if(!DB.accounts.find(x=>x.fixed)) {
   DB.accounts.push({id: uid("A"), username:"Dani", password:"7525", role:"developer", fixed:true, permissions:[]});
   saveDB();
 }
-
 function saveDB() { 
   for(let k in DB){ 
     localStorage.setItem(k, JSON.stringify(DB[k])); 
@@ -520,13 +527,12 @@ function vrSelectProduct(inp,p){
 
   let autoCost=0;
   if(lastPurchase){
-    if(lastPurchase.vendor!==vrVendor.value){
-      ruleMessage("This product was not purchased from this vendor. Cost set to 0.");
-      autoCost=0;
-    }else{
-      const it=lastPurchase.items.find(i=>i.itemNo===p.itemNo);
-      autoCost=it?it.cost:0;
-    }
+   if(lastPurchase && lastPurchase.vendor===vrVendor.value){
+  const it=lastPurchase.items.find(i=>i.itemNo===p.itemNo);
+  autoCost=it?it.cost:0;
+}else{
+  autoCost=0;
+}
   }
 
   r.children[0].children[0].value=p.barcode||"";
@@ -590,9 +596,14 @@ function vrSave(){
 
   const amount=items.reduce((s,i)=>s+i.qty*i.cost,0);
   const no=vrEditIndex!==null?DB.returns[vrEditIndex].no:vrNo.innerText;
-
-  DB.vendorLedger.push({id:uid("VL"),vendor:vrVendor.value,type:"RETURN",ref:no,credit:amount,date:new Date().toISOString()});
-
+DB.vendorLedger.push({
+  id:uid("VL"),
+  vendor:vrVendor.value,
+  type:"RETURN",
+  ref:no,
+  credit:amount,
+  date:new Date().toISOString()
+});
   const obj={no,vendor:vrVendor.value,items,amount,dateTime:new Date().toISOString()};
   vrEditIndex!==null?DB.returns[vrEditIndex]=obj:DB.returns.push(obj);
 
@@ -1065,12 +1076,14 @@ function deleteInvoice(id){
 function printInvoice(id){
   const inv = DB.invoices.find(i=>i.id===id);
   if(!inv) return;
-
-  const s = DB.settings || {};
-  const d = new Date(inv.dateTime);
-
-  const w = window.open("");
-  w.document.write(`
+<svg id="barcode"></svg>
+<script>
+JsBarcode("#barcode","${inv.id}",{
+  width:2,
+  height:40,
+  displayValue:true
+});
+</script>
 <html>
 <head>
 <meta name="viewport" content="width=300">
@@ -1087,9 +1100,9 @@ td{padding:2px 0}
 <body>
 
 <div class="center">
-<img src="${s.logo||""}" style="max-width:160px"><br>
-<b>${s.storeName||""}</b><br>
-${s.location||""}
+<img src="${s.logo}" style="max-width:120px"><br>
+<b>${s.storeName}</b><br>
+${s.location}
 </div>
 <div class="line"></div>
 
@@ -1114,7 +1127,7 @@ ${inv.items.map((r,i)=>`
 <table>
 <tr><td>Subtotal</td><td class="right">${inv.items.reduce((s,r)=>s+r.qty*r.rate,0).toFixed(2)}</td></tr>
 <tr><td>Discount (${inv.discountPct||0}%)</td><td class="right">${inv.discountAmt||0}</td></tr>
-<tr><td><b>Total</b></td><td class="right"><b>${inv.total}</b></td></tr>
+<tr><td><b>Total</b></td><td class="right"><b>Rs.${Number(value).toLocaleString("en-PK",{minimumFractionDigits:2})}</b></td></tr>
 </table>
 
 <div class="line"></div>
@@ -1123,7 +1136,6 @@ ${inv.items.map((r,i)=>`
 
 <div class="line"></div>
 <div class="left">
-<img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(s.storeName+' '+s.location)}">
 </div>
 <div class="right">
 <div>Software By MT Tech</div>
@@ -1491,6 +1503,8 @@ loadVendorOptions(); renderCash();
     >
   </div>
 <div class="card" id="barcodePanel" style="display:none">
+  <button onclick="openBarcodePrint()">Print Barcode</button>
+
   <h2>Print Barcode</h2>
 
   <div style="display:flex;gap:15px;margin-bottom:10px">
@@ -2827,6 +2841,8 @@ function editAccount(id){
   if(role) acc.role=role;
   acc.permissions=perms?perms.split(",").map(x=>x.trim()):[];
   saveDB();
+  DB.accounts.push(newAccount);
+saveDB();
   renderAccounts();
 }
 
@@ -2912,11 +2928,13 @@ function resetSystem(){
     invoices:[],
     cash:[],
     deleted:[],
+    return:[],
     accounts:DB.accounts,
     settings:{softwareName:"Dani Test Software", logo:""}
   };
   saveDB();
   location.reload();
+  JSON.stringify(DB)
 }
 
 /* ===== INITIAL RENDER ===== */
@@ -2931,13 +2949,14 @@ function updateTime(){
 setInterval(updateTime,1000);
 updateTime();
 function applyTheme(t){
-  const r=document.documentElement;
-  if(t==="dark"){
-    r.style.setProperty("--bg","#0d1117");
-    r.style.setProperty("--text","#e6edf3");
-    r.style.setProperty("--primary","#161b22");
-    r.style.setProperty("--accent","#58a6ff");
+  if(t==="glass"){
+    document.documentElement.style.setProperty("--bg","rgba(255,255,255,.7)");
+    document.documentElement.style.setProperty("--card-bg","rgba(255,255,255,.6)");
+    document.documentElement.style.backdropFilter="blur(12px)";
+  }else{
+    location.reload();
   }
+}
   if(t==="modern"){
     r.style.setProperty("--bg","#f4f7fb");
     r.style.setProperty("--text","#111");
@@ -3144,4 +3163,75 @@ function applyTheme(name){
   DB.settings.theme=name;
   saveDB();
 }
+</script>
+<section id="reports" style="display:none">
+
+  <div class="card">
+    <h2>Reports</h2>
+
+    <div style="display:flex;gap:15px;flex-wrap:wrap;margin-bottom:15px">
+      <button onclick="renderSalesReport()">Sales Report</button>
+      <button onclick="renderProfitReport()">Profit Report</button>
+      <button onclick="renderStockReport()">Stock Report</button>
+    </div>
+
+    <div id="reportResult"></div>
+  </div>
+
+</section>
+<script>
+function renderSalesReport(){
+  let html=`<h3>Sales</h3>
+  <table border="1" width="100%" cellpadding="6">
+  <tr><th>#</th><th>Invoice</th><th>Date</th><th>Total</th></tr>`;
+
+  DB.invoices.forEach((i,idx)=>{
+    html+=`
+    <tr>
+      <td>${idx+1}</td>
+      <td>${i.id}</td>
+      <td>${new Date(i.dateTime).toLocaleDateString()}</td>
+      <td>Rs.${Number(i.total).toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
+    </tr>`;
+  });
+
+  html+=`</table>`;
+  document.getElementById("reportResult").innerHTML=html;
+}
+
+function renderProfitReport(){
+  let profit=0;
+  DB.invoices.forEach(i=>{
+    i.items.forEach(it=>{
+      profit += (it.rate - (it.cost||0)) * it.qty;
+    });
+  });
+
+  document.getElementById("reportResult").innerHTML=
+    `<h3>Total Profit</h3>
+     <h1>Rs.${profit.toLocaleString("en-PK",{minimumFractionDigits:2})}</h1>`;
+}
+
+function renderStockReport(){
+  let html=`<h3>Stock</h3>
+  <table border="1" width="100%" cellpadding="6">
+  <tr><th>#</th><th>Item</th><th>Stock</th></tr>`;
+
+  DB.products.forEach((p,i)=>{
+    html+=`
+    <tr>
+      <td>${i+1}</td>
+      <td>${p.itemNo} - ${p.desc}</td>
+      <td>${p.stock}</td>
+    </tr>`;
+  });
+
+  html+=`</table>`;
+  document.getElementById("reportResult").innerHTML=html;
+}
+</script>
+<script>
+document.addEventListener("DOMContentLoaded",()=>{
+  applySettings();
+});
 </script>
