@@ -30,18 +30,16 @@ body{
 .card{background:var(--card-bg)}
 button{background:var(--accent);color:#fff}
 
-#appHeader{
+header{
   display:flex;
   justify-content:space-between;
   align-items:center;
+  padding:14px 22px;
   min-height:70px;
-  padding:14px 24px;
-  background:var(--header-bg);
-  color:var(--header-text);
-  border-bottom:2px solid var(--border);
+  background:#111;
+  color:#fff;
+  border-bottom:2px solid #333;
 }
-.h-left{display:flex;gap:12px;align-items:center}
-
 /* ===== NAV ===== */
 nav{
   display:flex;
@@ -138,15 +136,16 @@ button{
 </style>
 </head>
 <body>
-<header id="appHeader">
-  <div class="h-left">
-    <img id="headerLogo" style="height:42px;display:none">
-    <div>
-      <div id="headerName" style="font-size:20px;font-weight:700"></div>
-      <div id="headerLocation" style="font-size:12px;opacity:.75"></div>
-    </div>
+<div style="display:flex;align-items:center;gap:12px">
+  <img id="headerLogo" style="height:42px;display:none">
+  <div>
+    <div id="headerStoreName" style="font-size:18px;font-weight:bold"></div>
+    <div id="headerLocation" style="font-size:12px;opacity:.8"></div>
   </div>
-  <div id="dateTime"></div>
+</div>
+
+<div id="headerDateTime" style="font-size:14px"></div>
+
   <script>
 setInterval(()=>{
   document.getElementById("dateTime").innerText =
@@ -281,6 +280,18 @@ headerLocation.innerText = s.location || "";
     if(s.theme) applyTheme(s.theme);
   }
 }
+  document.getElementById("headerStoreName").innerText =
+  DB.settings.storeName || "Retail Software";
+
+document.getElementById("headerLocation").innerText =
+  DB.settings.location || "";
+
+if(DB.settings.logo){
+  const l=document.getElementById("headerLogo");
+  l.src=DB.settings.logo;
+  l.style.display="block";
+}
+
 </script>
 
 <!-- ================= DATABASE ================= -->
@@ -1145,7 +1156,13 @@ ${inv.items.map((r,i)=>`
 <div class="line"></div>
 
 <div class="center">${d.toLocaleDateString()} ${d.toLocaleTimeString()}</div>
-
+<script>
+setInterval(()=>{
+  const d=new Date();
+  document.getElementById("headerDateTime").innerText =
+    d.toLocaleDateString()+" "+d.toLocaleTimeString();
+},1000);
+</script>
 </body>
 </html>
 `);
