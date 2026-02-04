@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -30,16 +31,17 @@ body{
 .card{background:var(--card-bg)}
 button{background:var(--accent);color:#fff}
 
-header{
+#appHeader{
   display:flex;
   justify-content:space-between;
   align-items:center;
-  padding:14px 22px;
-  min-height:70px;
-  background:#111;
-  color:#fff;
-  border-bottom:2px solid #333;
+  padding:12px 20px;
+  background:var(--header-bg);
+  color:var(--header-text);
+  border-bottom:1px solid var(--border);
 }
+.h-left{display:flex;gap:12px;align-items:center}
+
 /* ===== NAV ===== */
 nav{
   display:flex;
@@ -136,23 +138,15 @@ button{
 </style>
 </head>
 <body>
-<div style="display:flex;align-items:center;gap:12px">
-  <img id="headerLogo" style="height:42px;display:none">
-  <div>
-    <div id="headerStoreName" style="font-size:18px;font-weight:bold"></div>
-    <div id="headerLocation" style="font-size:12px;opacity:.8"></div>
+<header id="appHeader">
+  <div class="h-left">
+    <img id="headerLogo" style="height:48px;display:block">
+    <div>
+      <div id="headerName" style="font-size:22px;font-weight:800"></div>
+      <div id="headerLocation" style="font-size:13px;opacity:.85"></div>
+    </div>
   </div>
-</div>
-
-<div id="headerDateTime" style="font-size:14px"></div>
-
-  <script>
-setInterval(()=>{
-  document.getElementById("dateTime").innerText =
-    new Date().toLocaleDateString()+" "+new Date().toLocaleTimeString();
-},1000);
-</script>
-
+  <div id="dateTime" style="font-weight:600"></div>
 </header>
 <!-- ================= TOP MENU ================= -->
 <nav id="mainMenu">
@@ -255,43 +249,36 @@ if (!sessionStorage.getItem("loggedInUser")) {
 
 /* ================= OPEN FIRST ALLOWED TAB ================= */
 document.addEventListener("DOMContentLoaded", ()=>{
+  setInterval(()=>{
+  dateTime.innerText = new Date().toLocaleString();
+},1000);
+
+applySettings();
   const acc = sessionStorage.getItem("loggedInUser");
   if(!acc) return;
   
 
   const user = JSON.parse(acc);
   const order = ["invoice","products","vendors","purchase","returns","cash","reports","settings"];
-for(const t of order){
-  if(user.role==="developer" || (user.permissions||[]).includes(t)){
-    openTab(t);
-    applySettings();
-    break;
+
+  for(const t of order){
+    if(user.role==="developer" || (user.permissions||[]).includes(t)){
+      openTab(t);
+      break;
+      applySettings();
+    }
   }
-}
 });
   function applySettings(){
   const s=DB.settings||{};
- headerName.innerText = s.storeName || "Dani Test Software";
-headerLocation.innerText = s.location || "";
-
+  headerName.innerText=s.storeName||"";
+  headerLocation.innerText=s.location||"";
   if(s.logo){
     headerLogo.src=s.logo;
     headerLogo.style.display="block";
     if(s.theme) applyTheme(s.theme);
   }
 }
-  document.getElementById("headerStoreName").innerText =
-  DB.settings.storeName || "Retail Software";
-
-document.getElementById("headerLocation").innerText =
-  DB.settings.location || "";
-
-if(DB.settings.logo){
-  const l=document.getElementById("headerLogo");
-  l.src=DB.settings.logo;
-  l.style.display="block";
-}
-
 </script>
 
 <!-- ================= DATABASE ================= -->
@@ -318,6 +305,7 @@ if(!DB.accounts.find(x=>x.fixed)) {
   DB.accounts.push({id: uid("A"), username:"Dani", password:"7525", role:"developer", fixed:true, permissions:[]});
   saveDB();
 }
+
 function saveDB() { 
   for(let k in DB){ 
     localStorage.setItem(k, JSON.stringify(DB[k])); 
@@ -538,14 +526,8 @@ function vrSelectProduct(inp,p){
 
   let autoCost=0;
   if(lastPurchase){
-   if(lastPurchase && lastPurchase.vendor===vrVendor.value){
-  const it=lastPurchase.items.find(i=>i.itemNo===p.itemNo);
-  autoCost=it?it.cost:0;
-}else{
-  autoCost=0;
-}
-  }
-
+    const it=lastPurchase.items.find(i=>i.itemNo===p.itemNo);
+autoCost=it?it.cost:0;
   r.children[0].children[0].value=p.barcode||"";
   r.children[1].children[0].value=p.itemNo;
   r.children[2].children[0].value=p.desc;
@@ -572,10 +554,10 @@ function vrCalc(){
     if(c<=0){ r.querySelector(".amt").innerText="0.00"; return; }
 
     const a=q*c;
-    r.querySelector(".amt").innerText=a..toLocaleString("en-PK",{minimumFractionDigits:2});
+    r.querySelector(".amt").innerText=a.toFixed(2);
     total+=a;
   });
-  vrTotal.innerText=total..toLocaleString("en-PK",{minimumFractionDigits:2});
+  vrTotal.innerText=total.toFixed(2);
 }
 
 /* ================= SAVE (OVERWRITE SAFE) ================= */
@@ -607,14 +589,9 @@ function vrSave(){
 
   const amount=items.reduce((s,i)=>s+i.qty*i.cost,0);
   const no=vrEditIndex!==null?DB.returns[vrEditIndex].no:vrNo.innerText;
-DB.vendorLedger.push({
-  id:uid("VL"),
-  vendor:vrVendor.value,
-  type:"RETURN",
-  ref:no,
-  credit:amount,
-  date:new Date().toISOString()
-});
+
+  DB.vendorLedger.push({id:uid("VL"),vendor:vrVendor.value,type:"RETURN",ref:no,credit:amount,date:new Date().toISOString()});
+
   const obj={no,vendor:vrVendor.value,items,amount,dateTime:new Date().toISOString()};
   vrEditIndex!==null?DB.returns[vrEditIndex]=obj:DB.returns.push(obj);
 
@@ -637,7 +614,7 @@ function vrLoadPrevious(){
 <td>${d.toLocaleDateString()}</td>
 <td>${d.toLocaleTimeString()}</td>
 <td>${r.vendor}</td>
-<td>${r.amount..toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
+<td>${r.amount.toFixed(2)}</td>
 <td><button onclick="vrPrint(${i})">Print</button></td>
 <td><button onclick="vrEdit(${i})">Edit</button></td>
 <td><button onclick="vrDelete(${i})">Delete</button></td>
@@ -694,12 +671,12 @@ ${r.items.map((it,i)=>`
 <td>${i+1}</td>
 <td>${it.itemNo}</td>
 <td>${it.qty}</td>
-<td>${it.cost..toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
-<td>${(it.qty*it.cost)..toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
+<td>${it.cost.toFixed(2)}</td>
+<td>${(it.qty*it.cost).toFixed(2)}</td>
 </tr>`).join("")}
 </table>
 <div style="margin-top:15px;font-size:20px;font-weight:900;border-top:3px solid #000;text-align:right">
-TOTAL RETURN: ${r.amount..toLocaleString("en-PK",{minimumFractionDigits:2})}
+TOTAL RETURN: ${r.amount.toFixed(2)}
 </div>`);
   w.print();
 }
@@ -895,7 +872,7 @@ function searchInvProduct(i,val,field){
         alert("Product already added");
         return;
       }
-      invoiceDraft[i]={productId:p.id,barcode:p.barcode||"",itemNo:p.itemNo,desc:p.desc,qty:1,rate:p.rate,valid:true};
+     invoiceDraft[i]={productId:p.id,barcode:p.barcode||"",itemNo:p.itemNo,desc:p.desc,qty:1,rate:p.rate,valid:true};
       renderInvoice();
     };
     box.appendChild(d);
@@ -935,11 +912,11 @@ function applyMainDiscount(sub){
 }
 function syncDiscFromAmt(){
   const sub=invoiceDraft.reduce((s,r)=>r.valid?s+r.qty*r.rate:s,0);
-  if(sub>0) mainDiscPct.value=((+mainDiscAmt.value/sub)*100)..toLocaleString("en-PK",{minimumFractionDigits:2});
+  if(sub>0) mainDiscPct.value=((+mainDiscAmt.value/sub)*100).toFixed(2);
 }
 function syncDiscFromPct(){
   const sub=invoiceDraft.reduce((s,r)=>r.valid?s+r.qty*r.rate:s,0);
-  if(sub>0) mainDiscAmt.value=((sub*+mainDiscPct.value)/100)..toLocaleString("en-PK",{minimumFractionDigits:2});
+  if(sub>0) mainDiscAmt.value=((sub*+mainDiscPct.value)/100).toFixed(2);
 }
 
 /* ===== SAVE INVOICE ===== */
@@ -1084,92 +1061,95 @@ function deleteInvoice(id){
   updateLiveInvoiceNo();
 }
 /* ===== PRINT INVOICE ===== */
-function printInvoice(no){
-  const inv = DB.invoices.find(i=>i.no===no);
-  if(!inv) return alert("Invoice not found");
+function printInvoice(id){
+  <tr>
+<td colspan="5" class="center">
+<svg id="bc"></svg>
+</td>
+</tr>
+JsBarcode("#bc", inv.id, {height:40,displayValue:true});
+  const inv = DB.invoices.find(i=>i.id===id);
+  if(!inv) return;
 
   const s = DB.settings || {};
   const d = new Date(inv.dateTime);
 
-  let rows = inv.items.map((r,i)=>`
-    <tr>
-      <td>${i+1}</td>
-      <td>${r.itemNo}<br>${r.desc||""}</td>
-      <td>${r.qty}</td>
-      <td>Rs.${Number(r.rate).toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
-      <td>Rs.${Number(r.qty*r.rate).toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
-    </tr>
-  `).join("");
-
-  const sub = inv.items.reduce((s,r)=>s+r.qty*r.rate,0);
-  const total = sub - (inv.discountAmt||0);
-
-  const html = `
-  <html>
-  <head>
-    <title>Invoice</title>
-    <style>
-      body{font-family:Arial;font-size:12px}
-      table{width:100%;border-collapse:collapse}
-      td,th{border-bottom:1px dashed #000;padding:4px}
-      .center{text-align:center}
-    </style>
-  </head>
-  <body>
-
-  <div class="center">
-    ${s.logo?`<img src="${s.logo}" style="height:60px"><br>`:""}
-    <b>${s.storeName||""}</b><br>
-    ${s.location||""}
-  </div>
-
-  <hr>
-
-  <div>
-    <b>Invoice:</b> ${inv.no}<br>
-    <b>Date:</b> ${d.toLocaleDateString()} ${d.toLocaleTimeString()}
-  </div>
-
-  <hr>
-
-  <table>
-    <tr>
-      <th>#</th><th>Item</th><th>Qty</th><th>Rate</th><th>Amt</th>
-    </tr>
-    ${rows}
-  </table>
-
-  <hr>
-
-  <table>
-    <tr><td>Subtotal</td><td align="right">Rs.${sub.toLocaleString("en-PK",{minimumFractionDigits:2})}</td></tr>
-    <tr><td>Discount</td><td align="right">Rs.${Number(inv.discountAmt||0).toLocaleString("en-PK",{minimumFractionDigits:2})}</td></tr>
-    <tr><td><b>Total</b></td><td align="right"><b>Rs.${total.toLocaleString("en-PK",{minimumFractionDigits:2})}</b></td></tr>
-  </table>
-
-  <svg id="barcode"></svg>
-
-  <p class="center">Thank You For Purchasing</p>
-
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-  <script>
-    JsBarcode("#barcode","${inv.no}",{
-      width:2,
-      height:40,
-      displayValue:true
-    });
-    window.print();
-  </script>
-
-  </body>
-  </html>
-  `;
-
   const w = window.open("");
-  w.document.write(html);
-  w.document.close();
-}
+  w.document.write(`
+<html>
+<head>
+<meta name="viewport" content="width=300">
+<style>
+body{font-family:monospace;font-size:12px;width:300px;margin:0}
+.center{text-align:center}
+.right{text-align:right}
+.line{border-top:1px dotted #000;margin:6px 0}
+.big{font-size:16px;font-weight:bold}
+table{width:100%}
+td{padding:2px 0}
+</style>
+</head>
+<body>
 
+<div class="center">
+<img src="${s.logo||""}" style="max-width:180px;margin-bottom:5px">
+<b>${s.storeName||""}</b><br>
+${s.location||""}
+</div>
+<div class="line"></div>
+
+<div class="center big">CASH CUSTOMER</div>
+
+<div class="line"></div>
+
+<table>
+<tr><td>S#</td><td>Item</td><td>Qty</td><td>Rate</td><td class="right">Amt</td></tr>
+${inv.items.map((r,i)=>`
+<tr>
+<td>${i+1}</td>
+<td>${r.itemNo}<br><small>${r.desc||""}</small></td>
+<td>${r.qty}</td>
+<td>${r.rate}</td>
+<td class="right">Rs.${Number(r.qty*r.rate).toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
+</tr>`).join("")}
+</table>
+
+<div class="line"></div>
+
+<table>
+<tr><td>Subtotal</td><td class="right">${inv.items.reduce((s,r)=>s+r.qty*r.rate,0).toFixed(2)}</td></tr>
+<tr><td>Discount (${inv.discountPct||0}%)</td><td class="right">${inv.discountAmt||0}</td></tr>
+<tr><td><b>Total</b></td><td class="right"><b>${inv.total}</b></td></tr>
+</table>
+
+<div class="line"></div>
+
+<div class="center">Thank You For Purchasing</div>
+
+<div class="line"></div>
+<div class="left">
+<img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(s.storeName+' '+s.location)}">
+</div>
+<div class="right">
+<div>Software By MT Tech</div>
+<div>0327-4947677</div>
+</div>
+
+<div class="line"></div>
+
+<div class="center">${d.toLocaleDateString()} ${d.toLocaleTimeString()}</div>
+
+</body>
+</html>
+`);
+  w.print();
+}
+/* ===== INITIAL RENDER ===== */
+document.addEventListener("DOMContentLoaded",()=>{
+  renderInvoice();
+  renderInvoiceList();
+  updateLiveInvoiceNo();
+});
 </script>
 
 <style>
@@ -1516,8 +1496,6 @@ loadVendorOptions(); renderCash();
     >
   </div>
 <div class="card" id="barcodePanel" style="display:none">
-  <button onclick="openBarcodePrint()">Print Barcode</button>
-
   <h2>Print Barcode</h2>
 
   <div style="display:flex;gap:15px;margin-bottom:10px">
@@ -2569,8 +2547,8 @@ function applyProfitReport(){
       <td>${inv.date}</td>
       <td>${inv.user||""}</td>
       <td>${inv.total}</td>
-      <td>${cost..toLocaleString("en-PK",{minimumFractionDigits:2})</td>
-      <td class="${profit>=0?'profit-pos':'profit-neg'}">${profit..toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
+      <td>${cost.toFixed(2)}</td>
+      <td class="${profit>=0?'profit-pos':'profit-neg'}">${profit.toFixed(2)}</td>
     `;
     tr.onclick=()=>showProfitDetail(inv);
     profitRows.appendChild(tr);
@@ -2591,7 +2569,7 @@ function showProfitDetail(inv){
         <td>${it.qty}</td>
         <td>${it.rate}</td>
         <td>${c}</td>
-        <td class="${p>=0?'profit-pos':'profit-neg'}">${p..toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
+        <td class="${p>=0?'profit-pos':'profit-neg'}">${p.toFixed(2)}</td>
       </tr>`;
   });
 
@@ -2854,8 +2832,6 @@ function editAccount(id){
   if(role) acc.role=role;
   acc.permissions=perms?perms.split(",").map(x=>x.trim()):[];
   saveDB();
-  DB.accounts.push(newAccount);
-saveDB();
   renderAccounts();
 }
 
@@ -2941,13 +2917,11 @@ function resetSystem(){
     invoices:[],
     cash:[],
     deleted:[],
-    return:[],
     accounts:DB.accounts,
     settings:{softwareName:"Dani Test Software", logo:""}
   };
   saveDB();
   location.reload();
-  JSON.stringify(DB)
 }
 
 /* ===== INITIAL RENDER ===== */
@@ -2963,19 +2937,12 @@ setInterval(updateTime,1000);
 updateTime();
 function applyTheme(t){
   if(t==="glass"){
-    document.documentElement.style.setProperty("--bg","rgba(255,255,255,.7)");
-    document.documentElement.style.setProperty("--card-bg","rgba(255,255,255,.6)");
-    document.documentElement.style.backdropFilter="blur(12px)";
+    document.documentElement.style.setProperty("--bg","rgba(255,255,255,.75)");
+    document.body.style.backdropFilter="blur(12px)";
   }else{
-    location.reload();
+    document.body.style.backdropFilter="none";
   }
 }
-  if(t==="modern"){
-    r.style.setProperty("--bg","#f4f7fb");
-    r.style.setProperty("--text","#111");
-    r.style.setProperty("--primary","#ffffff");
-    r.style.setProperty("--accent","#6f42c1");
-  }
   DB.settings.theme=t;
   saveDB();
 }
@@ -3096,8 +3063,8 @@ function applyProfitReport(){
       <td>${inv.date}</td>
       <td>${inv.user||""}</td>
       <td>${inv.total}</td>
-      <td>${cost..toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
-      <td class="${profit>=0?'profit-pos':'profit-neg'}">${profit..toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
+      <td>${cost.toFixed(2)}</td>
+      <td class="${profit>=0?'profit-pos':'profit-neg'}">${profit.toFixed(2)}</td>
     `;
     tr.onclick=()=>showProfitDetail(inv);
     profitRows.appendChild(tr);
@@ -3118,7 +3085,7 @@ function showProfitDetail(inv){
         <td>${it.qty}</td>
         <td>${it.rate}</td>
         <td>${c}</td>
-        <td class="${p>=0?'profit-pos':'profit-neg'}">${p..toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
+        <td class="${p>=0?'profit-pos':'profit-neg'}">${p.toFixed(2)}</td>
       </tr>`;
   });
 
@@ -3177,79 +3144,5 @@ function applyTheme(name){
   saveDB();
 }
 </script>
-<section id="reports" style="display:none">
-
-  <div class="card">
-    <h2>Reports</h2>
-
-    <div style="display:flex;gap:15px;flex-wrap:wrap;margin-bottom:15px">
-      <button onclick="renderSalesReport()">Sales Report</button>
-      <button onclick="renderProfitReport()">Profit Report</button>
-      <button onclick="renderStockReport()">Stock Report</button>
-    </div>
-
-    <div id="reportResult"></div>
-  </div>
-
-</section>
-<script>
-function renderSalesReport(){
-  let html=`<h3>Sales</h3>
-  <table border="1" width="100%" cellpadding="6">
-  <tr><th>#</th><th>Invoice</th><th>Date</th><th>Total</th></tr>`;
-
-  DB.invoices.forEach((i,idx)=>{
-    html+=`
-    <tr>
-      <td>${idx+1}</td>
-      <td>${i.id}</td>
-      <td>${new Date(i.dateTime).toLocaleDateString()}</td>
-      <td>Rs.${Number(i.total).toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
-    </tr>`;
-  });
-
-  html+=`</table>`;
-  document.getElementById("reportResult").innerHTML=html;
-}
-
-function renderProfitReport(){
-  let profit=0;
-  DB.invoices.forEach(i=>{
-    i.items.forEach(it=>{
-      profit += (it.rate - (it.cost||0)) * it.qty;
-    });
-  });
-
-  document.getElementById("reportResult").innerHTML=
-    `<h3>Total Profit</h3>
-     <h1>Rs.${profit.toLocaleString("en-PK",{minimumFractionDigits:2})}</h1>`;
-}
-
-function renderStockReport(){
-  let html=`<h3>Stock</h3>
-  <table border="1" width="100%" cellpadding="6">
-  <tr><th>#</th><th>Item</th><th>Stock</th></tr>`;
-
-  DB.products.forEach((p,i)=>{
-    html+=`
-    <tr>
-      <td>${i+1}</td>
-      <td>${p.itemNo} - ${p.desc}</td>
-      <td>${p.stock}</td>
-    </tr>`;
-  });
-
-  html+=`</table>`;
-  document.getElementById("reportResult").innerHTML=html;
-}
-</script>
-<script>
-document.addEventListener("DOMContentLoaded",()=>{
-  applySettings();
-});
-</script>
-<!-- ================= Reports ================= -->
-<section id="reports" style="display:none">
-  <h2>Reports</h2>
-  <div id="reportResult"></div>
-</section>
+<!-- ================= REPORTS ================= -->
+  <section id="reports">
