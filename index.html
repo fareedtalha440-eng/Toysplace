@@ -572,10 +572,10 @@ function vrCalc(){
     if(c<=0){ r.querySelector(".amt").innerText="0.00"; return; }
 
     const a=q*c;
-    r.querySelector(".amt").innerText=a.toFixed(2);
+    r.querySelector(".amt").innerText=a..toLocaleString("en-PK",{minimumFractionDigits:2});
     total+=a;
   });
-  vrTotal.innerText=total.toFixed(2);
+  vrTotal.innerText=total..toLocaleString("en-PK",{minimumFractionDigits:2});
 }
 
 /* ================= SAVE (OVERWRITE SAFE) ================= */
@@ -637,7 +637,7 @@ function vrLoadPrevious(){
 <td>${d.toLocaleDateString()}</td>
 <td>${d.toLocaleTimeString()}</td>
 <td>${r.vendor}</td>
-<td>${r.amount.toFixed(2)}</td>
+<td>${r.amount..toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
 <td><button onclick="vrPrint(${i})">Print</button></td>
 <td><button onclick="vrEdit(${i})">Edit</button></td>
 <td><button onclick="vrDelete(${i})">Delete</button></td>
@@ -694,12 +694,12 @@ ${r.items.map((it,i)=>`
 <td>${i+1}</td>
 <td>${it.itemNo}</td>
 <td>${it.qty}</td>
-<td>${it.cost.toFixed(2)}</td>
-<td>${(it.qty*it.cost).toFixed(2)}</td>
+<td>${it.cost..toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
+<td>${(it.qty*it.cost)..toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
 </tr>`).join("")}
 </table>
 <div style="margin-top:15px;font-size:20px;font-weight:900;border-top:3px solid #000;text-align:right">
-TOTAL RETURN: ${r.amount.toFixed(2)}
+TOTAL RETURN: ${r.amount..toLocaleString("en-PK",{minimumFractionDigits:2})}
 </div>`);
   w.print();
 }
@@ -935,11 +935,11 @@ function applyMainDiscount(sub){
 }
 function syncDiscFromAmt(){
   const sub=invoiceDraft.reduce((s,r)=>r.valid?s+r.qty*r.rate:s,0);
-  if(sub>0) mainDiscPct.value=((+mainDiscAmt.value/sub)*100).toFixed(2);
+  if(sub>0) mainDiscPct.value=((+mainDiscAmt.value/sub)*100)..toLocaleString("en-PK",{minimumFractionDigits:2});
 }
 function syncDiscFromPct(){
   const sub=invoiceDraft.reduce((s,r)=>r.valid?s+r.qty*r.rate:s,0);
-  if(sub>0) mainDiscAmt.value=((sub*+mainDiscPct.value)/100).toFixed(2);
+  if(sub>0) mainDiscAmt.value=((sub*+mainDiscPct.value)/100)..toLocaleString("en-PK",{minimumFractionDigits:2});
 }
 
 /* ===== SAVE INVOICE ===== */
@@ -1084,96 +1084,92 @@ function deleteInvoice(id){
   updateLiveInvoiceNo();
 }
 /* ===== PRINT INVOICE ===== */
-function printInvoice(id){
-  const inv = DB.invoices.find(i=>i.id===id);
-  if(!inv) return;
-<svg id="barcode"></svg>
-<script>
-JsBarcode("#barcode","${inv.id}",{
-  width:2,
-  height:40,
-  displayValue:true
-});
-</script>
-<html>
-<head>
-<meta name="viewport" content="width=300">
-<style>
-body{font-family:monospace;font-size:12px;width:300px;margin:0}
-.center{text-align:center}
-.right{text-align:right}
-.line{border-top:1px dotted #000;margin:6px 0}
-.big{font-size:16px;font-weight:bold}
-table{width:100%}
-td{padding:2px 0}
-</style>
-</head>
-<body>
+function printInvoice(no){
+  const inv = DB.invoices.find(i=>i.no===no);
+  if(!inv) return alert("Invoice not found");
 
-<div class="center">
-<img src="${s.logo}" style="max-width:120px"><br>
-<b>${s.storeName}</b><br>
-${s.location}
-</div>
-<div class="line"></div>
+  const s = DB.settings || {};
+  const d = new Date(inv.dateTime);
 
-<div class="center big">CASH CUSTOMER</div>
+  let rows = inv.items.map((r,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td>${r.itemNo}<br>${r.desc||""}</td>
+      <td>${r.qty}</td>
+      <td>Rs.${Number(r.rate).toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
+      <td>Rs.${Number(r.qty*r.rate).toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
+    </tr>
+  `).join("");
 
-<div class="line"></div>
+  const sub = inv.items.reduce((s,r)=>s+r.qty*r.rate,0);
+  const total = sub - (inv.discountAmt||0);
 
-<table>
-<tr><td>S#</td><td>Item</td><td>Qty</td><td>Rate</td><td class="right">Amt</td></tr>
-${inv.items.map((r,i)=>`
-<tr>
-<td>${i+1}</td>
-<td>${r.itemNo}<br><small>${r.desc||""}</small></td>
-<td>${r.qty}</td>
-<td>${r.rate}</td>
-<td class="right">Rs.${Number(r.qty*r.rate).toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
-</tr>`).join("")}
-</table>
+  const html = `
+  <html>
+  <head>
+    <title>Invoice</title>
+    <style>
+      body{font-family:Arial;font-size:12px}
+      table{width:100%;border-collapse:collapse}
+      td,th{border-bottom:1px dashed #000;padding:4px}
+      .center{text-align:center}
+    </style>
+  </head>
+  <body>
 
-<div class="line"></div>
+  <div class="center">
+    ${s.logo?`<img src="${s.logo}" style="height:60px"><br>`:""}
+    <b>${s.storeName||""}</b><br>
+    ${s.location||""}
+  </div>
 
-<table>
-<tr><td>Subtotal</td><td class="right">${inv.items.reduce((s,r)=>s+r.qty*r.rate,0).toFixed(2)}</td></tr>
-<tr><td>Discount (${inv.discountPct||0}%)</td><td class="right">${inv.discountAmt||0}</td></tr>
-<tr><td><b>Total</b></td><td class="right"><b>Rs.${Number(value).toLocaleString("en-PK",{minimumFractionDigits:2})}</b></td></tr>
-</table>
+  <hr>
 
-<div class="line"></div>
+  <div>
+    <b>Invoice:</b> ${inv.no}<br>
+    <b>Date:</b> ${d.toLocaleDateString()} ${d.toLocaleTimeString()}
+  </div>
 
-<div class="center">Thank You For Purchasing</div>
+  <hr>
 
-<div class="line"></div>
-<div class="left">
-</div>
-<div class="right">
-<div>Software By MT Tech</div>
-<div>0327-4947677</div>
-</div>
+  <table>
+    <tr>
+      <th>#</th><th>Item</th><th>Qty</th><th>Rate</th><th>Amt</th>
+    </tr>
+    ${rows}
+  </table>
 
-<div class="line"></div>
+  <hr>
 
-<div class="center">${d.toLocaleDateString()} ${d.toLocaleTimeString()}</div>
-<script>
-setInterval(()=>{
-  const d=new Date();
-  document.getElementById("headerDateTime").innerText =
-    d.toLocaleDateString()+" "+d.toLocaleTimeString();
-},1000);
-</script>
-</body>
-</html>
-`);
-  w.print();
+  <table>
+    <tr><td>Subtotal</td><td align="right">Rs.${sub.toLocaleString("en-PK",{minimumFractionDigits:2})}</td></tr>
+    <tr><td>Discount</td><td align="right">Rs.${Number(inv.discountAmt||0).toLocaleString("en-PK",{minimumFractionDigits:2})}</td></tr>
+    <tr><td><b>Total</b></td><td align="right"><b>Rs.${total.toLocaleString("en-PK",{minimumFractionDigits:2})}</b></td></tr>
+  </table>
+
+  <svg id="barcode"></svg>
+
+  <p class="center">Thank You For Purchasing</p>
+
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <script>
+    JsBarcode("#barcode","${inv.no}",{
+      width:2,
+      height:40,
+      displayValue:true
+    });
+    window.print();
+  </script>
+
+  </body>
+  </html>
+  `;
+
+  const w = window.open("");
+  w.document.write(html);
+  w.document.close();
 }
-/* ===== INITIAL RENDER ===== */
-document.addEventListener("DOMContentLoaded",()=>{
-  renderInvoice();
-  renderInvoiceList();
-  updateLiveInvoiceNo();
-});
+
 </script>
 
 <style>
@@ -2573,8 +2569,8 @@ function applyProfitReport(){
       <td>${inv.date}</td>
       <td>${inv.user||""}</td>
       <td>${inv.total}</td>
-      <td>${cost.toFixed(2)}</td>
-      <td class="${profit>=0?'profit-pos':'profit-neg'}">${profit.toFixed(2)}</td>
+      <td>${cost..toLocaleString("en-PK",{minimumFractionDigits:2})</td>
+      <td class="${profit>=0?'profit-pos':'profit-neg'}">${profit..toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
     `;
     tr.onclick=()=>showProfitDetail(inv);
     profitRows.appendChild(tr);
@@ -2595,7 +2591,7 @@ function showProfitDetail(inv){
         <td>${it.qty}</td>
         <td>${it.rate}</td>
         <td>${c}</td>
-        <td class="${p>=0?'profit-pos':'profit-neg'}">${p.toFixed(2)}</td>
+        <td class="${p>=0?'profit-pos':'profit-neg'}">${p..toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
       </tr>`;
   });
 
@@ -3100,8 +3096,8 @@ function applyProfitReport(){
       <td>${inv.date}</td>
       <td>${inv.user||""}</td>
       <td>${inv.total}</td>
-      <td>${cost.toFixed(2)}</td>
-      <td class="${profit>=0?'profit-pos':'profit-neg'}">${profit.toFixed(2)}</td>
+      <td>${cost..toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
+      <td class="${profit>=0?'profit-pos':'profit-neg'}">${profit..toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
     `;
     tr.onclick=()=>showProfitDetail(inv);
     profitRows.appendChild(tr);
@@ -3122,7 +3118,7 @@ function showProfitDetail(inv){
         <td>${it.qty}</td>
         <td>${it.rate}</td>
         <td>${c}</td>
-        <td class="${p>=0?'profit-pos':'profit-neg'}">${p.toFixed(2)}</td>
+        <td class="${p>=0?'profit-pos':'profit-neg'}">${p..toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
       </tr>`;
   });
 
@@ -3252,3 +3248,8 @@ document.addEventListener("DOMContentLoaded",()=>{
   applySettings();
 });
 </script>
+<!-- ================= Reports ================= -->
+<section id="reports" style="display:none">
+  <h2>Reports</h2>
+  <div id="reportResult"></div>
+</section>
