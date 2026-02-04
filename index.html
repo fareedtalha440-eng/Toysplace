@@ -12,15 +12,11 @@
   --bg:#ffffff;
   --text:#111;
   --header-bg:#0b1c2d;
-  --header-text:#ffffff;
-  --card-bg:#ffffff;
+  --header-text:#fff;
+  --card-bg:#fff;
   --accent:#1f6feb;
   --border:#ddd;
 }
-  body{background:var(--bg);color:var(--text);margin:0;font-family:Segoe UI,Arial}
-header{background:var(--header-bg);color:var(--header-text)}
-.card{background:var(--card-bg);border:1px solid var(--border)}
-button{background:var(--accent);color:#fff;border:none;padding:8px 14px}
 /* ===== BODY ===== */
 body{
   margin:0;
@@ -140,13 +136,13 @@ button{
 <body>
 <header id="appHeader">
   <div class="h-left">
-    <img id="headerLogo" style="height:48px;display:block">
+    <img id="headerLogo" style="display:none;height:42px">
     <div>
-      <div id="headerName" style="font-size:22px;font-weight:800"></div>
-      <div id="headerLocation" style="font-size:13px;opacity:.85"></div>
+      <div id="headerName" style="font-size:20px;font-weight:700"></div>
+      <div id="headerLocation" style="font-size:12px;opacity:.8"></div>
     </div>
   </div>
-  <div id="dateTime" style="font-weight:600"></div>
+  <div id="dateTime"></div>
 </header>
 <!-- ================= TOP MENU ================= -->
 <nav id="mainMenu">
@@ -249,14 +245,8 @@ if (!sessionStorage.getItem("loggedInUser")) {
 
 /* ================= OPEN FIRST ALLOWED TAB ================= */
 document.addEventListener("DOMContentLoaded", ()=>{
-  setInterval(()=>{
-  dateTime.innerText = new Date().toLocaleString();
-},1000);
-
-applySettings();
   const acc = sessionStorage.getItem("loggedInUser");
   if(!acc) return;
-  
 
   const user = JSON.parse(acc);
   const order = ["invoice","products","vendors","purchase","returns","cash","reports","settings"];
@@ -315,7 +305,26 @@ function saveDB() {
 function uid(prefix){ 
   return prefix + "_" + Date.now() + Math.floor(Math.random()*1000); 
 }
+const THEMES={
+  default:{bg:"#ffffff",text:"#111",header:"#0b1c2d",card:"#ffffff",accent:"#1f6feb"},
+  dark:{bg:"#0d1117",text:"#e6edf3",header:"#161b22",card:"#161b22",accent:"#58a6ff"},
+  modern:{bg:"#f4f7fb",text:"#111",header:"#ffffff",card:"#ffffff",accent:"#6f42c1"},
+  neon:{bg:"#000000",text:"#00ffff",header:"#000000",card:"#111111",accent:"#00ffff"},
+  glass:{bg:"#eef2ff",text:"#111",header:"#ffffffcc",card:"#ffffffcc",accent:"#2563eb"}
+};
 
+function applyTheme(name){
+  const t=THEMES[name];
+  if(!t) return;
+  const r=document.documentElement;
+  r.style.setProperty("--bg",t.bg);
+  r.style.setProperty("--text",t.text);
+  r.style.setProperty("--header-bg",t.header);
+  r.style.setProperty("--card-bg",t.card);
+  r.style.setProperty("--accent",t.accent);
+  DB.settings.theme=name;
+  saveDB();
+}
 </script>
 <script>
 /* ================= RULE ENGINE ================= */
@@ -526,8 +535,15 @@ function vrSelectProduct(inp,p){
 
   let autoCost=0;
   if(lastPurchase){
-    const it=lastPurchase.items.find(i=>i.itemNo===p.itemNo);
-autoCost=it?it.cost:0;
+    if(lastPurchase.vendor!==vrVendor.value){
+      ruleMessage("This product was not purchased from this vendor. Cost set to 0.");
+      autoCost=0;
+    }else{
+      const it=lastPurchase.items.find(i=>i.itemNo===p.itemNo);
+      autoCost=it?it.cost:0;
+    }
+  }
+
   r.children[0].children[0].value=p.barcode||"";
   r.children[1].children[0].value=p.itemNo;
   r.children[2].children[0].value=p.desc;
@@ -872,7 +888,7 @@ function searchInvProduct(i,val,field){
         alert("Product already added");
         return;
       }
-     invoiceDraft[i]={productId:p.id,barcode:p.barcode||"",itemNo:p.itemNo,desc:p.desc,qty:1,rate:p.rate,valid:true};
+      invoiceDraft[i]={productId:p.id,barcode:p.barcode||"",itemNo:p.itemNo,desc:p.desc,qty:1,rate:p.rate,valid:true};
       renderInvoice();
     };
     box.appendChild(d);
@@ -1062,12 +1078,6 @@ function deleteInvoice(id){
 }
 /* ===== PRINT INVOICE ===== */
 function printInvoice(id){
-  <tr>
-<td colspan="5" class="center">
-<svg id="bc"></svg>
-</td>
-</tr>
-JsBarcode("#bc", inv.id, {height:40,displayValue:true});
   const inv = DB.invoices.find(i=>i.id===id);
   if(!inv) return;
 
@@ -1092,7 +1102,7 @@ td{padding:2px 0}
 <body>
 
 <div class="center">
-<img src="${s.logo||""}" style="max-width:180px;margin-bottom:5px">
+<img src="${s.logo||""}" style="max-width:160px"><br>
 <b>${s.storeName||""}</b><br>
 ${s.location||""}
 </div>
@@ -1455,7 +1465,6 @@ function downloadCashCSV(){
 /* ===== INITIAL LOAD ===== */
 loadVendorOptions(); renderCash();
 </script>
-
 <!-- ================= PRODUCTS ================= -->
 <section id="products">
   <div class="card">
@@ -1746,14 +1755,14 @@ function exportProductsCSV(){
 /* ===== INIT ===== */
 prodFiltered = DB.products;
 renderProducts();
-
+</script>
+<script>
 <input
   id="barcodeSearch"
   placeholder="Search barcode / item / description"
   style="width:100%;padding:8px;margin:10px 0"
   oninput="searchBarcodePanel()"
 >
-
 let barcodeList = [];
 
 function openBarcodePrint(){
@@ -1768,8 +1777,7 @@ function renderBarcodeRows(list){
   const tbody = document.getElementById("barcodeRows");
   tbody.innerHTML = "";
 
-  list.forEach((p)=>{
-    const i = barcodeList.indexOf(p);
+  list.forEach((p,i)=>{
     tbody.innerHTML += `
       <tr>
         <td><input type="checkbox" data-i="${i}" ${!p.barcode ? "disabled":""}></td>
@@ -1778,11 +1786,12 @@ function renderBarcodeRows(list){
         <td>${p.desc}</td>
         <td>${p.rate}</td>
         <td>${p.stock}</td>
-        <td><input type="number" min="1" placeholder="${p.stock}"></td>
+        <td><input type="number" min="1" placeholder="${p.stock}" data-q="${i}"></td>
       </tr>
     `;
   });
 }
+
 function searchBarcodePanel(){
   const q = barcodeSearch.value.toLowerCase();
   const filtered = barcodeList.filter(p =>
@@ -1791,28 +1800,24 @@ function searchBarcodePanel(){
     (p.desc||"").toLowerCase().includes(q)
   );
   renderBarcodeRows(filtered);
-function closeBarcodePanel(){
-  document.getElementById("barcodePanel").style.display="none";
-  document.querySelectorAll("#products .card").forEach(c=>c.style.display="block");
-}
 }
 </script>
 <script>
 function printSelectedBarcodes(){
 let hasValid = false;
-const rows = [...document.querySelectorAll("#barcodeRows tr")];
 
 rows.forEach(r=>{
   const cb = r.querySelector("input[type=checkbox]");
-  if(!cb || !cb.checked) return;
+  if(!cb.checked) return;
 
   const i = cb.dataset.i;
-  const p = barcodeList[i];
+  const p = DB.products.filter(x=>x.stock>0)[i];
 
-  if(p && p.barcode && p.barcode.trim()){
+  if(p.barcode && p.barcode.trim()){
     hasValid = true;
   }
 });
+
 if(!hasValid){
   alert("No valid barcode selected");
   return;
@@ -1820,7 +1825,7 @@ if(!hasValid){
   const rows = [...document.querySelectorAll("#barcodeRows tr")];
   const showItem = document.getElementById("showItemNo").checked;
   const showRate = document.getElementById("showRate").checked;
-const size = document.getElementById("stickerSize").value;
+
   let html = `
 <html><head>
 <style>
@@ -1840,12 +1845,13 @@ body{font-family:Arial}
     if(!cb.checked) return;
 
     const i = cb.dataset.i;
-    const p = barcodeList[i]
+    const p = DB.products.filter(x=>x.stock>0)[i];
     let q = r.querySelector("input[type=number]").value;
     q = q ? parseInt(q) : p.stock;
 
     for(let x=0;x<q;x++){
       html += `
+const size = document.getElementById("stickerSize").value;
 <div class="sticker ${size}">
 ${showItem ? `<div>${p.itemNo}</div>` : ""}
 <div class="desc">${p.desc}</div>
@@ -1867,7 +1873,7 @@ ${showRate ? `<div class="rate">Rs.${Number(p.rate).toLocaleString(undefined,{mi
       if(!cb.checked) return;
 
       const i = cb.dataset.i;
-      const p = barcodeList[i]
+      const p = DB.products.filter(x=>x.stock>0)[i];
       let q = r.querySelector("input[type=number]").value;
       q = q ? parseInt(q) : p.stock;
 
@@ -2602,6 +2608,12 @@ function applyDeletedReport(){
 }
 
 /* ===== LOAD USERS ===== */
+document.addEventListener("DOMContentLoaded",()=>{
+  [...new Set((DB.logs||[]).map(l=>l.user))].forEach(u=>{
+    profitUser.innerHTML+=`<option>${u}</option>`;
+    delUser.innerHTML+=`<option>${u}</option>`;
+  });
+});
 const s=DB.settings||{};
 if(s.storeName) softwareName.innerText=s.storeName;
 if(s.logo){
@@ -2681,7 +2693,15 @@ if(s.logo){
         <option value="staff">Staff</option>
         <option value="developer">Developer</option>
       </select>
-   <div id="permBox" style="display:none">
+      <select id="newPermissions" multiple style="height:100px;">
+  <option value="invoice">Invoice</option>
+  <option value="cash">Cash In Hand</option>
+  <option value="vendors">Vendors</option>
+  <option value="products">Products</option>
+  <option value="settings">Settings</option>
+  <option value="reports">Reports</option>
+</select>
+      <div id="permBox" style="display:none">
   <select id="newPermissions" multiple style="height:120px;">
     <option value="invoice">Invoice</option>
     <option value="cash">Cash In Hand</option>
@@ -2936,13 +2956,19 @@ function updateTime(){
 setInterval(updateTime,1000);
 updateTime();
 function applyTheme(t){
-  if(t==="glass"){
-    document.documentElement.style.setProperty("--bg","rgba(255,255,255,.75)");
-    document.body.style.backdropFilter="blur(12px)";
-  }else{
-    document.body.style.backdropFilter="none";
+  const r=document.documentElement;
+  if(t==="dark"){
+    r.style.setProperty("--bg","#0d1117");
+    r.style.setProperty("--text","#e6edf3");
+    r.style.setProperty("--primary","#161b22");
+    r.style.setProperty("--accent","#58a6ff");
   }
-}
+  if(t==="modern"){
+    r.style.setProperty("--bg","#f4f7fb");
+    r.style.setProperty("--text","#111");
+    r.style.setProperty("--primary","#ffffff");
+    r.style.setProperty("--accent","#6f42c1");
+  }
   DB.settings.theme=t;
   saveDB();
 }
@@ -3124,25 +3150,4 @@ document.addEventListener("DOMContentLoaded",()=>{
     delUser.innerHTML+=`<option>${u}</option>`;
   });
 });
-  const THEMES={
-  default:{bg:"#fff",text:"#111",header:"#0b1c2d",card:"#fff",accent:"#1f6feb"},
-  dark:{bg:"#0d1117",text:"#e6edf3",header:"#161b22",card:"#161b22",accent:"#58a6ff"},
-  modern:{bg:"#f4f7fb",text:"#111",header:"#fff",card:"#fff",accent:"#6f42c1"},
-  neon:{bg:"#000",text:"#0ff",header:"#000",card:"#111",accent:"#0ff"},
-  glass:{bg:"#eef2ff",text:"#111",header:"#ffffffcc",card:"#ffffffcc",accent:"#2563eb"}
-};
-
-function applyTheme(name){
-  const t=THEMES[name]||THEMES.default;
-  const r=document.documentElement;
-  r.style.setProperty("--bg",t.bg);
-  r.style.setProperty("--text",t.text);
-  r.style.setProperty("--header-bg",t.header);
-  r.style.setProperty("--card-bg",t.card);
-  r.style.setProperty("--accent",t.accent);
-  DB.settings.theme=name;
-  saveDB();
-}
 </script>
-<!-- ================= REPORTS ================= -->
-  <section id="reports">
