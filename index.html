@@ -11,11 +11,15 @@
   --bg:#ffffff;
   --text:#111;
   --header-bg:#0b1c2d;
-  --header-text:#fff;
-  --card-bg:#fff;
+  --header-text:#ffffff;
+  --card-bg:#ffffff;
   --accent:#1f6feb;
   --border:#ddd;
 }
+  body{background:var(--bg);color:var(--text);margin:0;font-family:Segoe UI,Arial}
+header{background:var(--header-bg);color:var(--header-text)}
+.card{background:var(--card-bg);border:1px solid var(--border)}
+button{background:var(--accent);color:#fff;border:none;padding:8px 14px}
 /* ===== BODY ===== */
 body{
   margin:0;
@@ -135,10 +139,10 @@ button{
 <body>
 <header id="appHeader">
   <div class="h-left">
-    <img id="headerLogo" style="display:none;height:42px">
+    <img id="headerLogo" style="height:42px;display:none">
     <div>
       <div id="headerName" style="font-size:20px;font-weight:700"></div>
-      <div id="headerLocation" style="font-size:12px;opacity:.8"></div>
+      <div id="headerLocation" style="font-size:12px;opacity:.75"></div>
     </div>
   </div>
   <div id="dateTime"></div>
@@ -246,6 +250,7 @@ if (!sessionStorage.getItem("loggedInUser")) {
 document.addEventListener("DOMContentLoaded", ()=>{
   const acc = sessionStorage.getItem("loggedInUser");
   if(!acc) return;
+  
 
   const user = JSON.parse(acc);
   const order = ["invoice","products","vendors","purchase","returns","cash","reports","settings"];
@@ -304,26 +309,7 @@ function saveDB() {
 function uid(prefix){ 
   return prefix + "_" + Date.now() + Math.floor(Math.random()*1000); 
 }
-const THEMES={
-  default:{bg:"#ffffff",text:"#111",header:"#0b1c2d",card:"#ffffff",accent:"#1f6feb"},
-  dark:{bg:"#0d1117",text:"#e6edf3",header:"#161b22",card:"#161b22",accent:"#58a6ff"},
-  modern:{bg:"#f4f7fb",text:"#111",header:"#ffffff",card:"#ffffff",accent:"#6f42c1"},
-  neon:{bg:"#000000",text:"#00ffff",header:"#000000",card:"#111111",accent:"#00ffff"},
-  glass:{bg:"#eef2ff",text:"#111",header:"#ffffffcc",card:"#ffffffcc",accent:"#2563eb"}
-};
 
-function applyTheme(name){
-  const t=THEMES[name];
-  if(!t) return;
-  const r=document.documentElement;
-  r.style.setProperty("--bg",t.bg);
-  r.style.setProperty("--text",t.text);
-  r.style.setProperty("--header-bg",t.header);
-  r.style.setProperty("--card-bg",t.card);
-  r.style.setProperty("--accent",t.accent);
-  DB.settings.theme=name;
-  saveDB();
-}
 </script>
 <script>
 /* ================= RULE ENGINE ================= */
@@ -2611,12 +2597,6 @@ function applyDeletedReport(){
 }
 
 /* ===== LOAD USERS ===== */
-document.addEventListener("DOMContentLoaded",()=>{
-  [...new Set((DB.logs||[]).map(l=>l.user))].forEach(u=>{
-    profitUser.innerHTML+=`<option>${u}</option>`;
-    delUser.innerHTML+=`<option>${u}</option>`;
-  });
-});
 const s=DB.settings||{};
 if(s.storeName) softwareName.innerText=s.storeName;
 if(s.logo){
@@ -2696,15 +2676,7 @@ if(s.logo){
         <option value="staff">Staff</option>
         <option value="developer">Developer</option>
       </select>
-      <select id="newPermissions" multiple style="height:100px;">
-  <option value="invoice">Invoice</option>
-  <option value="cash">Cash In Hand</option>
-  <option value="vendors">Vendors</option>
-  <option value="products">Products</option>
-  <option value="settings">Settings</option>
-  <option value="reports">Reports</option>
-</select>
-      <div id="permBox" style="display:none">
+   <div id="permBox" style="display:none">
   <select id="newPermissions" multiple style="height:120px;">
     <option value="invoice">Invoice</option>
     <option value="cash">Cash In Hand</option>
@@ -3153,4 +3125,23 @@ document.addEventListener("DOMContentLoaded",()=>{
     delUser.innerHTML+=`<option>${u}</option>`;
   });
 });
+  const THEMES={
+  default:{bg:"#fff",text:"#111",header:"#0b1c2d",card:"#fff",accent:"#1f6feb"},
+  dark:{bg:"#0d1117",text:"#e6edf3",header:"#161b22",card:"#161b22",accent:"#58a6ff"},
+  modern:{bg:"#f4f7fb",text:"#111",header:"#fff",card:"#fff",accent:"#6f42c1"},
+  neon:{bg:"#000",text:"#0ff",header:"#000",card:"#111",accent:"#0ff"},
+  glass:{bg:"#eef2ff",text:"#111",header:"#ffffffcc",card:"#ffffffcc",accent:"#2563eb"}
+};
+
+function applyTheme(name){
+  const t=THEMES[name]||THEMES.default;
+  const r=document.documentElement;
+  r.style.setProperty("--bg",t.bg);
+  r.style.setProperty("--text",t.text);
+  r.style.setProperty("--header-bg",t.header);
+  r.style.setProperty("--card-bg",t.card);
+  r.style.setProperty("--accent",t.accent);
+  DB.settings.theme=name;
+  saveDB();
+}
 </script>
