@@ -8,18 +8,19 @@
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <style>
 :root{
-  --primary:#0b1c2d;     /* Deep Dark Blue */
-  --secondary:#ffffff;  /* White */
+  --primary:#0b1c2d;
+  --secondary:#ffffff;
   --accent:#1f6feb;
   --border:#d0d7de;
+  --bg:#ffffff;
+  --text:#0b1c2d;
 }
-
 /* ===== BODY ===== */
 body{
   margin:0;
   font-family:Segoe UI, Arial;
-  background:white;
-  color:#0b1c2d;
+  background:var(--bg);
+color:var(--text);
 }
 
 /* ===== HEADER ===== */
@@ -152,7 +153,7 @@ button{
 <header>
   <div id="header-left">
     <img id="header-logo">
-    <span id="softwareName">Dani Test Software</span>
+    <span id="softwareName"></span>
   </div>
   <div id="dateTime"></div>
 </header>
@@ -282,7 +283,13 @@ let DB = {
   invoices: JSON.parse(localStorage.getItem("invoices") || "[]"),
   cash: JSON.parse(localStorage.getItem("cash") || "[]"),
   deleted: JSON.parse(localStorage.getItem("deleted") || "[]"),
-  settings: JSON.parse(localStorage.getItem("settings") || "{}"),
+  settings: Object.assign({
+  storeName:"",
+  logo:"",
+  location:"",
+  contact:"0327-4947677",
+  theme:"default"
+}, JSON.parse(localStorage.getItem("settings") || "{}")),
   accounts: JSON.parse(localStorage.getItem("accounts") || "[]")  // Added accounts
 };
 
@@ -1080,10 +1087,11 @@ td{padding:2px 0}
 <div class="center">
 <img src="${s.logo||""}" style="max-width:180px"><br>
 <div class="big">${s.storeName||""}</div>
-<div>${s.addressLine1||""}</div>
-<div>${s.addressLine2||""}</div>
+<div>${s.location||""}</div>
+<div>MT Tech</div>
+<div>0327-4947677</div>
+<img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(s.location+' MT Tech 0327-4947677')}">
 </div>
-
 <div class="line"></div>
 
 <div class="center big">CASH CUSTOMER</div>
@@ -2594,6 +2602,12 @@ document.addEventListener("DOMContentLoaded",()=>{
     delUser.innerHTML+=`<option>${u}</option>`;
   });
 });
+const s=DB.settings||{};
+if(s.storeName) softwareName.innerText=s.storeName;
+if(s.logo){
+  header-logo.style.display="block";
+  header-logo.src=s.logo;
+}
 </script>
 <!-- ================= LOGIN ================= -->
 <section id="loginScreen" style="display:flex; align-items:center; justify-content:center; height:100vh; background:#f5f5f5; flex-direction:column;">
@@ -2607,6 +2621,12 @@ document.addEventListener("DOMContentLoaded",()=>{
 <!-- ================= SETTINGS ================= -->
 <section id="settings" style="display:none; padding:20px;">
   <h2>Settings</h2>
+<h3>Theme</h3>
+<select onchange="applyTheme(this.value)">
+  <option value="default">Default</option>
+  <option value="dark">Dark Pro</option>
+  <option value="modern">Modern Glass</option>
+</select>
 
   <!-- Software Name -->
   <div class="p-block">
@@ -2794,6 +2814,7 @@ function renderAccounts(){
   const tbody=document.getElementById("accountsTable");
   tbody.innerHTML="";
   DB.accounts.forEach(a=>{
+  if(a.role==="developer" && user.role!=="developer") return;
     tbody.innerHTML+=`
       <tr>
         <td>${a.username}</td>
@@ -2925,6 +2946,23 @@ function updateTime(){
 }
 setInterval(updateTime,1000);
 updateTime();
+function applyTheme(t){
+  const r=document.documentElement;
+  if(t==="dark"){
+    r.style.setProperty("--bg","#0d1117");
+    r.style.setProperty("--text","#e6edf3");
+    r.style.setProperty("--primary","#161b22");
+    r.style.setProperty("--accent","#58a6ff");
+  }
+  if(t==="modern"){
+    r.style.setProperty("--bg","#f4f7fb");
+    r.style.setProperty("--text","#111");
+    r.style.setProperty("--primary","#ffffff");
+    r.style.setProperty("--accent","#6f42c1");
+  }
+  DB.settings.theme=t;
+  saveDB();
+}
 </script>
 <script>
 <!-- ================= MENU LOGIC ================= -->
@@ -2933,7 +2971,7 @@ updateTime();
 function openTab(id){
   // Hide all sections
   document.querySelectorAll("section").forEach(s => s.style.display = "none");
-
+if(["purchase","returns"].includes(id) && !user.permissions.includes(id)) return;
   // Show the selected section
   const sec = document.getElementById(id);
   if(sec) sec.style.display = "block";
