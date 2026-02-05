@@ -148,11 +148,10 @@ button{
 </style>
 </head>
 <body>
-
 <header>
-  <div id="header-left">
-    <img id="header-logo">
-    <span id="softwareName">Dani Test Software</span>
+  <div id="header-left" style="display:flex;align-items:center;gap:10px">
+    <img id="header-logo" style="height:40px;display:none">
+    <span id="softwareName"></span>
   </div>
   <div id="dateTime"></div>
 </header>
@@ -268,6 +267,19 @@ document.addEventListener("DOMContentLoaded", ()=>{
       openTab(t);
       break;
     }
+  }
+  const s = DB.settings || {};
+
+  const nameEl = document.getElementById("softwareName");
+  const logoEl = document.getElementById("header-logo");
+
+  if(nameEl){
+    nameEl.textContent = s.softwareName || "";
+  }
+
+  if(logoEl && s.logo){
+    logoEl.src = s.logo;
+    logoEl.style.display = "block";
   }
 });
 </script>
