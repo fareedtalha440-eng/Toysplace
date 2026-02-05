@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -272,6 +271,118 @@ document.addEventListener("DOMContentLoaded", ()=>{
   }
 });
 </script>
+<script>
+function openInvoiceProfitReport(){
+  document.getElementById("deletedDataReport").style.display="none";
+  const box=document.getElementById("invoiceProfitReport");
+  box.style.display="block";
+
+  box.innerHTML=`
+    <h2>Invoice Wise Profit</h2>
+
+    <div class="r-filter">
+      <input type="date" id="pFrom">
+      <input type="date" id="pTo">
+      <select id="pUser">
+        <option value="">All Users</option>
+        ${DB.accounts.map(a=>`<option>${a.username}</option>`).join("")}
+      </select>
+      <button onclick="applyProfitReport()">Apply</button>
+    </div>
+
+    <table class="r-table">
+      <thead>
+        <tr>
+          <th>Invoice</th>
+          <th>Date</th>
+          <th>User</th>
+          <th>Sale</th>
+          <th>Cost</th>
+          <th>Profit</th>
+        </tr>
+      </thead>
+      <tbody id="profitRows"></tbody>
+    </table>
+  `;
+}
+
+function applyProfitReport(){
+  const from=pFrom.value,to=pTo.value,user=pUser.value;
+  profitRows.innerHTML="";
+
+  DB.invoices.forEach(inv=>{
+    const d=new Date(inv.dateTime);
+    if(from && d<new Date(from)) return;
+    if(to && d>new Date(to+"T23:59:59")) return;
+
+    let cost=0;
+    inv.items.forEach(it=>{
+      const purchase=DB.purchases
+        .filter(p=>p.items.some(x=>x.itemNo===it.itemNo))
+        .sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
+      if(purchase){
+        const pi=purchase.items.find(x=>x.itemNo===it.itemNo);
+        cost+= (pi?pi.cost:0)*it.qty;
+      }
+    });
+
+    const profit=inv.total-cost;
+    profitRows.innerHTML+=`
+      <tr onclick="alertInvoiceProfit('${inv.id}')">
+        <td>${inv.id}</td>
+        <td>${d.toLocaleDateString()}</td>
+        <td>${inv.user||""}</td>
+        <td>${inv.total.toFixed(2)}</td>
+        <td>${cost.toFixed(2)}</td>
+        <td class="${profit>=0?'profit-pos':'profit-neg'}">${profit.toFixed(2)}</td>
+      </tr>
+    `;
+  });
+}
+
+function alertInvoiceProfit(id){
+  const inv=DB.invoices.find(x=>x.id===id);
+  let msg="Invoice "+id+"\\n\\n";
+  inv.items.forEach(it=>{
+    const purchase=DB.purchases
+      .filter(p=>p.items.some(x=>x.itemNo===it.itemNo))
+      .sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
+    const cost=(purchase?.items.find(x=>x.itemNo===it.itemNo)?.cost||0)*it.qty;
+    const sale=it.qty*it.rate;
+    msg+=`${it.itemNo} Profit: ${(sale-cost).toFixed(2)}\\n`;
+  });
+  alert(msg);
+}
+</script>
+function openDeletedDataReport(){
+  document.getElementById("invoiceProfitReport").style.display="none";
+  const box=document.getElementById("deletedDataReport");
+  box.style.display="block";
+
+  box.innerHTML=`
+    <h2>Deleted Data Report</h2>
+    <table class="r-table">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Reference</th>
+          <th>User</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${DB.deleted.map(d=>`
+          <tr>
+            <td>${d.type}</td>
+            <td>${d.ref}</td>
+            <td>${d.user}</td>
+            <td>${new Date(d.dateTime).toLocaleString()}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
 
 <!-- ================= DATABASE ================= -->
 <script>
@@ -1030,7 +1141,14 @@ function deleteInvoice(id){
     const p = DB.products.find(x=>x.id===r.productId);
     if(p) p.stock += r.qty;
   });
-
+DB.deleted.push({
+  type:"INVOICE",
+  ref:id,
+  user:JSON.parse(sessionStorage.getItem("loggedInUser")).username,
+  dateTime:new Date().toISOString(),
+  data:inv
+});
+saveDB();
   DB.cash = DB.cash.filter(c=>c.ref!==id);
   DB.invoices = DB.invoices.filter(i=>i.id!==id);
 
@@ -3050,3 +3168,29 @@ document.addEventListener("DOMContentLoaded",()=>{
   });
 });
 </script>
+<!-- ================= REPORTS ================= -->
+
+  <section id="reports">
+
+  <div class="card">
+    <h2>Reports</h2>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-top:20px;">
+
+      <div class="card" style="cursor:pointer" onclick="openInvoiceProfitReport()">
+        <h3>📊 Invoice Wise Profit</h3>
+        <p>Profit by invoice, date & user</p>
+      </div>
+
+      <div class="card" style="cursor:pointer" onclick="openDeletedDataReport()">
+        <h3>🗑 Deleted Data Log</h3>
+        <p>Who deleted, when & what</p>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="invoiceProfitReport" class="card" style="display:none"></div>
+  <div id="deletedDataReport" class="card" style="display:none"></div>
+
+</section>
