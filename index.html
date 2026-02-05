@@ -354,35 +354,6 @@ function alertInvoiceProfit(id){
   alert(msg);
 }
 </script>
-function openDeletedDataReport(){
-  document.getElementById("invoiceProfitReport").style.display="none";
-  const box=document.getElementById("deletedDataReport");
-  box.style.display="block";
-
-  box.innerHTML=`
-    <h2>Deleted Data Report</h2>
-    <table class="r-table">
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Reference</th>
-          <th>User</th>
-          <th>Date</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${DB.deleted.map(d=>`
-          <tr>
-            <td>${d.type}</td>
-            <td>${d.ref}</td>
-            <td>${d.user}</td>
-            <td>${new Date(d.dateTime).toLocaleString()}</td>
-          </tr>
-        `).join("")}
-      </tbody>
-    </table>
-  `;
-}
 
 <!-- ================= DATABASE ================= -->
 <script>
@@ -413,6 +384,36 @@ function saveDB() {
 function uid(prefix){ 
   return prefix + "_" + Date.now() + Math.floor(Math.random()*1000); 
 }
+function openDeletedDataReport(){
+  document.getElementById("invoiceProfitReport").style.display="none";
+  const box=document.getElementById("deletedDataReport");
+  box.style.display="block";
+
+  box.innerHTML=`
+    <h2>Deleted Data Report</h2>
+    <table class="r-table">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Reference</th>
+          <th>User</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${DB.deleted.map(d=>`
+          <tr>
+            <td>${d.type}</td>
+            <td>${d.ref}</td>
+            <td>${d.user}</td>
+            <td>${new Date(d.dateTime).toLocaleString()}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
 </script>
 <script>
 /* ================= RULE ENGINE ================= */
