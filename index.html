@@ -1196,9 +1196,9 @@ td{padding:2px 0}
 <body>
 
 <div class="center">
-<img src="${s.logo||""}" style="max-width:160px"><br>
-<b>${s.storeName||""}</b><br>
-${s.location||""}
+  ${s.logo ? `<img src="${s.logo}" style="max-width:160px"><br>` : ""}
+  <b>${s.softwareName || ""}</b><br>
+  ${s.shopLocation || ""}
 </div>
 <div class="line"></div>
 
@@ -2948,6 +2948,21 @@ function saveSoftwareName(){
   saveDB();
   alert("Software name updated");
 }
+/* ===== LOGO ===== */
+function uploadLogo(input){
+  if(!input.files[0]) return;
+
+  if(!DB.settings) DB.settings={};
+
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    DB.settings.logo = reader.result;
+    saveDB();
+    alert("Logo saved");
+    location.reload();
+  };
+  reader.readAsDataURL(input.files[0]);
+}
 
 /* ===== BACKUP / RESTORE / RESET ===== */
 function downloadBackup(){
@@ -3002,6 +3017,22 @@ function updateTime(){
 }
 setInterval(updateTime,1000);
 updateTime();
+/* ===== APPLY HEADER SETTINGS ===== */
+document.addEventListener("DOMContentLoaded", ()=>{
+  if(!DB.settings) return;
+
+  const nameEl = document.getElementById("softwareName");
+  const logoEl = document.getElementById("header-logo");
+
+  if(nameEl){
+    nameEl.textContent = DB.settings.softwareName || "";
+  }
+
+  if(logoEl && DB.settings.logo){
+    logoEl.src = DB.settings.logo;
+    logoEl.style.display = "block";
+  }
+});
 </script>
 <script>
 <!-- ================= MENU LOGIC ================= -->
