@@ -1272,11 +1272,43 @@ function printInvoice(id){
 <head>
 <meta name="viewport" content="width=300">
 <style>
-body{font-family:monospace;font-size:12px;width:300px;margin:0}
+@page{
+  size: 80mm auto;
+  margin: 0;
+}
+
+body{
+  width:80mm;
+  margin:0;
+  padding:2mm;
+  font-family: Arial, sans-serif;
+  font-size:14px;
+  font-weight:700;
+  -webkit-print-color-adjust:exact;
+}
+
 .center{text-align:center}
 .right{text-align:right}
-.line{border-top:1px dotted #000;margin:6px 0}
-.big{font-size:16px;font-weight:bold}
+
+.line{
+  border-top:2px solid #000;
+  margin:6px 0;
+}
+
+.big{
+  font-size:18px;
+  font-weight:900;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+
+td{
+  padding:4px 0;
+  font-size:14px;
+}
 table{width:100%}
 td{padding:2px 0}
 </style>
@@ -1330,7 +1362,6 @@ window.onload = function(){
   window.print();
   setTimeout(()=>window.close(),300);
 };
-</script>
 </body>
 </html>
 `);
@@ -1344,6 +1375,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   renderInvoiceList();
   updateLiveInvoiceNo();
 });
+
 </script>
 
 <style>
