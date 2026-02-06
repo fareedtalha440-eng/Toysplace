@@ -775,26 +775,114 @@ function vrPrint(i){
   const r=DB.returns[i];
   const d=new Date(r.dateTime);
   const w=window.open("");
-  w.document.write(`
-<h2 style="text-align:center">VENDOR RETURN</h2>
-<b>No:</b> ${r.no}<br>
-<b>Vendor:</b> ${r.vendor}<br>
-<b>Date:</b> ${d.toLocaleString()}
-<hr>
-<table border="1" width="100%" cellpadding="6">
-<tr><th>#</th><th>Item</th><th>Qty</th><th>Cost</th><th>Amount</th></tr>
-${r.items.map((it,i)=>`
-<tr>
-<td>${i+1}</td>
-<td>${it.itemNo}</td>
-<td>${it.qty}</td>
-<td>${it.cost.toFixed(2)}</td>
-<td>${(it.qty*it.cost).toFixed(2)}</td>
-</tr>`).join("")}
+ w.document.write(`
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Invoice</title>
+
+<style>
+@page{
+  size:80mm auto;
+  margin:0;
+}
+
+*{
+  box-sizing:border-box;
+}
+
+body{
+  margin:0;
+  padding:0;
+  width:80mm;
+  font-family:monospace;
+  font-size:14px;
+  line-height:1.4;
+  color:#000;
+}
+
+.center{text-align:center}
+.right{text-align:right}
+.bold{font-weight:700}
+.big{font-size:18px}
+.line{
+  border-top:1px dashed #000;
+  margin:6px 0;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+
+td{
+  padding:3px 0;
+  vertical-align:top;
+}
+
+.small{font-size:12px}
+</style>
+</head>
+
+<body>
+
+<div class="center bold big">
+  ${s.softwareName || ""}
+</div>
+
+${s.shopLocation ? `<div class="center small">${s.shopLocation}</div>` : ""}
+
+<div class="line"></div>
+
+<table>
+<tr><td>Invoice:</td><td class="right">${inv.id}</td></tr>
+<tr><td>Date:</td><td class="right">${d.toLocaleDateString()}</td></tr>
+<tr><td>Time:</td><td class="right">${d.toLocaleTimeString()}</td></tr>
 </table>
-<div style="margin-top:15px;font-size:20px;font-weight:900;border-top:3px solid #000;text-align:right">
-TOTAL RETURN: ${r.amount.toFixed(2)}
-</div>`);
+
+<div class="line"></div>
+
+<table>
+<tr class="bold">
+  <td>Item</td>
+  <td class="right">Amt</td>
+</tr>
+
+${inv.items.map(r=>`
+<tr>
+  <td>
+    ${r.desc || r.itemNo}<br>
+    <span class="small">${r.qty} x ${r.rate}</span>
+  </td>
+  <td class="right">${(r.qty*r.rate).toFixed(2)}</td>
+</tr>
+`).join("")}
+</table>
+
+<div class="line"></div>
+
+<table>
+<tr>
+  <td>Total</td>
+  <td class="right bold big">${inv.total.toFixed(2)}</td>
+</tr>
+</table>
+
+<div class="line"></div>
+
+<div class="center bold">THANK YOU</div>
+
+<script>
+window.onload = ()=>{
+  window.print();
+  setTimeout(()=>window.close(),300);
+};
+</script>
+
+</body>
+</html>
+`);
   w.print();
 }
 </script>
