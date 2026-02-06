@@ -1319,22 +1319,24 @@ ${inv.items.map((r,i)=>`
 <div class="center">Thank You For Purchasing</div>
 
 <div class="line"></div>
-<div class="left">
-<img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(s.storeName+' '+s.location)}">
-</div>
-<div class="right">
+<div class="center">
 <div>Software By MT Tech</div>
 <div>0327-4947677</div>
 </div>
 
 <div class="line"></div>
-
-<div class="center">${d.toLocaleDateString()} ${d.toLocaleTimeString()}</div>
-
+<script>
+window.onload = function(){
+  window.print();
+  setTimeout(()=>window.close(),300);
+};
+</script>
 </body>
 </html>
 `);
-  w.print();
+
+  w.document.close();
+  w.focus();
 }
 /* ===== INITIAL RENDER ===== */
 document.addEventListener("DOMContentLoaded",()=>{
