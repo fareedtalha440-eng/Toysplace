@@ -1268,50 +1268,27 @@ function printInvoice(id){
   const d = new Date(inv.dateTime);
 
   const w = window.open("");
+
   w.document.write(`
+<!DOCTYPE html>
 <html>
 <head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=300">
 <style>
-@page{
-  size: 80mm auto;
-  margin: 0;
-}
-
+@page{ size:80mm auto; margin:0; }
 body{
   width:80mm;
   margin:0;
   padding:2mm;
-  font-family: Arial, sans-serif;
+  font-family:Arial;
   font-size:14px;
-  font-weight:700;
-  -webkit-print-color-adjust:exact;
 }
-
 .center{text-align:center}
 .right{text-align:right}
-
-.line{
-  border-top:2px solid #000;
-  margin:6px 0;
-}
-
-.big{
-  font-size:18px;
-  font-weight:900;
-}
-
-table{
-  width:100%;
-  border-collapse:collapse;
-}
-
-td{
-  padding:4px 0;
-  font-size:14px;
-}
-table{width:100%}
-td{padding:2px 0}
+.line{border-top:1px solid #000;margin:6px 0;}
+table{width:100%;border-collapse:collapse;}
+td{padding:3px 0;}
 </style>
 </head>
 <body>
@@ -1321,9 +1298,14 @@ td{padding:2px 0}
   <b>${s.softwareName || ""}</b><br>
   ${s.shopLocation || ""}
 </div>
+
 <div class="line"></div>
 
-<div class="center big">CASH CUSTOMER</div>
+<table>
+<tr><td>Invoice:</td><td class="right">${inv.id}</td></tr>
+<tr><td>Date:</td><td class="right">${d.toLocaleDateString()}</td></tr>
+<tr><td>Time:</td><td class="right">${d.toLocaleTimeString()}</td></tr>
+</table>
 
 <div class="line"></div>
 
@@ -1335,29 +1317,21 @@ ${inv.items.map((r,i)=>`
 <td>${r.itemNo}<br><small>${r.desc||""}</small></td>
 <td>${r.qty}</td>
 <td>${r.rate}</td>
-<td class="right">Rs.${Number(r.qty*r.rate).toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
-</tr>`).join("")}
+<td class="right">${(r.qty*r.rate).toFixed(2)}</td>
+</tr>
+`).join("")}
 </table>
 
 <div class="line"></div>
 
 <table>
-<tr><td>Subtotal</td><td class="right">${inv.items.reduce((s,r)=>s+r.qty*r.rate,0).toFixed(2)}</td></tr>
-<tr><td>Discount (${inv.discountPct||0}%)</td><td class="right">${inv.discountAmt||0}</td></tr>
 <tr><td><b>Total</b></td><td class="right"><b>${inv.total}</b></td></tr>
 </table>
 
 <div class="line"></div>
 
-<div class="center">Thank You For Purchasing</div>
+<div class="center">Thank You</div>
 
-<div class="line"></div>
-<div class="center">
-<div>Software By MT Tech</div>
-<div>0327-4947677</div>
-</div>
-
-<div class="line"></div>
 <script>
 window.onload = function(){
   window.print();
@@ -1372,6 +1346,7 @@ window.onload = function(){
   w.document.close();
   w.focus();
 }
+
 /* ===== INITIAL RENDER ===== */
 document.addEventListener("DOMContentLoaded",()=>{
   renderInvoice();
