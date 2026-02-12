@@ -1360,8 +1360,10 @@ ${inv.items.map((r,i)=>`
 <script>
 window.onload = function(){
   window.print();
-  setTimeout(()=>window.close(),300);
+  setTimeout(function(){ window.close(); },300);
 };
+</script>
+
 </body>
 </html>
 `);
