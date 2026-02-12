@@ -428,6 +428,52 @@ function openDeletedDataReport(){
     </table>
   `;
 }
+function openProductDetailsReport(){
+
+  document.getElementById("invoiceProfitReport").style.display="none";
+  document.getElementById("deletedDataReport").style.display="none";
+
+  const box=document.getElementById("productDetailsReport");
+  box.style.display="block";
+
+  box.innerHTML=`
+  <h2>Product Details Report</h2>
+
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin:15px 0">
+
+    <select id="pdProduct"></select>
+
+    <select id="pdVendor">
+      <option value="">All Vendors</option>
+    </select>
+
+    <input type="date" id="pdFrom">
+    <input type="date" id="pdTo">
+
+    <button onclick="generateProductDetails()">Generate</button>
+
+  </div>
+
+  <table class="r-table">
+    <thead>
+      <tr>
+        <th>S#</th>
+        <th>Date</th>
+        <th>Ref</th>
+        <th>Name</th>
+        <th>In</th>
+        <th>Out</th>
+        <th>Rate</th>
+        <th>Amount</th>
+        <th>Balance</th>
+      </tr>
+    </thead>
+    <tbody id="pdRows"></tbody>
+  </table>
+  `;
+
+  loadPDFilters();
+}
 
 </script>
 <script>
@@ -3484,48 +3530,15 @@ document.addEventListener("DOMContentLoaded",()=>{
 <!-- ================= REPORTS ================= -->
 
   <section id="reports">
-<div class="card">
-<h2>Product Details Report</h2>
-
-<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px">
-
-<select id="pdProduct"></select>
-
-<select id="pdVendor">
-<option value="">All Vendors</option>
-</select>
-
-<input type="date" id="pdFrom">
-<input type="date" id="pdTo">
-
-<button onclick="generateProductDetails()">Generate</button>
-
-</div>
-
-<table class="r-table">
-<thead>
-<tr>
-<th>S#</th>
-<th>Date</th>
-<th>Ref</th>
-<th>Name</th>
-<th>In</th>
-<th>Out</th>
-<th>Rate</th>
-<th>Amount</th>
-<th>Balance</th>
-</tr>
-</thead>
-<tbody id="pdRows"></tbody>
-</table>
-
-</div>
 
   <div class="card">
     <h2>Reports</h2>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-top:20px;">
-
+<div class="card" style="cursor:pointer" onclick="openProductDetailsReport()">
+  <h3>📦 Product Details</h3>
+  <p>Stock movement, vendor filter & ranking</p>
+</div>
       <div class="card" style="cursor:pointer" onclick="openInvoiceProfitReport()">
         <h3>📊 Invoice Wise Profit</h3>
         <p>Profit by invoice, date & user</p>
@@ -3541,5 +3554,6 @@ document.addEventListener("DOMContentLoaded",()=>{
 
   <div id="invoiceProfitReport" class="card" style="display:none"></div>
   <div id="deletedDataReport" class="card" style="display:none"></div>
+<div id="productDetailsReport" class="card" style="display:none"></div>
 
 </section>
