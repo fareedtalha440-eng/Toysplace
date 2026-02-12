@@ -902,6 +902,160 @@ window.onload = ()=>{
   w.print();
 }
 </script>
+<script>
+
+/* ================= PRODUCT DETAIL REPORT ================= */
+
+if(!DB.productSalesStats) DB.productSalesStats = {};
+
+function openProductDetailReport(){
+
+  const box = document.getElementById("productDetailReportBox");
+
+  box.innerHTML = `
+    <h2 style="margin-bottom:15px;">Product Details Ledger</h2>
+
+    <div style="display:flex;gap:15px;flex-wrap:wrap;margin-bottom:20px;">
+      <input type="date" id="pdFrom">
+      <input type="date" id="pdTo">
+
+      <select id="pdVendor">
+        <option value="">All Vendors</option>
+        ${DB.vendors.map(v=>`<option value="${v.name}">${v.name}</option>`).join("")}
+      </select>
+
+      <input id="pdProductSearch" placeholder="Search Product"
+             oninput="pdSearchProduct(this.value)">
+
+      <div id="pdProductDrop"
+           style="position:absolute;background:#fff;border:1px solid #ccc;max-height:150px;overflow:auto;z-index:999;"></div>
+
+      <button onclick="generateProductDetailReport()">Generate</button>
+    </div>
+
+    <div style="overflow:auto;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr>
+            <th>S#</th>
+            <th>Date</th>
+            <th>Ref</th>
+            <th>Name</th>
+            <th>In</th>
+            <th>Out</th>
+            <th>Rate</th>
+            <th>Amount</th>
+            <th>Balance</th>
+          </tr>
+        </thead>
+        <tbody id="pdRows"></tbody>
+      </table>
+    </div>
+  `;
+}
+
+let selectedProductId = null;
+
+function pdSearchProduct(q){
+  const box = document.getElementById("pdProductDrop");
+  box.innerHTML = "";
+  if(!q) return;
+
+  DB.products
+    .filter(p =>
+      (p.itemNo||"").toLowerCase().includes(q.toLowerCase()) ||
+      (p.desc||"").toLowerCase().includes(q.toLowerCase())
+    )
+    .forEach(p=>{
+      const d=document.createElement("div");
+      d.style.padding="6px";
+      d.style.cursor="pointer";
+      d.innerText = p.itemNo+" - "+p.desc;
+      d.onclick=()=>{
+        selectedProductId=p.id;
+        document.getElementById("pdProductSearch").value=p.itemNo+" - "+p.desc;
+        box.innerHTML="";
+      };
+      box.appendChild(d);
+    });
+}
+
+function generateProductDetailReport(){
+
+  if(!selectedProductId) return alert("Select Product");
+
+  const from = pdFrom.value;
+  const to   = pdTo.value;
+  const vendor = pdVendor.value;
+
+  const rows = document.getElementById("pdRows");
+  rows.innerHTML = "";
+
+  let balance = 0;
+  let index = 1;
+  let movements = [];
+
+  DB.purchases.forEach(p=>{
+    p.items.forEach(it=>{
+      const prod = DB.products.find(x=>x.itemNo===it.itemNo);
+      if(prod && prod.id===selectedProductId){
+        if(vendor && p.vendor!==vendor) return;
+
+        movements.push({
+          date:new Date(p.date),
+          ref:p.no||"PUR",
+          name:p.vendor,
+          inQty:it.qty,
+          outQty:0,
+          rate:it.cost
+        });
+      }
+    });
+  });
+
+  DB.invoices.forEach(inv=>{
+    inv.items.forEach(it=>{
+      if(it.productId===selectedProductId){
+        movements.push({
+          date:new Date(inv.dateTime),
+          ref:inv.id,
+          name:"Cash Customer",
+          inQty:0,
+          outQty:it.qty,
+          rate:it.rate
+        });
+      }
+    });
+  });
+
+  movements.sort((a,b)=>a.date-b.date);
+
+  movements.forEach(m=>{
+    if(from && m.date < new Date(from)) return;
+    if(to && m.date > new Date(to+"T23:59:59")) return;
+
+    balance += (m.inQty - m.outQty);
+    const amount = (m.inQty || m.outQty) * m.rate;
+
+    rows.innerHTML += `
+      <tr>
+        <td>${index++}</td>
+        <td>${m.date.toLocaleDateString()}</td>
+        <td>${m.ref}</td>
+        <td>${m.name}</td>
+        <td>${m.inQty}</td>
+        <td>${m.outQty}</td>
+        <td>${m.rate}</td>
+        <td>${amount.toFixed(2)}</td>
+        <td>${balance}</td>
+      </tr>
+    `;
+  });
+
+}
+
+</script>
+
 <!-- ================= INVOICE ================= -->
 <section id="invoice">
   <div class="card" id="newInvoiceCard">
@@ -3148,204 +3302,6 @@ function resetSystem(){
 renderAccounts();
 <script>
 
-/* ================= PRODUCT DETAIL REPORT ================= */
-
-if(!DB.productMovements) DB.productMovements = [];
-if(!DB.productSalesStats) DB.productSalesStats = {};
-
-function openProductDetailReport(){
-
-  const box = document.getElementById("productDetailReportBox");
-
-  box.innerHTML = `
-    <h2 style="margin-bottom:15px;">Product Details Ledger</h2>
-
-    <div style="display:flex;gap:15px;flex-wrap:wrap;margin-bottom:20px;">
-      <input type="date" id="pdFrom">
-      <input type="date" id="pdTo">
-
-      <select id="pdVendor">
-        <option value="">All Vendors</option>
-        ${DB.vendors.map(v=>`<option value="${v.name}">${v.name}</option>`).join("")}
-      </select>
-
-      <input id="pdProductSearch" placeholder="Search Product"
-             oninput="pdSearchProduct(this.value)">
-
-      <div id="pdProductDrop"
-           style="position:absolute;background:#fff;border:1px solid #ccc;max-height:150px;overflow:auto;z-index:999;"></div>
-
-      <button class="green" onclick="generateProductDetailReport()">Generate</button>
-    </div>
-
-    <div style="overflow:auto;">
-      <table style="width:100%;border-collapse:collapse;">
-        <thead>
-          <tr>
-            <th>S#</th>
-            <th>Date</th>
-            <th>Ref</th>
-            <th>Name</th>
-            <th>In</th>
-            <th>Out</th>
-            <th>Rate/Cost</th>
-            <th>Amount</th>
-            <th>Balance</th>
-          </tr>
-        </thead>
-        <tbody id="pdRows"></tbody>
-      </table>
-    </div>
-  `;
-}
-
-let selectedProductId = null;
-
-function pdSearchProduct(q){
-  const box = document.getElementById("pdProductDrop");
-  box.innerHTML = "";
-  if(!q) return;
-
-  DB.products
-    .filter(p =>
-      (p.itemNo||"").toLowerCase().includes(q.toLowerCase()) ||
-      (p.desc||"").toLowerCase().includes(q.toLowerCase())
-    )
-    .forEach(p=>{
-      const d=document.createElement("div");
-      d.style.padding="6px";
-      d.style.cursor="pointer";
-      d.innerText = p.itemNo+" - "+p.desc;
-      d.onclick=()=>{
-        selectedProductId=p.id;
-        document.getElementById("pdProductSearch").value=p.itemNo+" - "+p.desc;
-        box.innerHTML="";
-      };
-      box.appendChild(d);
-    });
-}
-
-function generateProductDetailReport(){
-
-  if(!selectedProductId) return alert("Select Product");
-
-  const from = pdFrom.value;
-  const to   = pdTo.value;
-  const vendor = pdVendor.value;
-
-  const rows = document.getElementById("pdRows");
-  rows.innerHTML = "";
-
-  let balance = 0;
-  let index = 1;
-
-  let movements = [];
-
-  /* PURCHASES */
-  DB.purchases.forEach(p=>{
-    p.items.forEach(it=>{
-      if(it.itemNo){
-        const prod = DB.products.find(x=>x.itemNo===it.itemNo);
-        if(prod && prod.id===selectedProductId){
-
-          if(vendor && p.vendor!==vendor) return;
-
-          movements.push({
-            date:new Date(p.date),
-            ref:p.no||"PUR",
-            name:p.vendor,
-            inQty:it.qty,
-            outQty:0,
-            rate:it.cost
-          });
-        }
-      }
-    });
-  });
-
-  /* RETURNS */
-  DB.returns.forEach(r=>{
-    r.items.forEach(it=>{
-      const prod = DB.products.find(x=>x.itemNo===it.itemNo);
-      if(prod && prod.id===selectedProductId){
-
-        if(vendor && r.vendor!==vendor) return;
-
-        movements.push({
-          date:new Date(r.dateTime),
-          ref:r.no,
-          name:r.vendor,
-          inQty:0,
-          outQty:it.qty,
-          rate:it.cost
-        });
-      }
-    });
-  });
-
-  /* INVOICES */
-  DB.invoices.forEach(inv=>{
-    inv.items.forEach(it=>{
-      if(it.productId===selectedProductId){
-
-        movements.push({
-          date:new Date(inv.dateTime),
-          ref:inv.id,
-          name:"Cash Customer",
-          inQty:0,
-          outQty:it.qty,
-          rate:it.rate
-        });
-
-        /* FASTEST SELLING BACKEND */
-        const week = getWeekNumber(new Date(inv.dateTime));
-        if(!DB.productSalesStats[selectedProductId])
-          DB.productSalesStats[selectedProductId]={};
-
-        DB.productSalesStats[selectedProductId][week] =
-          (DB.productSalesStats[selectedProductId][week]||0)+it.qty;
-      }
-    });
-  });
-
-  movements.sort((a,b)=>a.date-b.date);
-
-  movements.forEach(m=>{
-    if(from && m.date < new Date(from)) return;
-    if(to && m.date > new Date(to+"T23:59:59")) return;
-
-    balance += (m.inQty - m.outQty);
-    const amount = (m.inQty || m.outQty) * m.rate;
-
-    rows.innerHTML += `
-      <tr>
-        <td>${index++}</td>
-        <td>${m.date.toLocaleDateString()}</td>
-        <td>${m.ref}</td>
-        <td>${m.name}</td>
-        <td>${m.inQty}</td>
-        <td>${m.outQty}</td>
-        <td>${m.rate}</td>
-        <td>${amount.toFixed(2)}</td>
-        <td>${balance}</td>
-      </tr>
-    `;
-  });
-
-  saveDB();
-}
-
-/* WEEK NUMBER FOR FASTEST SELLING */
-function getWeekNumber(d){
-  d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-  return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
-}
-
-</script>
-
 /* ===== DATE & TIME ===== */
 function updateTime(){
   const now=new Date();
@@ -3555,12 +3511,12 @@ document.addEventListener("DOMContentLoaded",()=>{
 <div class="card">
   <h2>Advanced Reports</h2>
 
-  <button class="blue" onclick="openProductDetailReport()">
-    Product Details (Profit Detail)
-  </button>
+<button onclick="openProductDetailReport()">
+  Product Details (Profit Detail)
+</button>
 
-  <div id="productDetailReportBox" style="margin-top:20px;"></div>
-</div>
+<div id="productDetailReportBox"></div>
+
 
   <div class="card">
     <h2>Reports</h2>
