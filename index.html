@@ -872,20 +872,21 @@ ${inv.items.map(r=>`
 <div class="line"></div>
 
 <div class="center bold">THANK YOU</div>
-
 <script>
-window.onload = ()=>{
+window.onload = function(){
   window.print();
-  setTimeout(()=>window.close(),300);
+  setTimeout(function(){ window.close(); },300);
 };
 </script>
 
 </body>
 </html>
 `);
-  w.print();
+
+w.document.close();
+w.focus();
 }
-</script>
+
 <!-- ================= INVOICE ================= -->
 <section id="invoice">
   <div class="card" id="newInvoiceCard">
