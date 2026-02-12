@@ -291,7 +291,8 @@ function openInvoiceProfitReport(){
   document.getElementById("deletedDataReport").style.display="none";
   const box=document.getElementById("invoiceProfitReport");
   box.style.display="block";
-
+document.getElementById("deletedDataReport").style.display="none";
+document.getElementById("productDetailsReport").style.display="none";
   box.innerHTML=`
     <h2>Invoice Wise Profit</h2>
 
@@ -401,6 +402,8 @@ function uid(prefix){
 }
 function openDeletedDataReport(){
   document.getElementById("invoiceProfitReport").style.display="none";
+document.getElementById("productDetailsReport").style.display="none";
+  document.getElementById("invoiceProfitReport").style.display="none";
   const box=document.getElementById("deletedDataReport");
   box.style.display="block";
 
@@ -429,13 +432,12 @@ function openDeletedDataReport(){
   `;
 }
 function openProductDetailsReport(){
+document.getElementById("invoiceProfitReport").style.display="none";
+document.getElementById("deletedDataReport").style.display="none";
+document.getElementById("productDetailsReport").style.display="block";
 
-  document.getElementById("invoiceProfitReport").style.display="none";
-  document.getElementById("deletedDataReport").style.display="none";
 
   const box=document.getElementById("productDetailsReport");
-  box.style.display="block";
-
   box.innerHTML=`
   <h2>Product Details Report</h2>
 
@@ -550,12 +552,12 @@ function loadPDFilters(){
 }
 
 function generateProductDetails(){
-  const pid=pdProduct.value;
+ const pid=document.getElementById("pdProduct").value;
   if(!pid) return alert("Select product");
 
-  const vendor=pdVendor.value;
-  const from=pdFrom.value;
-  const to=pdTo.value;
+ const vendor=document.getElementById("pdVendor").value;
+ const from=document.getElementById("pdFrom").value;
+  const to=document.getElementById("pdTo").value;
 
   const product=DB.products.find(p=>p.id===pid);
   if(!product) return;
@@ -633,9 +635,10 @@ function generateProductDetails(){
 
   rows.sort((a,b)=>a.date-b.date);
 
-  pdRows.innerHTML="";
+  const tbody = document.getElementById("pdRows");
+tbody.innerHTML="";
   rows.forEach((r,i)=>{
-    pdRows.innerHTML+=`
+    tbody.innerHTML+=`
     <tr>
     <td>${i+1}</td>
     <td>${r.date.toLocaleDateString()}</td>
