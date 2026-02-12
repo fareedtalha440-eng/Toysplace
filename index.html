@@ -772,90 +772,62 @@ function vrDelete(i){
 }
 
 function vrPrint(i){
-  const r=DB.returns[i];
-  const d=new Date(r.dateTime);
-  const w=window.open("");
- w.document.write(`
+
+  const r = DB.returns[i];
+  if(!r) return;
+
+  const s = DB.settings || {};
+  const d = new Date(r.dateTime);
+
+  const w = window.open("");
+
+  w.document.write(`
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Invoice</title>
-
 <style>
-@page{
-  size:80mm auto;
-  margin:0;
-}
-
-*{
-  box-sizing:border-box;
-}
-
+@page{ size:80mm auto; margin:0; }
 body{
-  margin:0;
-  padding:0;
   width:80mm;
-  font-family:monospace;
+  margin:0;
+  padding:4mm;
+  font-family:Arial;
   font-size:14px;
-  line-height:1.4;
-  color:#000;
 }
-
 .center{text-align:center}
 .right{text-align:right}
-.bold{font-weight:700}
-.big{font-size:18px}
-.line{
-  border-top:1px dashed #000;
-  margin:6px 0;
-}
-
-table{
-  width:100%;
-  border-collapse:collapse;
-}
-
-td{
-  padding:3px 0;
-  vertical-align:top;
-}
-
-.small{font-size:12px}
+.line{border-top:1px solid #000;margin:6px 0;}
+table{width:100%;border-collapse:collapse;}
+td{padding:3px 0;}
 </style>
 </head>
-
 <body>
 
-<div class="center bold big">
-  ${s.softwareName || ""}
+<div class="center">
+  <b>${s.softwareName || ""}</b><br>
+  ${s.shopLocation || ""}
 </div>
-
-${s.shopLocation ? `<div class="center small">${s.shopLocation}</div>` : ""}
 
 <div class="line"></div>
 
 <table>
-<tr><td>Invoice:</td><td class="right">${inv.id}</td></tr>
+<tr><td>Return No:</td><td class="right">${r.no}</td></tr>
 <tr><td>Date:</td><td class="right">${d.toLocaleDateString()}</td></tr>
 <tr><td>Time:</td><td class="right">${d.toLocaleTimeString()}</td></tr>
+<tr><td>Vendor:</td><td class="right">${r.vendor}</td></tr>
 </table>
 
 <div class="line"></div>
 
 <table>
-<tr class="bold">
-  <td>Item</td>
-  <td class="right">Amt</td>
-</tr>
-
-${inv.items.map(r=>`
+<tr><td>Item</td><td>Qty</td><td>Cost</td><td class="right">Amt</td></tr>
+${r.items.map(it=>`
 <tr>
-  <td>
-    ${r.desc || r.itemNo}<br>
-    <span class="small">${r.qty} x ${r.rate}</span>
-  </td>
-  <td class="right">${(r.qty*r.rate).toFixed(2)}</td>
+<td>${it.itemNo}</td>
+<td>${it.qty}</td>
+<td>${it.cost}</td>
+<td class="right">${(it.qty*it.cost).toFixed(2)}</td>
 </tr>
 `).join("")}
 </table>
@@ -863,15 +835,13 @@ ${inv.items.map(r=>`
 <div class="line"></div>
 
 <table>
-<tr>
-  <td>Total</td>
-  <td class="right bold big">${inv.total.toFixed(2)}</td>
-</tr>
+<tr><td><b>Total</b></td><td class="right"><b>${r.amount.toFixed(2)}</b></td></tr>
 </table>
 
 <div class="line"></div>
 
-<div class="center bold">THANK YOU</div>
+<div class="center">Vendor Return</div>
+
 <script>
 window.onload = function(){
   window.print();
@@ -883,9 +853,10 @@ window.onload = function(){
 </html>
 `);
 
-w.document.close();
-w.focus();
+  w.document.close();
+  w.focus();
 }
+
 
 <!-- ================= INVOICE ================= -->
 <section id="invoice">
