@@ -1919,9 +1919,20 @@ loadVendorOptions(); renderCash();
   </div>
 <div class="card" id="barcodePanel" style="display:none">
   <h2>Print Barcode</h2>
+<input
+  id="barcodeSearch"
+  placeholder="Search barcode / item / description"
+  style="width:100%;padding:8px;margin:10px 0"
+  oninput="searchBarcodePanel()"
+>
 
   <div style="display:flex;gap:15px;margin-bottom:10px">
     <button class="green" onclick="printSelectedBarcodes()">PRINT BARCODE</button>
+    <select id="stickerSize">
+  <option value="small">Small</option>
+  <option value="medium" selected>Medium</option>
+  <option value="large">Large</option>
+</select>
     <label><input type="checkbox" id="showItemNo"> Item No</label>
     <label><input type="checkbox" id="showRate"> Rate</label>
     <button class="red" onclick="closeBarcodePanel()">Back</button>
@@ -2169,13 +2180,6 @@ function exportProductsCSV(){
 prodFiltered = DB.products;
 renderProducts();
 
-<input
-  id="barcodeSearch"
-  placeholder="Search barcode / item / description"
-  style="width:100%;padding:8px;margin:10px 0"
-  oninput="searchBarcodePanel()"
->
-
 let barcodeList = [];
 
 function openBarcodePrint(){
@@ -2206,13 +2210,14 @@ function renderBarcodeRows(list){
 }
 
 function searchBarcodePanel(){
-  const q = barcodeSearch.value.toLowerCase();
+  const q = document.getElementById("barcodeSearch").value.toLowerCase();
   const filtered = barcodeList.filter(p =>
     (p.barcode||"").toLowerCase().includes(q) ||
     (p.itemNo||"").toLowerCase().includes(q) ||
     (p.desc||"").toLowerCase().includes(q)
   );
   renderBarcodeRows(filtered);
+}
 function closeBarcodePanel(){
   document.getElementById("barcodePanel").style.display="none";
   document.querySelectorAll("#products .card").forEach(c=>c.style.display="block");
@@ -2305,12 +2310,6 @@ ${showRate ? `<div class="rate">Rs.${Number(p.rate).toLocaleString(undefined,{mi
     w.print();
   };
 }
-<select id="stickerSize">
-  <option value="small">Small</option>
-  <option value="medium" selected>Medium</option>
-  <option value="large">Large</option>
-</select>
-
 document.addEventListener("change", e=>{
   if(e.target.id === "selectAllBarcodes"){
     document
