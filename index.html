@@ -2244,7 +2244,6 @@ if(!hasValid){
   alert("No valid barcode selected");
   return;
 }
-  const rows = [...document.querySelectorAll("#barcodeRows tr")];
   const showItem = document.getElementById("showItemNo").checked;
   const showRate = document.getElementById("showRate").checked;
 
@@ -2270,10 +2269,10 @@ body{font-family:Arial}
     const p = DB.products.filter(x=>x.stock>0)[i];
     let q = r.querySelector("input[type=number]").value;
     q = q ? parseInt(q) : p.stock;
+const size = document.getElementById("stickerSize").value;
 
     for(let x=0;x<q;x++){
       html += `
-const size = document.getElementById("stickerSize").value;
 <div class="sticker ${size}">
 ${showItem ? `<div>${p.itemNo}</div>` : ""}
 <div class="desc">${p.desc}</div>
