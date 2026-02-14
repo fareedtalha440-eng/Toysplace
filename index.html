@@ -1567,6 +1567,8 @@ document.addEventListener("DOMContentLoaded",()=>{
   renderInvoice();
   renderInvoiceList();
   updateLiveInvoiceNo();
+  renderVendors();
+loadVendorOptions();
 });
 
 </script>
@@ -2442,6 +2444,7 @@ function vendorBalance(v){
 
 /* ===== RENDER VENDORS ===== */
 function renderVendors(){
+  DB.vendors = DB.vendors || [];
   const tbody = document.getElementById("vendorRows");
   tbody.innerHTML="";
 
@@ -2558,9 +2561,6 @@ function loadVendorOptions(){
   });
 }
 
-/* ===== INIT ===== */
-renderVendors();
-loadVendorOptions();
 </script>
 
 <!-- ================= PURCHASE ================= -->
