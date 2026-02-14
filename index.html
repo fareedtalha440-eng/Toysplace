@@ -221,13 +221,33 @@ button{
 </style>
 
 <script>
-/* ================= TAB SWITCHING (CLEAN) ================= */
+/* ================= TAB SWITCHING (FIXED) ================= */
 function openTab(id){
+
   // Hide all sections
-  document.querySelectorAll("section").forEach(s=>{
-    s.style.display="none";
+  document.querySelectorAll("section").forEach(sec=>{
+    sec.style.display = "none";
+    sec.classList.remove("active");
   });
 
+  // Remove active from all menu items
+  document.querySelectorAll("#mainMenu .menuItem").forEach(tab=>{
+    tab.classList.remove("active");
+  });
+
+  // Show selected section
+  const selectedSection = document.getElementById(id);
+  if(selectedSection){
+    selectedSection.style.display = "block";
+    selectedSection.classList.add("active");
+  }
+
+  // Activate clicked tab
+  const activeTab = document.getElementById("tab-" + id);
+  if(activeTab){
+    activeTab.classList.add("active");
+  }
+}
 /* ================= OPEN FIRST ALLOWED TAB ================= */
 document.addEventListener("DOMContentLoaded", ()=>{
   const acc = sessionStorage.getItem("loggedInUser");
