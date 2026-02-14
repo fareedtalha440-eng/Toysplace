@@ -226,36 +226,6 @@ function openTab(id){
   document.querySelectorAll("section").forEach(s=>{
     s.style.display="none";
   });
-// ================= AUTO LOGIN FIX =================
-// TEMP FIX so software opens (developer access)
-if (!sessionStorage.getItem("loggedInUser")) {
-  sessionStorage.setItem("loggedInUser", JSON.stringify({
-    username: "Dani",
-    role: "developer",
-    permissions: []
-  }));
-}
-
-  // Permission check
-  const user = JSON.parse(sessionStorage.getItem("loggedInUser") || "{}");
-  if(user.role!=="developer" && !(user.permissions||[]).includes(id)){
-    return;
-  }
-
-  // Show section
-  const sec = document.getElementById(id);
-  if(sec) sec.style.display="block";
-if(id==="reports"){
-  loadPDFilters();
-}
-
-  // Active menu highlight
-  document.querySelectorAll("#mainMenu .menuItem").forEach(m=>{
-    m.classList.remove("active");
-  });
-  const tab = document.getElementById("tab-"+id);
-  if(tab) tab.classList.add("active");
-}
 
 /* ================= OPEN FIRST ALLOWED TAB ================= */
 document.addEventListener("DOMContentLoaded", ()=>{
@@ -516,7 +486,13 @@ function ruleMessage(msg){
 /* ===== AUDIT LOG ===== */
 function logAction(action, ref=""){
   if(!RULES.auditLog) return;
-  const user = JSON.parse(sessionStorage.getItem("loggedInUser")||"{}");
+   const session = sessionStorage.getItem("loggedInUser");
+  if(!session){
+    window.location.href = "login.html";
+    return;
+  }
+
+  const user = JSON.parse(session);
   DB.logs = DB.logs || [];
   DB.logs.push({
     user: user.username || "unknown",
