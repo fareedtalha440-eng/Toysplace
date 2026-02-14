@@ -2201,8 +2201,6 @@ function renderBarcodeRows(list){
       </tr>
     `;
   });
-}
-
 function searchBarcodePanel(){
   const q = document.getElementById("barcodeSearch").value.toLowerCase();
   const filtered = barcodeList.filter(p =>
@@ -2304,7 +2302,6 @@ w.print();
     });
     w.print();
   };
-}
 document.addEventListener("change", e=>{
   if(e.target.id === "selectAllBarcodes"){
     document
