@@ -2173,18 +2173,21 @@ function renderBarcodeRows(list){
     `;
   });
 function searchBarcodePanel(){
-  const q = document.getElementById("barcodeSearch").value.toLowerCase();
-  const filtered = barcodeList.filter(p =>
-    (p.barcode||"").toLowerCase().includes(q) ||
-    (p.itemNo||"").toLowerCase().includes(q) ||
-    (p.desc||"").toLowerCase().includes(q)
-  );
+  const q = document.getElementById("barcodeSearch").value.trim().toLowerCase();
+
+  const filtered = DB.products.filter(p=>{
+    return (
+      (p.barcode||"").toLowerCase().includes(q) ||
+      (p.itemNo||"").toLowerCase().includes(q) ||
+      (p.desc||"").toLowerCase().includes(q)
+    );
+  });
+
   renderBarcodeRows(filtered);
 }
 function closeBarcodePanel(){
   document.getElementById("barcodePanel").style.display="none";
   document.querySelectorAll("#products .card").forEach(c=>c.style.display="block");
-}
 }
 </script>
 <script>
