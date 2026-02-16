@@ -2098,7 +2098,7 @@ function uploadProductExcel(input){
   }
 
   if(barcode && DB.products.some(p=>p.barcode===barcode)){
-    ruleMessage(`${itemNo} - ${barcode} is Present`);
+    ruleMessage(itemNo + " - " + barcode + " is Present");
     return;
   }
 
@@ -2110,11 +2110,12 @@ function uploadProductExcel(input){
     rate: +r["Retail Rate"] || 0,
     stock:0
   });
-    saveDB();
-    prodFiltered = DB.products;
-    renderProducts();
-    alert("Products imported");
-  };
+});
+
+saveDB();
+prodFiltered = DB.products;
+renderProducts();
+alert("Products imported");
   reader.readAsBinaryString(input.files[0]);
 }
 
