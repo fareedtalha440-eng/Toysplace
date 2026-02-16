@@ -1021,6 +1021,8 @@ function downloadVendorLedgerCSV(){
           <th style="width:12%">Item No</th>
           <th style="width:34%">Description</th>
           <th style="width:8%">Qty</th>
+          <th style="width:10%">Available</th>
+<th style="width:10%">Remaining</th>
           <th style="width:12%">Rate (PKR)</th>
           <th style="width:12%">Total (PKR)</th>
           <th style="width:10%">Delete</th>
@@ -1049,6 +1051,7 @@ function downloadVendorLedgerCSV(){
 
     <div style="margin-top:10px;">
       <button class="blue" onclick="saveInvoice()">Save Invoice</button>
+<button class="red" onclick="cancelInvoice()">Cancel</button>
     </div>
   </div>
 
@@ -1138,9 +1141,15 @@ function renderInvoice(){
           <div id="invSugD${i}" class="invSug"></div>
         </td>
         <td><input type="number" min="1" step="1" value="${r.qty}" onchange="setInvQty(${i},this.value)"></td>
-        <td><input type="number" value="${r.rate}" onchange="setInvRate(${i},this.value)"></td>
-        <td>${r.valid?formatNumber(r.qty*r.rate):"<span style='color:red'>Invalid</span>"}</td>
-        <td><button class="red" onclick="delInvRow(${i})">X</button></td>
+<td>${r.valid ? DB.products.find(p=>p.id===r.productId)?.stock ?? 0 : "-"}</td>
+<td style="color:red;font-weight:bold;">
+${r.valid ? 
+  "Rem: " + ((DB.products.find(p=>p.id===r.productId)?.stock ?? 0) - r.qty) 
+  : "-"}
+</td>
+<td><input type="number" value="${r.rate}" onchange="setInvRate(${i},this.value)"></td>
+<td>${r.valid?formatNumber(r.qty*r.rate):"<span style='color:red'>Invalid</span>"}</td>
+
       </tr>`;
   });
 
@@ -1232,7 +1241,15 @@ function syncDiscFromPct(){
 function saveInvoice(){
   if(!invoiceDraft.length) return alert("Invoice empty");
   if(invoiceDraft.some(r=>!r.valid)) return alert("Invalid product");
-
+function cancelInvoice(){
+  if(!confirm("Cancel this invoice?")) return;
+  invoiceDraft=[];
+  editingInvoiceId=null;
+  mainDiscAmt.value=0;
+  mainDiscPct.value=0;
+  renderInvoice();
+  updateLiveInvoiceNo();
+}
  for(const r of invoiceDraft){
   const p=DB.products.find(x=>x.id===r.productId);
   if(!p) continue;
@@ -1399,17 +1416,16 @@ body{
   width:80mm;
   margin:0;
   padding:2mm;
-  font-family: Arial, sans-serif;
-  font-size:14px;
-  font-weight:700;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+font-size:13px;
+font-weight:500;
   -webkit-print-color-adjust:exact;
 }
 
 .center{text-align:center}
 .right{text-align:right}
-
 .line{
-  border-top:2px solid #000;
+  border-top:1px dotted #000;
   margin:6px 0;
 }
 
@@ -1434,7 +1450,7 @@ td{padding:2px 0}
 <body>
 
 <div class="center">
-  ${s.logo ? `<img src="${s.logo}" style="max-width:160px"><br>` : ""}
+  ${s.logo ? `<img src="${s.logo}" style="max-width:90px;height:90px;"><br>` : ""}
   <b>${s.softwareName || ""}</b><br>
   ${s.shopLocation || ""}
 </div>
@@ -1445,7 +1461,13 @@ td{padding:2px 0}
 <div class="line"></div>
 
 <table>
-<tr><td>S#</td><td>Item</td><td>Qty</td><td>Rate</td><td class="right">Amt</td></tr>
+<tr style="border-bottom:1px dashed #000;font-weight:bold">
+<td>S#</td>
+<td>Item</td>
+<td>Qty</td>
+<td>Rate</td>
+<td class="right">Amt</td>
+</tr>
 ${inv.items.map((r,i)=>`
 <tr>
 <td>${i+1}</td>
@@ -1459,9 +1481,29 @@ ${inv.items.map((r,i)=>`
 <div class="line"></div>
 
 <table>
-<tr><td>Subtotal</td><td class="right">${inv.items.reduce((s,r)=>s+r.qty*r.rate,0).toFixed(2)}</td></tr>
-<tr><td>Discount (${inv.discountPct||0}%)</td><td class="right">${inv.discountAmt||0}</td></tr>
-<tr><td><b>Total</b></td><td class="right"><b>${inv.total}</b></td></tr>
+<tr>
+<td>Subtotal</td>
+<td class="right">
+Rs.${inv.items.reduce((s,r)=>s+r.qty*r.rate,0)
+.toLocaleString("en-PK",{minimumFractionDigits:2})}
+</td>
+</tr>
+
+<tr>
+<td>Discount (${inv.discountPct||0}%)</td>
+<td class="right">
+Rs.${Number(inv.discountAmt||0)
+.toLocaleString("en-PK",{minimumFractionDigits:2})}
+</td>
+</tr>
+
+<tr>
+<td><b>Total</b></td>
+<td class="right">
+<b>Rs.${Number(inv.total)
+.toLocaleString("en-PK",{minimumFractionDigits:2})}</b>
+</td>
+</tr>
 </table>
 
 <div class="line"></div>
