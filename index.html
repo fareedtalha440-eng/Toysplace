@@ -745,16 +745,20 @@ document.addEventListener("DOMContentLoaded",()=>{
   vrGenerateNo();
   vrLoadPrevious();
 });
-function vrLoadVendors(){
-  const select = document.getElementById("vrVendor");
-  if(!select) return;
+function renderVendors(){
+  const tbody = document.getElementById("vendorTable");
+  if(!tbody) return;
 
-  select.innerHTML = '<option value="">Select Vendor</option>';
+  tbody.innerHTML = "";
 
-  if(!DB.vendors) return;
-
-  DB.vendors.forEach(v=>{
-    select.innerHTML += `<option value="${v.name}">${v.name}</option>`;
+  (DB.vendors || []).forEach(v=>{
+    tbody.innerHTML += `
+      <tr>
+        <td>${v.no || ""}</td>
+        <td>${v.name || ""}</td>
+        <td>${v.phone || ""}</td>
+      </tr>
+    `;
   });
 }
   if(vendorSelect){
@@ -780,9 +784,18 @@ function vrGenerateNo(){
 
 /* ================= ADD ROW ================= */
 function vrAddRow(){
-  if(!vrVendor.value){ ruleMessage("Select vendor first"); return; }
+  const tbody = document.getElementById("vrTableBody");
+  if(!tbody) return;
 
-  const tr=document.createElement("tr");
+  tbody.innerHTML += `
+    <tr>
+      <td><input></td>
+      <td><input type="number"></td>
+      <td><input type="number"></td>
+    </tr>
+  `;
+}
+ const tr=document.createElement("tr");
   tr.innerHTML=`
 <td><input onkeydown="vrKeyNav(event,this,'barcode')" oninput="vrSearch(this,'barcode')"><div class="dropdown"></div></td>
 <td><input onkeydown="vrKeyNav(event,this,'item')" oninput="vrSearch(this,'item')"><div class="dropdown"></div></td>
@@ -2109,8 +2122,6 @@ function uploadProductExcel(input){
     rate: +r["Retail Rate"] || 0,
     stock:0
   });
-});
-
     saveDB();
     prodFiltered = DB.products;
     renderProducts();
@@ -2270,6 +2281,7 @@ document.addEventListener("change", e=>{
       .forEach(cb=>cb.checked = e.target.checked);
   }
 });  
+</script>
 <!-- ================= VENDORS ================= -->
 <section id="vendors">
   <div class="card">
