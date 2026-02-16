@@ -669,7 +669,6 @@ function calculateFastestProducts(){
 }
 
 </script>
-
 <!-- ================= VENDOR RETURN (ULTRA FINAL) ================= -->
 <section id="returns" style="display:none;padding:30px">
 
@@ -745,32 +744,14 @@ document.addEventListener("DOMContentLoaded",()=>{
   vrGenerateNo();
   vrLoadPrevious();
 });
-function renderVendors(){
-  const tbody = document.getElementById("vendorTable");
-  if(!tbody) return;
 
-  tbody.innerHTML = "";
-
-  (DB.vendors || []).forEach(v=>{
-    tbody.innerHTML += `
-      <tr>
-        <td>${v.no || ""}</td>
-        <td>${v.name || ""}</td>
-        <td>${v.phone || ""}</td>
-      </tr>
-    `;
+/* ================= VENDORS ================= */
+function vrLoadVendors(){
+  vrVendor.innerHTML='<option value="">Select Vendor</option>';
+  DB.vendors.forEach(v=>{
+    vrVendor.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
   });
 }
-  if(vendorSelect){
-    vendorSelect.innerHTML = '<option value="">Select Vendor</option>';
-    (DB.vendors || []).forEach(v=>{
-      vendorSelect.innerHTML += `<option value="${v.name}">${v.name}</option>`;
-    });
-  }
-vrLoadVendors();
-  vrGenerateNo();
-  vrLoadPrevious();
-});
 
 /* ================= RETURN NO ================= */
 function vrGenerateNo(){
@@ -784,18 +765,9 @@ function vrGenerateNo(){
 
 /* ================= ADD ROW ================= */
 function vrAddRow(){
-  const tbody = document.getElementById("vrTableBody");
-  if(!tbody) return;
+  if(!vrVendor.value){ ruleMessage("Select vendor first"); return; }
 
-  tbody.innerHTML += `
-    <tr>
-      <td><input></td>
-      <td><input type="number"></td>
-      <td><input type="number"></td>
-    </tr>
-  `;
-}
- const tr=document.createElement("tr");
+  const tr=document.createElement("tr");
   tr.innerHTML=`
 <td><input onkeydown="vrKeyNav(event,this,'barcode')" oninput="vrSearch(this,'barcode')"><div class="dropdown"></div></td>
 <td><input onkeydown="vrKeyNav(event,this,'item')" oninput="vrSearch(this,'item')"><div class="dropdown"></div></td>
@@ -990,62 +962,48 @@ function vrDelete(i){
   saveDB();
   vrLoadPrevious();
 }
+
 function vrPrint(i){
-  const r = DB.returns[i];
-  const s = DB.settings || {};
-  const d = new Date(r.dateTime);
-
-  const w = window.open("");
+  const r=DB.returns[i];
+  const d=new Date(r.dateTime);
+  const w=window.open("");
   w.document.write(`
-  <html>
-  <head>
-  <style>
-  body{font-family:monospace;width:80mm}
-  table{width:100%;border-collapse:collapse}
-  td{padding:4px 0}
-  .right{text-align:right}
-  </style>
-  </head>
-  <body>
-
-  <center><b>${s.softwareName || ""}</b></center>
-  <hr>
-
-  <div>Return No: ${r.no}</div>
-  <div>Date: ${d.toLocaleDateString()}</div>
-  <div>Vendor: ${r.vendor}</div>
-
-  <hr>
-
-  <table>
-  <tr><td><b>Item</b></td><td class="right"><b>Amount</b></td></tr>
-  ${r.items.map(it=>`
-    <tr>
-      <td>${it.itemNo} (${it.qty} x ${it.cost})</td>
-      <td class="right">${(it.qty*it.cost).toFixed(2)}</td>
-    </tr>
-  `).join("")}
-  </table>
-
-  <hr>
-  <div class="right"><b>Total: ${r.amount.toFixed(2)}</b></div>
-
-  <script>
-  window.onload=function(){
-    window.print();
-    setTimeout(()=>window.close(),300);
-  }
-  </script>
-
-  </body>
-  </html>
-  `);
-
-  w.document.close();
+<h2 style="text-align:center">VENDOR RETURN</h2>
+<b>No:</b> ${r.no}<br>
+<b>Vendor:</b> ${r.vendor}<br>
+<b>Date:</b> ${d.toLocaleString()}
+<hr>
+<table border="1" width="100%" cellpadding="6">
+<tr><th>#</th><th>Item</th><th>Qty</th><th>Cost</th><th>Amount</th></tr>
+${r.items.map((it,i)=>`
+<tr>
+<td>${i+1}</td>
+<td>${it.itemNo}</td>
+<td>${it.qty}</td>
+<td>${it.cost.toFixed(2)}</td>
+<td>${(it.qty*it.cost).toFixed(2)}</td>
+</tr>`).join("")}
+</table>
+<div style="margin-top:15px;font-size:20px;font-weight:900;border-top:3px solid #000;text-align:right">
+TOTAL RETURN: ${r.amount.toFixed(2)}
+</div>`);
+  w.print();
 }
-</body>
-</html>
+function downloadVendorLedgerCSV(){
+  let csv = "Date,Type,Ref,Debit,Credit,Balance\n";
+  let bal = 0;
 
+  rows.forEach(r=>{
+    bal += (r.debit||0) - (r.credit||0);
+    csv += `"${new Date(r.date).toLocaleString()}","${r.type}","${r.ref}",${r.debit||0},${r.credit||0},${bal}\n`;
+  });
+
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  a.download = "vendor_ledger.csv";
+  a.click();
+}
+</script>
 <!-- ================= INVOICE ================= -->
 <section id="invoice">
   <div class="card" id="newInvoiceCard">
