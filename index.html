@@ -745,16 +745,25 @@ document.addEventListener("DOMContentLoaded",()=>{
   vrGenerateNo();
   vrLoadPrevious();
 });
-document.addEventListener("DOMContentLoaded",()=>{
-  const vendorSelect = document.getElementById("vrVendor");
+function vrLoadVendors(){
+  const select = document.getElementById("vrVendor");
+  if(!select) return;
 
+  select.innerHTML = '<option value="">Select Vendor</option>';
+
+  if(!DB.vendors) return;
+
+  DB.vendors.forEach(v=>{
+    select.innerHTML += `<option value="${v.name}">${v.name}</option>`;
+  });
+}
   if(vendorSelect){
     vendorSelect.innerHTML = '<option value="">Select Vendor</option>';
     (DB.vendors || []).forEach(v=>{
       vendorSelect.innerHTML += `<option value="${v.name}">${v.name}</option>`;
     });
   }
-
+vrLoadVendors();
   vrGenerateNo();
   vrLoadPrevious();
 });
@@ -1495,14 +1504,19 @@ ${inv.items.map((r,i)=>`
 </div>
 
 <div class="line"></div>
-<script>
-window.onload = function(){
+
+window.onload=function(){
   window.print();
   setTimeout(()=>window.close(),300);
-};
+}
+
+
 </body>
 </html>
 
+  `);
+
+  w.document.close();
 }
 /* ===== INITIAL RENDER ===== */
 document.addEventListener("DOMContentLoaded",()=>{
