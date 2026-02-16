@@ -1518,12 +1518,6 @@ Rs.${Number(inv.discountAmt||0)
 
 <div class="line"></div>
 
-window.onload=function(){
-  window.print();
-  setTimeout(()=>window.close(),300);
-}
-
-
 </body>
 </html>
 
@@ -1531,6 +1525,11 @@ window.onload=function(){
 
   w.document.close();
 }
+w.onload = function(){
+  w.print();
+  setTimeout(()=>w.close(),300);
+};
+
 /* ===== INITIAL RENDER ===== */
 document.addEventListener("DOMContentLoaded",()=>{
   renderInvoice();
