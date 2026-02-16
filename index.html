@@ -1022,7 +1022,6 @@ function downloadVendorLedgerCSV(){
           <th style="width:34%">Description</th>
           <th style="width:8%">Qty</th>
           <th style="width:10%">Available</th>
-<th style="width:10%">Remaining</th>
           <th style="width:12%">Rate (PKR)</th>
           <th style="width:12%">Total (PKR)</th>
           <th style="width:10%">Delete</th>
@@ -1142,11 +1141,6 @@ function renderInvoice(){
         </td>
         <td><input type="number" min="1" step="1" value="${r.qty}" onchange="setInvQty(${i},this.value)"></td>
 <td>${r.valid ? DB.products.find(p=>p.id===r.productId)?.stock ?? 0 : "-"}</td>
-<td style="color:red;font-weight:bold;">
-${r.valid ? 
-  "Rem: " + ((DB.products.find(p=>p.id===r.productId)?.stock ?? 0) - r.qty) 
-  : "-"}
-</td>
 <td><input type="number" value="${r.rate}" onchange="setInvRate(${i},this.value)"></td>
 <td>${r.valid?formatNumber(r.qty*r.rate):"<span style='color:red'>Invalid</span>"}</td>
 
@@ -1241,15 +1235,6 @@ function syncDiscFromPct(){
 function saveInvoice(){
   if(!invoiceDraft.length) return alert("Invoice empty");
   if(invoiceDraft.some(r=>!r.valid)) return alert("Invalid product");
-function cancelInvoice(){
-  if(!confirm("Cancel this invoice?")) return;
-  invoiceDraft=[];
-  editingInvoiceId=null;
-  mainDiscAmt.value=0;
-  mainDiscPct.value=0;
-  renderInvoice();
-  updateLiveInvoiceNo();
-}
  for(const r of invoiceDraft){
   const p=DB.products.find(x=>x.id===r.productId);
   if(!p) continue;
@@ -1296,6 +1281,15 @@ if(prod){
   renderInvoiceList();
   updateLiveInvoiceNo();
   alert("Invoice saved");
+}
+function cancelInvoice(){
+  if(!confirm("Cancel this invoice?")) return;
+  invoiceDraft=[];
+  editingInvoiceId=null;
+  mainDiscAmt.value=0;
+  mainDiscPct.value=0;
+  renderInvoice();
+  updateLiveInvoiceNo();
 }
 
 /* ===== INVOICE LIST ===== */
@@ -1525,11 +1519,6 @@ Rs.${Number(inv.discountAmt||0)
 
   w.document.close();
 }
-w.onload = function(){
-  w.print();
-  setTimeout(()=>w.close(),300);
-};
-
 /* ===== INITIAL RENDER ===== */
 document.addEventListener("DOMContentLoaded",()=>{
   renderInvoice();
@@ -2172,6 +2161,7 @@ function renderBarcodeRows(list){
       </tr>
     `;
   });
+  }
 function searchBarcodePanel(){
   const q = document.getElementById("barcodeSearch").value.trim().toLowerCase();
 
@@ -2256,26 +2246,7 @@ ${showRate ? `<div class="rate">Rs.${Number(p.rate).toLocaleString(undefined,{mi
 w.focus();
 w.print();
 }
-  w.onload = ()=>{
-    rows.forEach(r=>{
-      const cb = r.querySelector("input[type=checkbox]");
-      if(!cb.checked) return;
-
-      const i = cb.dataset.i;
-      const p = DB.products.filter(x=>x.stock>0)[i];
-      let q = r.querySelector("input[type=number]").value;
-      q = q ? parseInt(q) : p.stock;
-
-      for(let x=0;x<q;x++){
-        JsBarcode(
-          w.document.getElementById("b"+i+"_"+x),
-          p.barcode,
-          {format:"CODE128",displayValue:true,fontSize:14}
-        );
-      }
-    });
-    w.print();
-  };
+  
 document.addEventListener("change", e=>{
   if(e.target.id === "selectAllBarcodes"){
     document
