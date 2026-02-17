@@ -2471,7 +2471,12 @@ function loadVendorOptions(){
 
 <section id="purchase">
 
-<h3>Purchase</h3>
+<div style="display:flex;justify-content:space-between;align-items:center">
+  <h3>Purchase</h3>
+  <div style="font-size:22px;font-weight:900">
+    Purchase No: <span id="purchaseNo"></span>
+  </div>
+</div>
 
 <!-- ===== VENDOR ===== -->
 <div class="p-block">
@@ -2514,8 +2519,9 @@ function loadVendorOptions(){
 <div class="p-block">
 <h3>Previous Purchases</h3>
 
-<div class="filter-row">
+<div class="filter-row" style="display:flex;gap:10px;flex-wrap:wrap">
 <select id="filterVendor" onchange="renderPurchaseHistory()"></select>
+
 <select id="filterPeriod" onchange="renderPurchaseHistory()">
 <option value="all">All Time</option>
 <option value="day">Today</option>
@@ -2523,6 +2529,12 @@ function loadVendorOptions(){
 <option value="month">This Month</option>
 <option value="year">This Year</option>
 </select>
+
+<input type="date" id="filterFrom" onchange="renderPurchaseHistory()">
+<input type="date" id="filterTo" onchange="renderPurchaseHistory()">
+
+<input type="text" id="filterSearch" placeholder="Search Vendor / Purchase No"
+oninput="renderPurchaseHistory()">
 </div>
 
 <table class="p-table">
@@ -2551,6 +2563,15 @@ function loadVendorOptions(){
 let purchaseDraft=[];
 let purchasePage=1;
 const PER_PAGE=20;
+
+function generatePurchaseNo(){
+  let max = 0;
+  (DB.purchases||[]).forEach(p=>{
+    const n = parseInt((p.no||"").replace("PUR-",""));
+    if(n>max) max=n;
+  });
+  purchaseNo.innerText = "PUR-" + String(max+1).padStart(5,"0");
+}
 
 /* ===== LOAD VENDORS ===== */
 function loadPurchaseVendors(){
@@ -2597,6 +2618,10 @@ function renderPurchaseRows(){
 
 /* ===== SEARCH ===== */
 function searchProduct(inp,i){
+  if(!purchaseVendor.value){
+  ruleMessage("You must select vendor first");
+  return;
+}
   document.querySelectorAll(".suggest-box").forEach(x=>x.remove());
   const val=inp.value.trim();
   purchaseDraft[i].productId=null;   // IMPORTANT: reset
@@ -2693,16 +2718,23 @@ function savePurchase(){
     p.stock += r.qty;
     total += r.qty * r.cost;
   }
+const now = new Date();
 
-  DB.purchases.push({
-    id: uid("PUR"),
-    vendorId: purchaseVendor.value,
-    date: new Date().toISOString().slice(0,10),
-    items: JSON.parse(JSON.stringify(purchaseDraft)),
-    total
-  });
+DB.purchases.push({
+  id: uid("PUR"),
+  no: purchaseNo.innerText,
+  vendorId: purchaseVendor.value,
+  vendorName: DB.vendors.find(v=>v.id===purchaseVendor.value)?.name || "",
+  date: now.toISOString().slice(0,10),
+  time: now.toLocaleTimeString(),
+  dateTime: now.toISOString(),
+  user: (currentUser?.name || "Admin"),
+  items: JSON.parse(JSON.stringify(purchaseDraft)),
+  total
+});
 
   saveDB();
+  generatePurchaseNo();
   purchaseDraft = [];
   addPurchaseRow();
   renderPurchaseHistory();
@@ -2710,36 +2742,138 @@ function savePurchase(){
 
 /* ===== HISTORY ===== */
 function renderPurchaseHistory(){
+
   purchaseHistory.innerHTML="";
-  let list=DB.purchases.filter(p=>{
-    if(filterVendor.value && p.vendorId!==filterVendor.value)return false;
-    return true;
-  }).reverse();
+
+  let list = [...(DB.purchases||[])];
+
+  if(filterVendor.value)
+    list = list.filter(p=>p.vendorId===filterVendor.value);
+
+  if(filterFrom.value)
+    list = list.filter(p=>p.date>=filterFrom.value);
+
+  if(filterTo.value)
+    list = list.filter(p=>p.date<=filterTo.value);
+
+  if(filterSearch.value){
+    const q = filterSearch.value.toLowerCase();
+    list = list.filter(p=>
+      (p.vendorName||"").toLowerCase().includes(q) ||
+      (p.no||"").toLowerCase().includes(q)
+    );
+  }
+
+  list = list.sort((a,b)=>new Date(b.dateTime)-new Date(a.dateTime));
 
   const pages=Math.ceil(list.length/PER_PAGE);
   if(purchasePage>pages)purchasePage=pages||1;
 
-  list.slice((purchasePage-1)*PER_PAGE,purchasePage*PER_PAGE).forEach(p=>{
-    const v=DB.vendors.find(x=>x.id===p.vendorId);
+  list.slice((purchasePage-1)*PER_PAGE,purchasePage*PER_PAGE)
+  .forEach(p=>{
     purchaseHistory.innerHTML+=`
 <tr>
-<td>${p.date}</td>
-<td>${v?v.name:""}</td>
+<td>${p.no}</td>
+<td>${new Date(p.dateTime).toLocaleString()}</td>
+<td>${p.vendorName}</td>
 <td>${p.total.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
+<td><button onclick="printPurchase('${p.id}')">Print</button></td>
 <td><button onclick="editPurchase('${p.id}')">Edit</button></td>
-<td><button onclick="deletePurchase('${p.id}')">X</button></td>
+<td><button onclick="deletePurchase('${p.id}')">Delete</button></td>
 </tr>`;
   });
 
   purchasePageInfo.innerText=`Page ${purchasePage} / ${pages||1}`;
 }
-
 function editPurchase(id){
   const p=DB.purchases.find(x=>x.id===id);
   if(!p)return;
   purchaseVendor.value=p.vendorId;
   purchaseDraft=JSON.parse(JSON.stringify(p.items));
   renderPurchaseRows();
+}
+function printPurchase(id){
+
+  const p = DB.purchases.find(x=>x.id===id);
+  if(!p) return;
+
+  const w = window.open("");
+  let grand = 0;
+
+  const rows = p.items.map((it,i)=>{
+    const amt = it.qty * it.cost;
+    grand += amt;
+    return `
+<tr>
+<td>${i+1}</td>
+<td>${it.itemNo}</td>
+<td>${it.desc}</td>
+<td>${it.qty}</td>
+<td>${Number(it.cost).toFixed(2)}</td>
+<td>${Number(amt).toFixed(2)}</td>
+</tr>`;
+  }).join("");
+
+  const html = `
+<html>
+<head>
+<title>Purchase Invoice</title>
+<style>
+body{font-family:Arial;padding:30px}
+.header{display:flex;justify-content:space-between;margin-bottom:20px}
+.title{font-size:24px;font-weight:900}
+table{width:100%;border-collapse:collapse}
+th,td{border:1px solid #000;padding:8px;text-align:center}
+th{background:#f2f2f2}
+.total{margin-top:20px;text-align:right;font-size:18px;font-weight:900}
+.footer{margin-top:60px;display:flex;justify-content:space-between}
+.sign{border-top:1px solid #000;width:200px;text-align:center;padding-top:5px}
+</style>
+</head>
+<body>
+
+<div class="header">
+<div>
+<div class="title">PURCHASE INVOICE</div>
+<div><b>No:</b> ${p.no}</div>
+<div><b>Date:</b> ${new Date(p.dateTime).toLocaleString()}</div>
+<div><b>Vendor:</b> ${p.vendorName}</div>
+</div>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Item No</th>
+<th>Description</th>
+<th>Qty</th>
+<th>Cost</th>
+<th>Amount</th>
+</tr>
+</thead>
+<tbody>
+${rows}
+</tbody>
+</table>
+
+<div class="total">
+Grand Total: ${Number(grand).toFixed(2)}
+</div>
+
+<div class="footer">
+<div class="sign">Authorized Signature</div>
+<div class="sign">Received By</div>
+</div>
+
+</body>
+</html>
+`;
+
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  w.print();
 }
 
 function deletePurchase(id){
@@ -2767,6 +2901,7 @@ function uploadPurchaseExcel(input){
 
 /* ===== INIT ===== */
 loadPurchaseVendors();
+generatePurchaseNo();
 addPurchaseRow();
 renderPurchaseHistory();
 </script>
