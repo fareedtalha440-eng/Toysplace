@@ -1834,427 +1834,301 @@ function downloadCashCSV(){
 loadVendorOptions(); renderCash();
 </script>
 
-<!-- ================= PRODUCTS ================= -->
+<!-- ================= PRODUCTS (ADVANCED SYSTEM) ================= -->
 <section id="products">
-  <div class="card">
-    <h2>Products</h2>
-<button class="blue" onclick="openBarcodePrint()">Print Barcode</button>
-    <!-- ===== FILE ACTIONS ===== -->
-    <h3>Import / Export</h3>
-    <hr>
-    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:15px;">
-      <input type="file" accept=".xlsx,.xls" onchange="uploadProductExcel(this)">
-      <button class="blue" onclick="exportProductsCSV()">Download CSV</button>
-    </div>
 
-    <!-- ===== ADD PRODUCT ===== -->
-    <h3>Add New Product</h3>
-    <hr>
-    <div style="margin-bottom:10px;">
-      <button class="green" onclick="showAddProductForm()">+ Add New Product</button>
-    </div>
+<div class="card">
+<h2>Products Management</h2>
 
-    <div id="newProductForm" style="display:none; gap:10px; flex-wrap:wrap; margin-bottom:20px;">
-      <input placeholder="Barcode" id="newProdBarcode" style="flex:1 1 150px;">
-      <input placeholder="Item No" id="newProdItemNo" style="flex:1 1 150px;">
-      <input placeholder="Description" id="newProdDesc" style="flex:2 1 200px;">
-      <input type="number" placeholder="Rate" id="newProdRate" style="flex:1 1 100px;">
-      <button class="green" onclick="addNewProduct()">Save</button>
-      <button class="red" onclick="hideAddProductForm()">Cancel</button>
-    </div>
+<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:15px">
 
-    <!-- ===== SEARCH ===== -->
-    <h3>Search Products</h3>
-    <hr>
-    <input
-      id="productSearch"
-      placeholder="Search by Barcode / Item No / Description"
-      oninput="advancedProductSearch()"
-      style="width:100%; padding:8px; margin-bottom:15px;"
-    >
-  </div>
-<div class="card" id="barcodePanel" style="display:none">
-  <h2>Print Barcode</h2>
-<input
-  id="barcodeSearch"
-  placeholder="Search barcode / item / description"
-  style="width:100%;padding:8px;margin:10px 0"
-  oninput="searchBarcodePanel()"
->
-
-  <div style="display:flex;gap:15px;margin-bottom:10px">
-    <button class="green" onclick="printSelectedBarcodes()">PRINT BARCODE</button>
-    <select id="stickerSize">
-  <option value="small">Small</option>
-  <option value="medium" selected>Medium</option>
-  <option value="large">Large</option>
-</select>
-    <label><input type="checkbox" id="showItemNo"> Item No</label>
-    <label><input type="checkbox" id="showRate"> Rate</label>
-    <button class="red" onclick="closeBarcodePanel()">Back</button>
-  </div>
-
-  <table>
-    <thead>
-      <tr>
-        <th><input type="checkbox" id="selectAllBarcodes"></th>
-        <th>Barcode</th>
-        <th>Item No</th>
-        <th>Description</th>
-        <th>Rate</th>
-        <th>Stock</th>
-        <th>Qty To Print</th>
-      </tr>
-    </thead>
-    <tbody id="barcodeRows"></tbody>
-  </table>
+<button class="green" onclick="ProductSystem.openCreate()">+ New Product</button>
+<button class="blue" onclick="ProductSystem.exportCSV()">Export CSV</button>
+<input type="file" accept=".xlsx,.xls" onchange="ProductSystem.importExcel(this)">
+<input placeholder="Smart Search..."
+       style="flex:1;padding:10px"
+       oninput="ProductSystem.smartSearch(this.value)">
 </div>
 
-  <!-- ===== PRODUCTS TABLE ===== -->
-  <div class="card">
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Barcode</th>
-          <th>Item No</th>
-          <th>Description</th>
-          <th>Rate</th>
-          <th>Stock</th>
-          <th>Edit</th>
-          <th>Delete</th>
-        </tr>
-      </thead>
-      <tbody id="productRows"></tbody>
-    </table>
+</div>
 
-    <!-- Pagination -->
-    <div style="margin-top:10px; display:flex; gap:10px;">
-      <button onclick="prevProdPage()">Prev</button>
-      <button onclick="nextProdPage()">Next</button>
-    </div>
-  </div>
+<div class="card">
+
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Barcode</th>
+<th>Item No</th>
+<th>Description</th>
+<th>Rate</th>
+<th>Stock</th>
+<th>Action</th>
+</tr>
+</thead>
+
+<tbody id="productRows"></tbody>
+</table>
+
+<div style="display:flex;gap:10px;margin-top:15px">
+<button onclick="ProductSystem.prev()">Prev</button>
+<button onclick="ProductSystem.next()">Next</button>
+</div>
+
+</div>
+
 </section>
 
 <script>
-let prodPage = 1;
-let prodPerPage = 100;
-let prodFiltered = [];
 
-/* ===== SHOW / HIDE FORM ===== */
-function showAddProductForm(){
-  document.getElementById("newProductForm").style.display="flex";
-}
-function hideAddProductForm(){
-  document.getElementById("newProductForm").style.display="none";
-}
+const ProductSystem = (function(){
 
-/* ===== RENDER ===== */
-function renderProducts(){
-  const tbody = document.getElementById("productRows");
-  tbody.innerHTML = "";
+let state = {
+page:1,
+perPage:100,
+filtered:[]
+};
 
-  const start = (prodPage - 1) * prodPerPage;
-  const page = prodFiltered.slice(start, start + prodPerPage);
+/* ================= INIT ================= */
 
-  page.forEach((p, i) => {
-    tbody.innerHTML += `
-      <tr>
-        <td>${start + i + 1}</td>
-        <td>${p.barcode || ""}</td>
-        <td>${p.itemNo}</td>
-        <td>${p.desc}</td>
-        <td>${p.rate}</td>
-        <td>${p.stock || 0}</td>
-        <td><button class="blue" onclick="editProduct('${p.id}')">Edit</button></td>
-        <td><button class="red" onclick="deleteProduct('${p.id}')">Delete</button></td>
-      </tr>
-    `;
-  });
+function init(){
+state.filtered = DB.products.slice();
+render();
 }
 
-/* ===== ADVANCED REALTIME SEARCH (ALL DATA) ===== */
-function advancedProductSearch(){
-  const q = document.getElementById("productSearch").value.trim().toLowerCase();
+/* ================= RENDER ================= */
 
-  prodFiltered = DB.products.filter(p => {
-    const barcode = (p.barcode ?? "").toString().toLowerCase();
-    const itemNo  = (p.itemNo  ?? "").toString().toLowerCase();
-    const desc    = (p.desc    ?? "").toString().toLowerCase();
+function render(){
 
-    return (
-      barcode.includes(q) ||
-      itemNo.includes(q) ||
-      desc.includes(q)
-    );
-  });
+const tbody = document.getElementById("productRows");
+tbody.innerHTML = "";
 
-  prodPage = 1;
-  renderProducts();
+const start = (state.page-1)*state.perPage;
+const end   = start + state.perPage;
+
+state.filtered
+.slice(start,end)
+.forEach((p,index)=>{
+
+tbody.innerHTML += `
+<tr>
+<td>${start+index+1}</td>
+<td>${p.barcode||""}</td>
+<td>${p.itemNo}</td>
+<td>${p.desc}</td>
+<td>${Number(p.rate).toLocaleString(undefined,{minimumFractionDigits:2})}</td>
+<td>${p.stock||0}</td>
+<td>
+<button class="blue" onclick="ProductSystem.edit('${p.id}')">Edit</button>
+<button class="red" onclick="ProductSystem.remove('${p.id}')">Delete</button>
+</td>
+</tr>
+`;
+
+});
+
 }
 
-/* ===== ADD ===== */
-function addNewProduct(){
-  const barcode = newProdBarcode.value.trim();
-  const itemNo = newProdItemNo.value.trim();
-  const desc = newProdDesc.value.trim();
-  const rate = +newProdRate.value;
+/* ================= SEARCH ================= */
 
-  if(!itemNo || !desc){
-    ruleMessage("Item No & Description required");
-    return;
-  }
+function smartSearch(query){
 
-  if(DB.products.some(p=>p.itemNo===itemNo)){
-    ruleMessage("This Item No already exists");
-    return;
-  }
+query = (query||"").toLowerCase().trim();
 
-  if(barcode && DB.products.some(p=>p.barcode===barcode)){
-    ruleMessage("This Barcode already exists");
-    return;
-  }
+state.filtered = DB.products.filter(p=>{
 
-  DB.products.push({
-    id: uid("P"),
-    barcode,
-    itemNo,
-    desc,
-    rate,
-    stock: 0
-  });
+const b = (p.barcode||"").toLowerCase();
+const i = (p.itemNo||"").toLowerCase();
+const d = (p.desc||"").toLowerCase();
 
-  saveDB();
-  prodFiltered = DB.products;
-  renderProducts();
+return b.includes(query)
+|| i.includes(query)
+|| d.includes(query);
 
-  newProdBarcode.value="";
-  newProdItemNo.value="";
-  newProdDesc.value="";
-  newProdRate.value="";
-  hideAddProductForm();
+});
+
+state.page = 1;
+render();
 }
 
-/* ===== EDIT ===== */
-function editProduct(id){
-  const p = DB.products.find(x=>x.id===id);
-  if(!p) return;
+/* ================= CREATE ================= */
 
-  const barcode = prompt("Barcode", p.barcode);
-  const itemNo = prompt("Item No", p.itemNo);
-  const desc = prompt("Description", p.desc);
-  const rate = prompt("Rate", p.rate);
+function openCreate(){
 
-  if(itemNo && desc && rate){
-    p.barcode = barcode || "";
-    p.itemNo = itemNo;
-    p.desc = desc;
-    p.rate = +rate;
-    saveDB();
-    renderProducts();
-  }
+const barcode = prompt("Barcode");
+const itemNo  = prompt("Item No");
+const desc    = prompt("Description");
+const rate    = prompt("Rate");
+
+if(!itemNo || !desc){
+alert("Item No & Description Required");
+return;
 }
 
-/* ===== DELETE ===== */
-function deleteProduct(id){
-  const p = DB.products.find(x=>x.id===id);
-  if(!p) return;
-  if(p.stock !== 0) return alert("Stock exists");
-
-  if(confirm("Delete product?")){
-    DB.products = DB.products.filter(x=>x.id!==id);
-    saveDB();
-    prodFiltered = DB.products;
-    renderProducts();
-  }
+if(DB.products.some(p=>p.itemNo===itemNo)){
+alert("Item No already exists");
+return;
 }
 
-/* ===== PAGINATION ===== */
-function nextProdPage(){
-  if(prodPage * prodPerPage < prodFiltered.length){
-    prodPage++;
-    renderProducts();
-  }
-}
-function prevProdPage(){
-  if(prodPage > 1){
-    prodPage--;
-    renderProducts();
-  }
+if(barcode && DB.products.some(p=>p.barcode===barcode)){
+alert("Barcode already exists");
+return;
 }
 
-/* ===== UPLOAD EXCEL ===== */
-function uploadProductExcel(input){
-  const reader = new FileReader();
-  reader.onload = e => {
-    const wb = XLSX.read(e.target.result, {type:"binary"});
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-    rows.forEach(r=>{
-  const itemNo = r["Item No"] || "";
-  const barcode = r.Barcode || "";
-
-  if(DB.products.some(p=>p.itemNo===itemNo)){
-    return;
-  }
-
-  if(barcode && DB.products.some(p=>p.barcode===barcode)){
-    ruleMessage(itemNo + " - " + barcode + " is Present");
-    return;
-  }
-
-  DB.products.push({
-    id: uid("P"),
-    barcode,
-    itemNo,
-    desc: r.Description || "",
-    rate: +r["Retail Rate"] || 0,
-    stock:0
-  });
+DB.products.push({
+id: uid("P"),
+barcode: barcode||"",
+itemNo,
+desc,
+rate:+rate||0,
+stock:0
 });
 
 saveDB();
-prodFiltered = DB.products;
-renderProducts();
-alert("Products imported");
-  reader.readAsBinaryString(input.files[0]);
+state.filtered = DB.products.slice();
+render();
 }
 
-/* ===== EXPORT CSV ===== */
-function exportProductsCSV(){
-  let csv = "Barcode,Item No,Description,Rate,Stock\n";
-  DB.products.forEach(p=>{
-    csv += `"${p.barcode}","${p.itemNo}","${p.desc}",${p.rate},${p.stock}\n`;
-  });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv"}));
-  a.download = "products.csv";
-  a.click();
+/* ================= EDIT ================= */
+
+function edit(id){
+
+const p = DB.products.find(x=>x.id===id);
+if(!p) return;
+
+const barcode = prompt("Barcode",p.barcode);
+const itemNo  = prompt("Item No",p.itemNo);
+const desc    = prompt("Description",p.desc);
+const rate    = prompt("Rate",p.rate);
+
+if(!itemNo || !desc) return;
+
+p.barcode = barcode||"";
+p.itemNo  = itemNo;
+p.desc    = desc;
+p.rate    = +rate||0;
+
+saveDB();
+render();
 }
 
-/* ===== INIT ===== */
-prodFiltered = DB.products;
-renderProducts();
+/* ================= DELETE ================= */
 
-let barcodeList = [];
+function remove(id){
 
-function openBarcodePrint(){
-  document.querySelectorAll("#products .card").forEach(c=>c.style.display="none");
-  document.getElementById("barcodePanel").style.display="block";
+const p = DB.products.find(x=>x.id===id);
+if(!p) return;
 
-  barcodeList = DB.products.filter(p=>p.stock>0);
-  renderBarcodeRows(barcodeList);
+if(p.stock!==0){
+alert("Stock exists. Cannot delete.");
+return;
 }
 
-function renderBarcodeRows(list){
-  const tbody = document.getElementById("barcodeRows");
-  tbody.innerHTML = "";
-
-  list.forEach((p,i)=>{
-    tbody.innerHTML += `
-      <tr>
-        <td><input type="checkbox" data-i="${i}" ${!p.barcode ? "disabled":""}></td>
-        <td>${p.barcode||"<span style='color:red'>Missing</span>"}</td>
-        <td>${p.itemNo||""}</td>
-        <td>${p.desc}</td>
-        <td>${p.rate}</td>
-        <td>${p.stock}</td>
-        <td><input type="number" min="1" placeholder="${p.stock}" data-q="${i}"></td>
-      </tr>
-    `;
-  });
-  }
-function searchBarcodePanel(){
-  const q = document.getElementById("barcodeSearch").value.trim().toLowerCase();
-
-  const filtered = DB.products.filter(p=>{
-    return (
-      (p.barcode||"").toLowerCase().includes(q) ||
-      (p.itemNo||"").toLowerCase().includes(q) ||
-      (p.desc||"").toLowerCase().includes(q)
-    );
-  });
-
-  renderBarcodeRows(filtered);
+if(confirm("Delete Product?")){
+DB.products = DB.products.filter(x=>x.id!==id);
+saveDB();
+state.filtered = DB.products.slice();
+render();
 }
-function closeBarcodePanel(){
-  document.getElementById("barcodePanel").style.display="none";
-  document.querySelectorAll("#products .card").forEach(c=>c.style.display="block");
+
 }
-</script>
-<script>
-function printSelectedBarcodes(){
-let hasValid = false;
-const rows = [...document.querySelectorAll("#barcodeRows tr")];
+
+/* ================= PAGINATION ================= */
+
+function next(){
+if(state.page*state.perPage < state.filtered.length){
+state.page++;
+render();
+}
+}
+
+function prev(){
+if(state.page>1){
+state.page--;
+render();
+}
+}
+
+/* ================= IMPORT ================= */
+
+function importExcel(input){
+
+const reader = new FileReader();
+
+reader.onload = e=>{
+
+const wb = XLSX.read(e.target.result,{type:"binary"});
+const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
 
 rows.forEach(r=>{
-  const cb = r.querySelector("input[type=checkbox]");
-  if(!cb || !cb.checked) return;
 
-  const i = cb.dataset.i;
-  const p = barcodeList[i];
+const itemNo = r["Item No"]||"";
+const barcode = r["Barcode"]||"";
 
-  if(p && p.barcode && p.barcode.trim()){
-    hasValid = true;
-  }
+if(!itemNo) return;
+if(DB.products.some(p=>p.itemNo===itemNo)) return;
+if(barcode && DB.products.some(p=>p.barcode===barcode)) return;
+
+DB.products.push({
+id: uid("P"),
+barcode,
+itemNo,
+desc: r["Description"]||"",
+rate: +r["Retail Rate"]||0,
+stock:0
 });
-if(!hasValid){
-  alert("No valid barcode selected");
-  return;
+
+});
+
+saveDB();
+state.filtered = DB.products.slice();
+render();
+alert("Import Completed");
+
+};
+
+reader.readAsBinaryString(input.files[0]);
 }
-  const showItem = document.getElementById("showItemNo").checked;
-  const showRate = document.getElementById("showRate").checked;
 
-  let html = `
-<html><head>
-<style>
-body{font-family:Arial}
-.sticker{text-align:center;margin-bottom:12px;page-break-inside:avoid}
-.small svg{height:40px}
-.medium svg{height:60px}
-.large svg{height:90px}
-.desc{font-weight:bold}
-.rate{font-weight:bold}
-</style>
-</head><body>
-`;
+/* ================= EXPORT ================= */
 
-  rows.forEach(r=>{
-    const cb = r.querySelector("input[type=checkbox]");
-    if(!cb.checked) return;
+function exportCSV(){
 
-    const i = cb.dataset.i;
-    const p = DB.products.filter(x=>x.stock>0)[i];
-    let q = r.querySelector("input[type=number]").value;
-    q = q ? parseInt(q) : p.stock;
-const size = document.getElementById("stickerSize").value;
+let csv = "Barcode,Item No,Description,Rate,Stock\n";
 
-    for(let x=0;x<q;x++){
-      html += `
-<div class="sticker ${size}">
-${showItem ? `<div>${p.itemNo}</div>` : ""}
-<div class="desc">${p.desc}</div>
-<svg id="b${i}_${x}"></svg>
-${showRate ? `<div class="rate">Rs.${Number(p.rate).toLocaleString(undefined,{minimumFractionDigits:2})}</div>` : ""}
-</div>`;
-    }
-  });
+DB.products.forEach(p=>{
+csv += `"${p.barcode}","${p.itemNo}","${p.desc}",${p.rate},${p.stock}\n`;
+});
 
-  html += "</body></html>";
+const a = document.createElement("a");
+a.href = URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+a.download="products.csv";
+a.click();
 
-  const w = window.open("");
-  w.document.write(html);
- w.document.close();
-w.focus();
-w.print();
 }
-  
-document.addEventListener("change", e=>{
-  if(e.target.id === "selectAllBarcodes"){
-    document
-      .querySelectorAll("#barcodeRows input[type=checkbox]")
-      .forEach(cb=>cb.checked = e.target.checked);
-  }
-});  
+
+/* ================= PUBLIC ================= */
+
+return {
+init,
+smartSearch,
+openCreate,
+edit,
+remove,
+next,
+prev,
+importExcel,
+exportCSV
+};
+
+})();
+
+/* ================= LOAD ================= */
+
+document.addEventListener("DOMContentLoaded",function(){
+ProductSystem.init();
+});
+
 </script>
 <!-- ================= VENDORS ================= -->
 <section id="vendors">
