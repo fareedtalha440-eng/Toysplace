@@ -2464,7 +2464,37 @@ function loadVendorOptions(){
 }
 #purchase h3{color:var(--primary);margin:20px 0}
 .p-block{border:1px solid var(--border);padding:20px;margin-bottom:30px;border-radius:12px}
+.p-block{
+  width:100%;
+  box-sizing:border-box;
+}
+
 .p-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:14px;
+  table-layout:auto;
+}
+
+.p-table th,
+.p-table td{
+  padding:10px;
+  border:1px solid var(--border);
+  word-break:break-word;
+}
+
+@media (max-width:1024px){
+  #purchase{
+    padding:15px;
+  }
+}
+
+@media (max-width:768px){
+  .p-table{
+    font-size:12px;
+  }
+}
+  .p-table{
   width:100%;
   border-collapse:collapse;
   font-size:14px;
@@ -2536,7 +2566,21 @@ function loadVendorOptions(){
 <div class="p-block">
 <h3>Previous Purchases</h3>
 
-<div class="filter-row" style="display:flex;gap:10px;flex-wrap:wrap">
+<div class="filter-row" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+
+<select id="filterVendor">
+  <option value="">All Vendors</option>
+</select>
+
+<input type="date" id="filterFrom">
+<input type="date" id="filterTo">
+
+<input type="text" id="filterSearch" placeholder="Search Vendor / Purchase No">
+
+<button onclick="applyPurchaseFilter()">Apply</button>
+<button onclick="clearPurchaseFilter()">Clear</button>
+
+</div>
 <select id="filterVendor" onchange="renderPurchaseHistory()"></select>
 
 <input type="date" id="filterFrom" onchange="renderPurchaseHistory()">
@@ -2781,20 +2825,45 @@ function renderPurchaseHistory(){
   if(purchasePage>pages)purchasePage=pages||1;
 
   list.slice((purchasePage-1)*PER_PAGE,purchasePage*PER_PAGE)
-  .forEach(p=>{
-    purchaseHistory.innerHTML+=`
-<tr>
-<td>${p.no}</td>
-<td>${new Date(p.dateTime).toLocaleString()}</td>
-<td>${p.vendorName}</td>
-<td>${p.total.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
-<td><button onclick="printPurchase('${p.id}')">Print</button></td>
-<td><button onclick="editPurchase('${p.id}')">Edit</button></td>
-<td><button onclick="deletePurchase('${p.id}')">Delete</button></td>
-</tr>`;
-  });
+.forEach(p=>{
+
+  const no = p.no || "N/A";
+  const vendor = p.vendorName || 
+    (DB.vendors.find(v=>v.id===p.vendorId)?.name || "N/A");
+
+  const dateTime = p.dateTime 
+    ? new Date(p.dateTime).toLocaleString()
+    : (p.date ? new Date(p.date).toLocaleDateString() : "N/A");
+
+  const total = Number(p.total || 0).toLocaleString(undefined,{minimumFractionDigits:2});
+
+  purchaseHistory.innerHTML+=`
+  <tr>
+    <td>${no}</td>
+    <td>${dateTime}</td>
+    <td>${vendor}</td>
+    <td>${total}</td>
+    <td><button onclick="printPurchase('${p.id}')">Print</button></td>
+    <td><button onclick="editPurchase('${p.id}')">Edit</button></td>
+    <td><button onclick="deletePurchase('${p.id}')">Delete</button></td>
+  </tr>`;
+});
+
 
   purchasePageInfo.innerText=`Page ${purchasePage} / ${pages||1}`;
+}
+function applyPurchaseFilter(){
+  purchasePage = 1;
+  renderPurchaseHistory();
+}
+
+function clearPurchaseFilter(){
+  filterVendor.value = "";
+  filterFrom.value = "";
+  filterTo.value = "";
+  filterSearch.value = "";
+  purchasePage = 1;
+  renderPurchaseHistory();
 }
 function editPurchase(id){
   const p=DB.purchases.find(x=>x.id===id);
