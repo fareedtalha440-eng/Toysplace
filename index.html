@@ -819,34 +819,54 @@ function vrKeyNav(e,inp){
 
 /* ================= SELECT PRODUCT ================= */
 function vrSelectProduct(inp,p){
-  const r=inp.closest("tr");
 
-  // VENDOR VALIDATION
-  const lastPurchase = DB.purchases
-    .filter(x=>x.items.some(i=>i.itemNo===p.itemNo))
-    .sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
+  const r = inp.closest("tr");
 
-  let autoCost=0;
-  if(lastPurchase){
-    if(lastPurchase.vendor!==vrVendor.value){
-      ruleMessage("This product was not purchased from this vendor. Cost set to 0.");
-      autoCost=0;
-    }else{
-      const it=lastPurchase.items.find(i=>i.itemNo===p.itemNo);
-      autoCost=it?it.cost:0;
+  if(!vrVendor.value){
+    ruleMessage("Select vendor first");
+    return;
+  }
+
+  // FIND VENDOR OBJECT
+  const vendorObj = DB.vendors.find(v => v.name === vrVendor.value);
+  if(!vendorObj){
+    ruleMessage("Vendor not found");
+    return;
+  }
+
+  // GET LAST PURCHASE FOR THIS VENDOR + PRODUCT
+  const sortedPurchases = DB.purchases
+    .filter(x => x.vendorId === vendorObj.id)
+    .sort((a,b)=> new Date(b.dateTime) - new Date(a.dateTime));
+
+  let autoCost = 0;
+
+  for(let purchase of sortedPurchases){
+
+    if(!purchase.items) continue;
+
+    const found = purchase.items.find(i => i.productId === p.id);
+
+    if(found){
+      autoCost = Number(found.cost || found.rate || 0);
+      break;
     }
   }
 
-  r.children[0].children[0].value=p.barcode||"";
-  r.children[1].children[0].value=p.itemNo;
-  r.children[2].children[0].value=p.desc;
-  r.querySelector(".stk").innerText=p.stock;
-  r.children[5].children[0].value=autoCost; // ALWAYS EDITABLE
+  if(autoCost === 0){
+    ruleMessage("This product was not purchased from this vendor");
+  }
 
-  inp.nextElementSibling.innerHTML="";
+  // FILL ROW
+  r.children[0].children[0].value = p.barcode || "";
+  r.children[1].children[0].value = p.itemNo;
+  r.children[2].children[0].value = p.desc;
+  r.querySelector(".stk").innerText = p.stock;
+  r.children[5].children[0].value = autoCost;
+
+  inp.nextElementSibling.innerHTML = "";
   vrCalc();
 }
-
 /* ================= CALC ================= */
 function vrCalc(){
   let total=0;
@@ -964,29 +984,85 @@ function vrDelete(i){
 }
 
 function vrPrint(i){
-  const r=DB.returns[i];
-  const d=new Date(r.dateTime);
-  const w=window.open("");
-  w.document.write(`
-<h2 style="text-align:center">VENDOR RETURN</h2>
-<b>No:</b> ${r.no}<br>
-<b>Vendor:</b> ${r.vendor}<br>
-<b>Date:</b> ${d.toLocaleString()}
-<hr>
-<table border="1" width="100%" cellpadding="6">
-<tr><th>#</th><th>Item</th><th>Qty</th><th>Cost</th><th>Amount</th></tr>
-${r.items.map((it,i)=>`
+
+  const r = DB.returns[i];
+  const d = new Date(r.dateTime);
+  const w = window.open("");
+
+  let grand = 0;
+
+  let rowsHTML = r.items.map((it,index)=>{
+    const amt = it.qty * it.cost;
+    grand += amt;
+
+    return `
 <tr>
-<td>${i+1}</td>
+<td>${index+1}</td>
 <td>${it.itemNo}</td>
 <td>${it.qty}</td>
-<td>${it.cost.toFixed(2)}</td>
-<td>${(it.qty*it.cost).toFixed(2)}</td>
-</tr>`).join("")}
+<td>${Number(it.cost).toFixed(2)}</td>
+<td>${Number(amt).toFixed(2)}</td>
+</tr>`;
+  }).join("");
+
+  const html = `
+<html>
+<head>
+<title>Vendor Return</title>
+<style>
+body{font-family:Arial;padding:30px}
+.header{display:flex;justify-content:space-between;margin-bottom:20px}
+.title{font-size:24px;font-weight:900}
+table{width:100%;border-collapse:collapse;margin-top:15px}
+th,td{border:1px solid #000;padding:8px;text-align:center}
+th{background:#f2f2f2}
+.total{margin-top:20px;text-align:right;font-size:18px;font-weight:900}
+.footer{margin-top:60px;display:flex;justify-content:space-between}
+.sign{border-top:1px solid #000;width:200px;text-align:center;padding-top:5px}
+</style>
+</head>
+<body>
+
+<div class="header">
+<div>
+<div class="title">VENDOR RETURN INVOICE</div>
+<div><b>Return No:</b> ${r.no}</div>
+<div><b>Date:</b> ${d.toLocaleString()}</div>
+<div><b>Vendor:</b> ${r.vendor}</div>
+</div>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Item No</th>
+<th>Qty</th>
+<th>Cost</th>
+<th>Amount</th>
+</tr>
+</thead>
+<tbody>
+${rowsHTML}
+</tbody>
 </table>
-<div style="margin-top:15px;font-size:20px;font-weight:900;border-top:3px solid #000;text-align:right">
-TOTAL RETURN: ${r.amount.toFixed(2)}
-</div>`);
+
+<div class="total">
+Grand Total: ${Number(grand).toFixed(2)}
+</div>
+
+<div class="footer">
+<div class="sign">Authorized Signature</div>
+<div class="sign">Received By</div>
+</div>
+
+</body>
+</html>
+`;
+
+  w.document.write(html);
+  w.document.close();
+  w.focus();
   w.print();
 }
 function downloadVendorLedgerCSV(){
