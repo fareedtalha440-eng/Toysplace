@@ -223,7 +223,7 @@ button{
 <script>
 /* ================= TAB SWITCHING (FIXED) ================= */
 function openTab(id){
-
+let isLoggedIn = false;
   // Hide all sections
   document.querySelectorAll("section").forEach(sec=>{
     sec.style.display = "none";
@@ -3003,7 +3003,7 @@ function applyDeletedReport(){
 }
 
 /* ===== LOAD USERS ===== */
-document.addEventListener("DOMContentLoaded",()=>{
+  document.addEventListener("DOMContentLoaded",()=>{
   [...new Set((DB.logs||[]).map(l=>l.user))].forEach(u=>{
     profitUser.innerHTML+=`<option>${u}</option>`;
     delUser.innerHTML+=`<option>${u}</option>`;
@@ -3119,23 +3119,29 @@ if(!DB.accounts){
 
 /* ===== LOGIN SYSTEM ===== */
 function submitLogin(){
-  const user=document.getElementById("loginUsername").value.trim();
-  const pass=document.getElementById("loginPassword").value.trim();
-  const acc=DB.accounts.find(x=>x.username===user && x.password===pass);
-  if(!acc){
-    document.getElementById("loginError").innerText="Invalid username or password";
+
+  const u = loginUsername.value.trim();
+  const p = loginPassword.value.trim();
+
+  const user = (DB.users || []).find(x=>x.username===u && x.password===p);
+
+  if(!user){
+    loginError.innerText = "Invalid Username or Password";
     return;
   }
-  sessionStorage.setItem("loggedInUser", JSON.stringify(acc));
-  document.getElementById("loginScreen").style.display="none";
-  renderSectionsByPermission();
-  openTab("invoice");
-  document.querySelectorAll("#mainMenu .menuItem").forEach(tab=>{
-  const id = tab.id.replace("tab-","");
-  if(acc.role!=="developer" && !(acc.permissions||[]).includes(id)){
-    tab.style.display="none";
-  }
-});
+
+  // SUCCESS
+  isLoggedIn = true;
+  currentUser = user;
+
+  loginScreen.style.display = "none";
+
+  // SHOW MAIN SYSTEM
+  document.querySelectorAll("section").forEach(sec=>{
+    if(sec.id !== "loginScreen"){
+      sec.style.display = "block";
+    }
+  });
 
 }
 
