@@ -2457,12 +2457,29 @@ function loadVendorOptions(){
 <!-- ================= PURCHASE ================= -->
 
 <style>
-#purchase{width:100%;min-height:100vh;padding:30px}
+#purchase{
+  max-width:1200px;
+  margin:auto;
+  padding:20px;
+}
 #purchase h3{color:var(--primary);margin:20px 0}
 .p-block{border:1px solid var(--border);padding:20px;margin-bottom:30px;border-radius:12px}
-.p-table{width:100%;border-collapse:collapse}
-.p-table th{background:#f4f6fb;color:var(--primary);text-align:left;font-weight:600}
-.p-table td,.p-table th{padding:12px;border:1px solid var(--border)}
+.p-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:14px;
+}
+
+.p-table th{
+  background:#f8fafc;
+  color:var(--primary);
+  font-weight:600;
+}
+
+.p-table td,.p-table th{
+  padding:10px;
+  border:1px solid var(--border);
+}
 .suggest-box{position:absolute;background:#fff;border:1px solid var(--border);z-index:999;width:100%}
 .suggest-box div{padding:8px;cursor:pointer}
 .suggest-box .active,.suggest-box div:hover{background:#e8edf6}
@@ -2522,14 +2539,6 @@ function loadVendorOptions(){
 <div class="filter-row" style="display:flex;gap:10px;flex-wrap:wrap">
 <select id="filterVendor" onchange="renderPurchaseHistory()"></select>
 
-<select id="filterPeriod" onchange="renderPurchaseHistory()">
-<option value="all">All Time</option>
-<option value="day">Today</option>
-<option value="week">This Week</option>
-<option value="month">This Month</option>
-<option value="year">This Year</option>
-</select>
-
 <input type="date" id="filterFrom" onchange="renderPurchaseHistory()">
 <input type="date" id="filterTo" onchange="renderPurchaseHistory()">
 
@@ -2540,9 +2549,11 @@ oninput="renderPurchaseHistory()">
 <table class="p-table">
 <thead>
 <tr>
-<th>Date</th>
+<th>No</th>
+<th>Date & Time</th>
 <th>Vendor</th>
 <th>Amount</th>
+<th>Print</th>
 <th>Edit</th>
 <th>Delete</th>
 </tr>
@@ -2877,9 +2888,21 @@ Grand Total: ${Number(grand).toFixed(2)}
 }
 
 function deletePurchase(id){
-  const p=DB.purchases.find(x=>x.id===id);
-  if(!p||p.items.length)return alert("Cannot delete purchase with products");
-  DB.purchases=DB.purchases.filter(x=>x.id!==id);
+  const p = DB.purchases.find(x=>x.id===id);
+  if(!p) return;
+
+  if(!confirm("Delete this purchase? Stock will be reversed.")) return;
+
+  // reverse stock
+  p.items.forEach(it=>{
+    const prod = DB.products.find(x=>x.id===it.productId);
+    if(prod){
+      prod.stock -= it.qty;
+    }
+  });
+
+  DB.purchases = DB.purchases.filter(x=>x.id!==id);
+
   saveDB();
   renderPurchaseHistory();
 }
