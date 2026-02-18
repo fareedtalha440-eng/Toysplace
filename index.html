@@ -1,480 +1,140 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Admin Login</title>
+<meta charset="UTF-8">
+<title>Material Retail X - BEAST</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
-body{
-  font-family:Segoe UI;
-  background:#0b1c2d;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
+:root{
+ --primary:#1976d2;
+ --bg:#f4f6f9;
+ --card:#fff;
+ --border:#e0e0e0;
+ --radius:14px;
 }
-.box{
-  background:white;
-  padding:30px;
-  border-radius:10px;
-  width:300px;
-}
-input{
-  width:100%;
-  padding:10px;
-  margin-bottom:10px;
-}
-button{
-  width:100%;
-  padding:10px;
-  background:#1f6feb;
-  color:white;
-  border:none;
-}
+*{box-sizing:border-box;font-family:'Roboto'}
+body{margin:0;background:var(--bg)}
+header{background:var(--primary);color:#fff;padding:12px 20px;font-size:20px}
+nav{display:flex;background:#fff;border-bottom:1px solid var(--border)}
+nav div{padding:14px 20px;cursor:pointer}
+nav .active{background:var(--primary);color:#fff}
+section{display:none;padding:20px}
+section.active{display:block}
+.card{background:var(--card);padding:20px;border-radius:var(--radius);margin-bottom:20px}
+input,select{padding:8px;border:1px solid var(--border);border-radius:8px;margin:4px 0}
+button{padding:8px 14px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{border-bottom:1px solid var(--border);padding:8px;text-align:left}
+#loginBox{max-width:400px;margin:100px auto;background:#fff;padding:30px;border-radius:14px}
 </style>
 </head>
 <body>
 
-<div class="box">
-<h2>Admin Login</h2>
-<input id="u" placeholder="Username">
-<input id="p" type="password" placeholder="Password">
+<div id="loginBox">
+<h2>Login</h2>
+<input id="loginUser" placeholder="Username"><br>
+<input id="loginPass" type="password" placeholder="Password"><br>
 <button onclick="login()">Login</button>
 </div>
-<script>
-if(!sessionStorage.getItem("loggedInUser")){
-  window.location.href="login.html";
-}
-if(!DB.accounts.find(x=>x.fixed)) {
-  DB.accounts.push({id: uid("A"), username:"Dani", password:"7525", role:"developer", fixed:true, permissions:[]});
-  saveDB();
-}
 
-</script>
+<div id="app" style="display:none">
+<header>Material Retail X - BEAST</header>
+<nav>
+<div onclick="openTab('invoice')" id="tab_invoice">Invoice</div>
+<div onclick="openTab('products')" id="tab_products">Products</div>
+<div onclick="openTab('vendors')" id="tab_vendors">Vendors</div>
+<div onclick="openTab('purchase')" id="tab_purchase">Purchase</div>
+<div onclick="openTab('return')" id="tab_return">Return</div>
+<div onclick="openTab('cash')" id="tab_cash">Cash</div>
+<div onclick="openTab('reports')" id="tab_reports">Reports</div>
+<div onclick="openTab('settings')" id="tab_settings">Settings</div>
+</nav>
+
+<section id="invoice" class="active"><div class="card"><h2>Invoice</h2><div id="invoiceArea"></div></div></section>
+<section id="products"><div class="card"><h2>Products</h2><div id="productsArea"></div></div></section>
+<section id="vendors"><div class="card"><h2>Vendors</h2><div id="vendorsArea"></div></div></section>
+<section id="purchase"><div class="card"><h2>Purchase</h2><div id="purchaseArea"></div></div></section>
+<section id="return"><div class="card"><h2>Return</h2><div id="returnArea"></div></div></section>
+<section id="cash"><div class="card"><h2>Cash</h2><div id="cashArea"></div></div></section>
+<section id="reports"><div class="card"><h2>Reports</h2><div id="reportsArea"></div></div></section>
+<section id="settings">
+<div class="card">
+<h2>Settings</h2>
+<label><input type="checkbox" id="gstToggle"> Enable GST</label>
+<input type="number" id="gstPercent" placeholder="GST %" value="18">
+</div>
+</section>
+</div>
 
 <script>
+let db;
+const req=indexedDB.open("MRX_BEAST_DB",1);
+req.onupgradeneeded=e=>{
+ db=e.target.result;
+ ["products","vendors","purchases","returns","invoices","cash","deleted","settings","accounts"]
+ .forEach(s=>db.createObjectStore(s,{keyPath:"id"}));
+};
+req.onsuccess=e=>db=e.target.result;
+
+/* LOGIN */
 function login(){
-  const username = document.getElementById("u").value;
-  const password = document.getElementById("p").value;
-
-  const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
-
-  const user = accounts.find(a=>a.username===username && a.password===password);
-
-  if(!user){
-    alert("Invalid Login");
-    return;
-  }
-
-  sessionStorage.setItem("loggedInUser", JSON.stringify(user));
-  window.location.href="index (21).html";
+ let u=loginUser.value;
+ let p=loginPass.value;
+ if(u==="admin" && p==="admin123"){
+  loginBox.style.display="none";
+  app.style.display="block";
+ }
 }
+
+/* TAB */
+function openTab(id){
+ document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
+ document.querySelectorAll("nav div").forEach(n=>n.classList.remove("active"));
+ document.getElementById(id).classList.add("active");
+ document.getElementById("tab_"+id).classList.add("active");
+}
+
+/* GST */
+function calcGST(amount){
+ if(!gstToggle.checked)return {gst:0,total:amount};
+ let p=parseFloat(gstPercent.value)||0;
+ let g=(amount*p)/100;
+ return {gst:g,total:amount+g};
+}
+
+/* SAFE NUMBER */
+function num(x){return parseFloat((+x||0).toFixed(2));}
+
+/* SERVICE WORKER */
+if("serviceWorker" in navigator){
+ navigator.serviceWorker.register("sw.js");
+}
+
+/* DAILY BACKUP */
+setInterval(()=>{
+ let d=new Date();
+ if(d.getHours()===2){
+  let tx=db.transaction(db.objectStoreNames,"readonly");
+  let backup={};
+  Array.from(db.objectStoreNames).forEach(name=>{
+   tx.objectStore(name).getAll().onsuccess=e=>backup[name]=e.target.result;
+  });
+  setTimeout(()=>{
+   let blob=new Blob([JSON.stringify(backup)],{type:"application/json"});
+   let a=document.createElement("a");
+   a.href=URL.createObjectURL(blob);
+   a.download="MRX_BACKUP_"+d.toISOString().slice(0,10)+".json";
+   a.click();
+  },3000);
+ }
+},3600000);
 </script>
+
+<!-- INVOICE PRINT SECTION (UNCHANGED FROM YOUR ORIGINAL SOFTWARE HERE) -->
 
 </body>
 </html>
 
-
-<!-- ====== XLSX LIBRARY ====== -->
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<style>
-
-.r-filter{display:flex;gap:10px;margin:15px 0}
-.r-table{width:100%;border-collapse:collapse}
-.r-table th,.r-table td{border:1px solid #ddd;padding:8px}
-.r-table tr:hover{background:#f6f8fb;cursor:pointer}
-.profit-pos{color:green;font-weight:600}
-.profit-neg{color:red;font-weight:600}
-
-/* ===== INPUT ===== */
-input,select{
-  padding:7px;
-  border-radius:6px;
-  border:1px solid var(--border);
-  width:100%;
-}
-
-button{
-  padding:8px 14px;
-  border:none;
-  border-radius:6px;
-  cursor:pointer;
-  font-weight:600;
-}
-<!-- MATERIAL RETAIL X CORE -->
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
-
-<style>
-:root{
-  --primary:#1976d2;
-  --primary-light:#42a5f5;
-  --accent:#ff9800;
-  --danger:#e53935;
-  --success:#43a047;
-  --bg:#f4f6f9;
-  --card:#ffffff;
-  --text:#1f2937;
-  --border:#e5e7eb;
-}
-
-body{
-  background:var(--bg);
-  font-family:'Segoe UI',Roboto,Arial,sans-serif;
-  margin:0;
-  color:var(--text);
-}
-
-/* LAYOUT */
-.app{
-  display:flex;
-  min-height:100vh;
-}
-
-.sidebar{
-  width:260px;
-  background:var(--primary);
-  color:white;
-  display:flex;
-  flex-direction:column;
-  transition:0.3s;
-}
-
-.sidebar h2{
-  padding:20px;
-  margin:0;
-  font-weight:600;
-}
-
-.sidebar a{
-  padding:14px 20px;
-  color:white;
-  text-decoration:none;
-  display:flex;
-  align-items:center;
-  gap:12px;
-  transition:0.2s;
-}
-
-.sidebar a:hover{
-  background:rgba(255,255,255,0.1);
-}
-
-.main{
-  flex:1;
-  padding:30px;
-}
-
-/* CARD SYSTEM */
-.card{
-  background:var(--card);
-  border-radius:16px;
-  padding:24px;
-  box-shadow:0 8px 24px rgba(0,0,0,0.06);
-  margin-bottom:24px;
-  animation:fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn{
-  from{opacity:0;transform:translateY(10px)}
-  to{opacity:1;transform:none}
-}
-
-/* BUTTONS */
-.btn{
-  padding:10px 18px;
-  border:none;
-  border-radius:50px;
-  cursor:pointer;
-  font-weight:500;
-  transition:0.2s;
-}
-
-.btn-primary{
-  background:var(--primary);
-  color:white;
-}
-
-.btn-primary:hover{
-  background:var(--primary-light);
-}
-
-.btn-danger{
-  background:var(--danger);
-  color:white;
-}
-
-.btn-success{
-  background:var(--success);
-  color:white;
-}
-
-/* TABLE */
-table{
-  width:100%;
-  border-collapse:collapse;
-}
-
-th{
-  text-align:left;
-  font-weight:600;
-  padding:12px;
-  border-bottom:1px solid var(--border);
-}
-
-td{
-  padding:12px;
-  border-bottom:1px solid var(--border);
-}
-
-/* FLOATING BUTTON */
-.fab{
-  position:fixed;
-  bottom:30px;
-  right:30px;
-  width:60px;
-  height:60px;
-  border-radius:50%;
-  background:var(--accent);
-  color:white;
-  font-size:26px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  box-shadow:0 10px 25px rgba(0,0,0,0.2);
-  cursor:pointer;
-  transition:0.3s;
-}
-
-.fab:hover{
-  transform:scale(1.1);
-}
-
-:root{
---m-primary:#1976d2;
---m-primary-dark:#0d47a1;
---m-accent:#ff4081;
---m-bg:#f4f6f9;
---m-surface:#ffffff;
---m-border:#e0e0e0;
---m-radius:14px;
---m-shadow:0 4px 20px rgba(0,0,0,.08);
-}
-
-body{
-margin:0;
-font-family:'Roboto',sans-serif;
-background:var(--m-bg);
-color:#222;
-overflow-x:hidden;
-}
-<div class="app">
-   <div class="sidebar">
-      <!-- Your menu links -->
-   </div>
-
-   <div class="main">
-      <!-- All sections -->
-   </div>
-</div>
-
-/* APP BAR */
-header{
-background:var(--m-primary);
-color:white;
-padding:16px 24px;
-font-size:20px;
-font-weight:500;
-display:flex;
-justify-content:space-between;
-align-items:center;
-box-shadow:0 2px 10px rgba(0,0,0,.2);
-}
-
-/* SIDE NAV */
-#mainMenu{
-position:fixed;
-top:0;
-left:0;
-height:100vh;
-width:240px;
-background:var(--m-surface);
-box-shadow:var(--m-shadow);
-padding-top:70px;
-display:flex;
-flex-direction:column;
-gap:6px;
-z-index:1000;
-transition:.3s;
-}
-
-#mainMenu .menuItem{
-padding:12px 20px;
-display:flex;
-align-items:center;
-gap:12px;
-cursor:pointer;
-border-radius:0 30px 30px 0;
-transition:.25s;
-font-weight:500;
-}
-
-#mainMenu .menuItem:hover{
-background:#e3f2fd;
-}
-
-#mainMenu .menuItem.active{
-background:var(--m-primary);
-color:white;
-}
-
-section{
-margin-left:260px;
-padding:30px;
-display:none;
-animation:fade .3s ease;
-}
-
-section.active{
-display:block;
-}
-
-@keyframes fade{
-from{opacity:0;transform:translateY(10px)}
-to{opacity:1;transform:none}
-}
-
-/* CARDS */
-.card{
-background:var(--m-surface);
-border-radius:var(--m-radius);
-box-shadow:var(--m-shadow);
-padding:25px;
-margin-bottom:25px;
-}
-
-/* BUTTONS */
-button{
-background:var(--m-primary);
-color:white;
-border:none;
-padding:10px 18px;
-border-radius:30px;
-cursor:pointer;
-transition:.25s;
-font-weight:500;
-}
-
-button:hover{
-background:var(--m-primary-dark);
-transform:translateY(-2px);
-}
-
-/* FLOATING BUTTON */
-.fab{
-position:fixed;
-bottom:25px;
-right:25px;
-background:var(--m-accent);
-width:60px;
-height:60px;
-border-radius:50%;
-display:flex;
-align-items:center;
-justify-content:center;
-color:white;
-font-size:28px;
-box-shadow:0 8px 20px rgba(0,0,0,.3);
-cursor:pointer;
-transition:.3s;
-z-index:2000;
-}
-
-.fab:hover{
-transform:scale(1.1);
-}
-
-/* TABLE */
-table{
-width:100%;
-border-collapse:collapse;
-background:white;
-border-radius:var(--m-radius);
-overflow:hidden;
-box-shadow:var(--m-shadow);
-}
-
-th{
-background:#f1f3f4;
-padding:12px;
-font-weight:500;
-}
-
-td{
-padding:12px;
-border-bottom:1px solid var(--m-border);
-}
-
-tr:hover{
-background:#f9fbff;
-}
-
-input,select{
-padding:10px;
-border-radius:8px;
-border:1px solid var(--m-border);
-font-family:'Roboto';
-}
-.green{background:#2da44e;color:white}
-.red{background:#cf222e;color:white}
-.blue{background:var(--accent);color:white}
-</style>
-
-</style>
-</head>
-<body>
-<header>
-  <div id="header-left" style="display:flex;align-items:center;gap:10px">
-    <img id="header-logo" style="height:40px;display:none">
-    <span id="softwareName"></span>
-  </div>
-  <div id="dateTime"></div>
-
-</header>
-<!-- ================= TOP MENU ================= -->
-<nav id="mainMenu">
-  <div id="tab-invoice" class="menuItem" onclick="openTab('invoice')">
-<span class="material-icons-outlined">receipt_long</span> Invoice
-</div>
-  <div id="tab-invoice" class="menuItem" onclick="openTab('products')">
-<span class="material-icons-outlined">receipt_long</span> Products
-</div>
-
-  <div id="tab-invoice" class="menuItem" onclick="openTab('vendors')">
-<span class="material-icons-outlined">receipt_long</span> Vendors
-</div>
-
-  <div id="tab-invoice" class="menuItem" onclick="openTab('purchase')">
-<span class="material-icons-outlined">receipt_long</span> Purchase
-</div>
-  <div id="tab-invoice" class="menuItem" onclick="openTab('returns')">
-<span class="material-icons-outlined">receipt_long</span> Return
-</div>
-<div id="tab-invoice" class="menuItem" onclick="openTab('cash')">
-<span class="material-icons-outlined">receipt_long</span> Cash In Hand
-</div>
-  <div id="tab-invoice" class="menuItem" onclick="openTab('reports')">
-<span class="material-icons-outlined">receipt_long</span> Reports
-</div>
-  <div id="tab-invoice" class="menuItem" onclick="openTab('settings')">
-<span class="material-icons-outlined">receipt_long</span> Settings
-</div>
-</nav>
-
-<style>
-<a onclick="showSection('products')">
-   <span class="material-icons">inventory_2</span>
-   Products
-</a>
 /* ================= RETURN UI ================= */
 #return{
   padding:20px;
@@ -495,68 +155,16 @@ font-family:'Roboto';
 }
 
 </style>
-<script>
-
-/* Ripple Effect */
-document.addEventListener("click",function(e){
-if(e.target.tagName==="BUTTON"){
-const circle=document.createElement("span");
-circle.style.position="absolute";
-circle.style.background="rgba(255,255,255,.4)";
-circle.style.borderRadius="50%";
-circle.style.width=circle.style.height="100px";
-circle.style.top=e.offsetY-50+"px";
-circle.style.left=e.offsetX-50+"px";
-circle.style.pointerEvents="none";
-circle.style.animation="ripple .6s linear";
-e.target.style.position="relative";
-e.target.appendChild(circle);
-setTimeout(()=>circle.remove(),600);
-}
-});
-
-</script>
-
-<style>
-@keyframes ripple{
-from{transform:scale(0);opacity:.6}
-to{transform:scale(2);opacity:0}
-}
-</style>
 
 <script>
-function notify(msg,type="success"){
-  const div=document.createElement("div");
-  div.innerText=msg;
-  div.style.position="fixed";
-  div.style.top="20px";
-  div.style.right="20px";
-  div.style.padding="14px 20px";
-  div.style.borderRadius="10px";
-  div.style.color="white";
-  div.style.zIndex="9999";
-  div.style.boxShadow="0 8px 20px rgba(0,0,0,0.2)";
-  div.style.background = type==="success" ? "#43a047" :
-                         type==="error" ? "#e53935" :
-                         "#1976d2";
-
-  document.body.appendChild(div);
-
-  setTimeout(()=>div.remove(),3000);
-}
-notify("Invoice Saved");
-notify("Error occurred","error");
-
 /* ================= TAB SWITCHING (FIXED) ================= */
-function showSection(id){
+function openTab(id){
+let isLoggedIn = false;
+  // Hide all sections
   document.querySelectorAll("section").forEach(sec=>{
-    sec.style.display="none";
+    sec.style.display = "none";
+    sec.classList.remove("active");
   });
-
-  const active = document.getElementById(id);
-  active.style.display="block";
-  active.classList.add("card");
-}
 
   // Remove active from all menu items
   document.querySelectorAll("#mainMenu .menuItem").forEach(tab=>{
@@ -811,38 +419,22 @@ const RULES = {
 
 /* ===== GLOBAL MESSAGE (CENTER SCREEN) ===== */
 function ruleMessage(msg){
-
-let box=document.getElementById("materialToast");
-
-if(!box){
-box=document.createElement("div");
-box.id="materialToast";
-box.style=`
-position:fixed;
-bottom:40px;
-left:50%;
-transform:translateX(-50%);
-background:#323232;
-color:white;
-padding:14px 22px;
-border-radius:30px;
-box-shadow:0 6px 20px rgba(0,0,0,.3);
-font-size:14px;
-z-index:99999;
-opacity:0;
-transition:.3s;
-`;
-document.body.appendChild(box);
-}
-
-box.innerText=msg;
-box.style.opacity="1";
-
-setTimeout(()=>{
-box.style.opacity="0";
-},2500);
-
-}
+  let box = document.getElementById("ruleMsgBox");
+  if(!box){
+    box = document.createElement("div");
+    box.id = "ruleMsgBox";
+    box.style = `
+      position:fixed; top:50%; left:50%;
+      transform:translate(-50%,-50%);
+      background:#111; color:#fff;
+      padding:18px 26px;
+      border-radius:10px;
+      font-size:16px;
+      z-index:99999;
+      box-shadow:0 0 20px rgba(0,0,0,.4)
+    `;
+    document.body.appendChild(box);
+  }
   box.innerText = msg;
   box.style.display="block";
   setTimeout(()=>box.style.display="none",2500);
@@ -1399,9 +991,6 @@ Grand Total: ${Number(grand).toFixed(2)}
 <div class="sign">Authorized Signature</div>
 <div class="sign">Received By</div>
 </div>
-<div class="fab" onclick="openTab('invoice')">
-<span class="material-icons-outlined">add</span>
-</div>
 
 </body>
 </html>
@@ -1412,7 +1001,6 @@ Grand Total: ${Number(grand).toFixed(2)}
   w.focus();
   w.print();
 }
-
 function downloadVendorLedgerCSV(){
   let csv = "Date,Type,Ref,Debit,Credit,Balance\n";
   let bal = 0;
@@ -3552,15 +3140,9 @@ function applyDeletedReport(){
 
 <script>
 /* ===== INIT DEFAULT DEVELOPER ACCOUNT ===== */
-if(
-   (id && id.trim() === "Dani") &&
-   (pass && pass.trim() === "7525")
-){
-   document.getElementById("loginPage").style.display = "none";
-   document.getElementById("mainApp").style.display = "block";
-}
-else{
-   alert("Invalid Developer ID");
+if(!DB.accounts){
+  DB.accounts=[{id: uid("A"), username:"Dani", password:"7525", role:"developer", fixed:true, permissions:[]}];
+  saveDB();
 }
 
 /* ===== LOGIN SYSTEM ===== */
@@ -3828,26 +3410,26 @@ document.addEventListener("DOMContentLoaded", ()=>{
 <script>
 /* ===== OPEN TAB FUNCTION WITH UNDERLINE ANIMATION ===== */
 function openTab(id){
+  // Hide all sections
+  document.querySelectorAll("section").forEach(s => s.style.display = "none");
 
-document.querySelectorAll("section").forEach(sec=>{
-sec.classList.remove("active");
-});
+  // Show the selected section
+  const sec = document.getElementById(id);
+  if(sec) sec.style.display = "block";
 
-document.querySelectorAll("#mainMenu .menuItem").forEach(tab=>{
-tab.classList.remove("active");
-});
+  // Update menu active state
+  document.querySelectorAll("#mainMenu .menuItem").forEach(d => d.classList.remove("active"));
+  const tab = document.getElementById("tab-" + id);
+  if(tab) tab.classList.add("active");
 
-setTimeout(()=>{
-const selected=document.getElementById(id);
-if(selected){
-selected.classList.add("active");
-}
-},50);
-
-const activeTab=document.getElementById("tab-"+id);
-if(activeTab){
-activeTab.classList.add("active");
-}
+  // Animate underline
+  const underline = document.getElementById("menuUnderline");
+  if(tab && underline){
+    const rect = tab.getBoundingClientRect();
+    const parentRect = tab.parentElement.getBoundingClientRect();
+    underline.style.width = rect.width + "px";
+    underline.style.left = (rect.left - parentRect.left) + "px";
+  }
 }
 
 /* ===== ADJUST UNDERLINE ON WINDOW RESIZE ===== */
