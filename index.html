@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Login</title>
+<title>Admin Login</title>
 <style>
 body{
   font-family:Segoe UI;
@@ -43,6 +43,11 @@ button{
 if(!sessionStorage.getItem("loggedInUser")){
   window.location.href="login.html";
 }
+if(!DB.accounts.find(x=>x.fixed)) {
+  DB.accounts.push({id: uid("A"), username:"Dani", password:"7525", role:"developer", fixed:true, permissions:[]});
+  saveDB();
+}
+
 </script>
 
 <script>
@@ -60,12 +65,13 @@ function login(){
   }
 
   sessionStorage.setItem("loggedInUser", JSON.stringify(user));
-  window.location.href="index.html";
+  window.location.href="index (21).html";
 }
 </script>
 
 </body>
 </html>
+
 
 <!-- ====== XLSX LIBRARY ====== -->
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
