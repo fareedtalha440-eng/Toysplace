@@ -1,9 +1,71 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-<meta charset="UTF-8">
-<title>Dani Test Software</title>
+<title>Login</title>
+<style>
+body{
+  font-family:Segoe UI;
+  background:#0b1c2d;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+.box{
+  background:white;
+  padding:30px;
+  border-radius:10px;
+  width:300px;
+}
+input{
+  width:100%;
+  padding:10px;
+  margin-bottom:10px;
+}
+button{
+  width:100%;
+  padding:10px;
+  background:#1f6feb;
+  color:white;
+  border:none;
+}
+</style>
+</head>
+<body>
+
+<div class="box">
+<h2>Admin Login</h2>
+<input id="u" placeholder="Username">
+<input id="p" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
+</div>
+<script>
+if(!sessionStorage.getItem("loggedInUser")){
+  window.location.href="login.html";
+}
+</script>
+
+<script>
+function login(){
+  const username = document.getElementById("u").value;
+  const password = document.getElementById("p").value;
+
+  const accounts = JSON.parse(localStorage.getItem("accounts") || "[]");
+
+  const user = accounts.find(a=>a.username===username && a.password===password);
+
+  if(!user){
+    alert("Invalid Login");
+    return;
+  }
+
+  sessionStorage.setItem("loggedInUser", JSON.stringify(user));
+  window.location.href="index.html";
+}
+</script>
+
+</body>
+</html>
 
 <!-- ====== XLSX LIBRARY ====== -->
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
