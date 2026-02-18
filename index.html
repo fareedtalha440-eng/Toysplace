@@ -8,118 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-:root{
-  --primary:#0b1c2d;     /* Deep Dark Blue */
-  --secondary:#ffffff;  /* White */
-  --accent:#1f6feb;
-  --border:#d0d7de;
-}
 
-/* ===== BODY ===== */
-body{
-  margin:0;
-  font-family:Segoe UI, Arial;
-  background:white;
-  color:#0b1c2d;
-}
-
-/* ===== HEADER ===== */
-header{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  background:var(--primary);
-  color:white;
-  padding:14px 22px;
-  font-size:22px;
-  font-weight:600;
-}
-
-#header-left{
-  display:flex;
-  align-items:center;
-  gap:12px;
-}
-
-#header-logo{
-  height:40px;
-  max-height:60px;
-  width:auto;
-  display:none;
-}
-
-#dateTime{
-  font-size:14px;
-  opacity:0.85;
-}
-
-/* ===== NAV ===== */
-nav{
-  display:flex;
-  background:#f6f8fa;
-  border-bottom:1px solid var(--border);
-}
-
-nav div{
-  padding:14px 20px;
-  cursor:pointer;
-  transition:0.25s;
-  border-bottom:3px solid transparent;
-  font-weight:500;
-}
-
-nav div:hover{
-  background:#eef2f7;
-}
-
-nav div.active{
-  border-bottom:3px solid var(--accent);
-  color:var(--accent);
-  font-weight:600;
-  transform:translateY(-1px);
-}
-
-/* ===== SECTION ===== */
-section{
-  display:none;
-  padding:20px;
-}
-
-section.active{
-  display:block;
-  animation:fadeIn 0.25s ease-in;
-}
-
-@keyframes fadeIn{
-  from{opacity:0; transform:translateY(4px);}
-  to{opacity:1; transform:none;}
-}
-
-/* ===== CARD ===== */
-.card{
-  background:white;
-  border:1px solid var(--border);
-  padding:18px;
-  margin-bottom:20px;
-  border-radius:10px;
-}
-
-/* ===== TABLE ===== */
-table{
-  width:100%;
-  border-collapse:collapse;
-}
-
-th,td{
-  border:1px solid var(--border);
-  padding:8px;
-  text-align:center;
-}
-
-th{
-  background:#f6f8fa;
-  font-weight:600;
-}
 .r-filter{display:flex;gap:10px;margin:15px 0}
 .r-table{width:100%;border-collapse:collapse}
 .r-table th,.r-table td{border:1px solid #ddd;padding:8px}
@@ -142,6 +31,180 @@ button{
   cursor:pointer;
   font-weight:600;
 }
+<!-- MATERIAL RETAIL X CORE -->
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+
+<style>
+
+:root{
+--m-primary:#1976d2;
+--m-primary-dark:#0d47a1;
+--m-accent:#ff4081;
+--m-bg:#f4f6f9;
+--m-surface:#ffffff;
+--m-border:#e0e0e0;
+--m-radius:14px;
+--m-shadow:0 4px 20px rgba(0,0,0,.08);
+}
+
+body{
+margin:0;
+font-family:'Roboto',sans-serif;
+background:var(--m-bg);
+color:#222;
+overflow-x:hidden;
+}
+
+/* APP BAR */
+header{
+background:var(--m-primary);
+color:white;
+padding:16px 24px;
+font-size:20px;
+font-weight:500;
+display:flex;
+justify-content:space-between;
+align-items:center;
+box-shadow:0 2px 10px rgba(0,0,0,.2);
+}
+
+/* SIDE NAV */
+#mainMenu{
+position:fixed;
+top:0;
+left:0;
+height:100vh;
+width:240px;
+background:var(--m-surface);
+box-shadow:var(--m-shadow);
+padding-top:70px;
+display:flex;
+flex-direction:column;
+gap:6px;
+z-index:1000;
+transition:.3s;
+}
+
+#mainMenu .menuItem{
+padding:12px 20px;
+display:flex;
+align-items:center;
+gap:12px;
+cursor:pointer;
+border-radius:0 30px 30px 0;
+transition:.25s;
+font-weight:500;
+}
+
+#mainMenu .menuItem:hover{
+background:#e3f2fd;
+}
+
+#mainMenu .menuItem.active{
+background:var(--m-primary);
+color:white;
+}
+
+section{
+margin-left:260px;
+padding:30px;
+display:none;
+animation:fade .3s ease;
+}
+
+section.active{
+display:block;
+}
+
+@keyframes fade{
+from{opacity:0;transform:translateY(10px)}
+to{opacity:1;transform:none}
+}
+
+/* CARDS */
+.card{
+background:var(--m-surface);
+border-radius:var(--m-radius);
+box-shadow:var(--m-shadow);
+padding:25px;
+margin-bottom:25px;
+}
+
+/* BUTTONS */
+button{
+background:var(--m-primary);
+color:white;
+border:none;
+padding:10px 18px;
+border-radius:30px;
+cursor:pointer;
+transition:.25s;
+font-weight:500;
+}
+
+button:hover{
+background:var(--m-primary-dark);
+transform:translateY(-2px);
+}
+
+/* FLOATING BUTTON */
+.fab{
+position:fixed;
+bottom:25px;
+right:25px;
+background:var(--m-accent);
+width:60px;
+height:60px;
+border-radius:50%;
+display:flex;
+align-items:center;
+justify-content:center;
+color:white;
+font-size:28px;
+box-shadow:0 8px 20px rgba(0,0,0,.3);
+cursor:pointer;
+transition:.3s;
+z-index:2000;
+}
+
+.fab:hover{
+transform:scale(1.1);
+}
+
+/* TABLE */
+table{
+width:100%;
+border-collapse:collapse;
+background:white;
+border-radius:var(--m-radius);
+overflow:hidden;
+box-shadow:var(--m-shadow);
+}
+
+th{
+background:#f1f3f4;
+padding:12px;
+font-weight:500;
+}
+
+td{
+padding:12px;
+border-bottom:1px solid var(--m-border);
+}
+
+tr:hover{
+background:#f9fbff;
+}
+
+input,select{
+padding:10px;
+border-radius:8px;
+border:1px solid var(--m-border);
+font-family:'Roboto';
+}
+
+</style>
 
 .green{background:#2da44e;color:white;}
 .red{background:#cf222e;color:white;}
@@ -158,47 +221,36 @@ button{
 </header>
 <!-- ================= TOP MENU ================= -->
 <nav id="mainMenu">
-  <div id="tab-invoice" class="menuItem" onclick="openTab('invoice')">Invoice</div>
-  <div id="tab-products" class="menuItem" onclick="openTab('products')">Products</div>
-  <div id="tab-vendors" class="menuItem" onclick="openTab('vendors')">Vendors</div>
-  <div id="tab-purchase" class="menuItem" onclick="openTab('purchase')">Purchase</div>
-  <div id="tab-returns" class="menuItem" onclick="openTab('returns')">Return</div>
-  <div id="tab-cash" class="menuItem" onclick="openTab('cash')">Cash In Hand</div>
-  <div id="tab-reports" class="menuItem" onclick="openTab('reports')">Reports</div>
-  <div id="tab-settings" class="menuItem" onclick="openTab('settings')">Settings</div>
+  <div id="tab-invoice" class="menuItem" onclick="openTab('invoice')">
+<span class="material-icons-outlined">receipt_long</span> Invoice
+</div>
+  <div id="tab-invoice" class="menuItem" onclick="openTab('products')">
+<span class="material-icons-outlined">receipt_long</span> Products
+</div>
+
+  <div id="tab-invoice" class="menuItem" onclick="openTab('vendors')">
+<span class="material-icons-outlined">receipt_long</span> Vendors
+</div>
+
+  <div id="tab-invoice" class="menuItem" onclick="openTab('purchase')">
+<span class="material-icons-outlined">receipt_long</span> Purchase
+</div>
+  <div id="tab-invoice" class="menuItem" onclick="openTab('returns')">
+<span class="material-icons-outlined">receipt_long</span> Return
+</div>
+<div id="tab-invoice" class="menuItem" onclick="openTab('cash')">
+<span class="material-icons-outlined">receipt_long</span> Cash In Hand
+</div>
+  <div id="tab-invoice" class="menuItem" onclick="openTab('reports')">
+<span class="material-icons-outlined">receipt_long</span> Reports
+</div>
+  <div id="tab-invoice" class="menuItem" onclick="openTab('settings')">
+<span class="material-icons-outlined">receipt_long</span> Settings
+</div>
 </nav>
 
 <style>
-/* ================= MAIN MENU (FINAL FIX) ================= */
-#mainMenu{
-  display:flex;
-  align-items:center;
-  gap:14px;
-  padding:8px 16px;
-  background:#fff;
-  border-bottom:2px solid #ccc;
-  position:sticky;
-  top:0;
-  z-index:100;
-}
 
-#mainMenu .menuItem{
-  padding:6px 14px;
-  font-weight:600;
-  cursor:pointer;
-  border-radius:6px;
-  user-select:none;
-  white-space:nowrap;
-}
-
-#mainMenu .menuItem:hover{
-  background:#eef2f7;
-}
-
-#mainMenu .menuItem.active{
-  background:#eef2f7;
-  color:var(--primary,#1e1e1e);
-}
 /* ================= RETURN UI ================= */
 #return{
   padding:20px;
@@ -218,6 +270,34 @@ button{
   to{opacity:1;transform:none}
 }
 
+</style>
+<script>
+
+/* Ripple Effect */
+document.addEventListener("click",function(e){
+if(e.target.tagName==="BUTTON"){
+const circle=document.createElement("span");
+circle.style.position="absolute";
+circle.style.background="rgba(255,255,255,.4)";
+circle.style.borderRadius="50%";
+circle.style.width=circle.style.height="100px";
+circle.style.top=e.offsetY-50+"px";
+circle.style.left=e.offsetX-50+"px";
+circle.style.pointerEvents="none";
+circle.style.animation="ripple .6s linear";
+e.target.style.position="relative";
+e.target.appendChild(circle);
+setTimeout(()=>circle.remove(),600);
+}
+});
+
+</script>
+
+<style>
+@keyframes ripple{
+from{transform:scale(0);opacity:.6}
+to{transform:scale(2);opacity:0}
+}
 </style>
 
 <script>
@@ -483,22 +563,38 @@ const RULES = {
 
 /* ===== GLOBAL MESSAGE (CENTER SCREEN) ===== */
 function ruleMessage(msg){
-  let box = document.getElementById("ruleMsgBox");
-  if(!box){
-    box = document.createElement("div");
-    box.id = "ruleMsgBox";
-    box.style = `
-      position:fixed; top:50%; left:50%;
-      transform:translate(-50%,-50%);
-      background:#111; color:#fff;
-      padding:18px 26px;
-      border-radius:10px;
-      font-size:16px;
-      z-index:99999;
-      box-shadow:0 0 20px rgba(0,0,0,.4)
-    `;
-    document.body.appendChild(box);
-  }
+
+let box=document.getElementById("materialToast");
+
+if(!box){
+box=document.createElement("div");
+box.id="materialToast";
+box.style=`
+position:fixed;
+bottom:40px;
+left:50%;
+transform:translateX(-50%);
+background:#323232;
+color:white;
+padding:14px 22px;
+border-radius:30px;
+box-shadow:0 6px 20px rgba(0,0,0,.3);
+font-size:14px;
+z-index:99999;
+opacity:0;
+transition:.3s;
+`;
+document.body.appendChild(box);
+}
+
+box.innerText=msg;
+box.style.opacity="1";
+
+setTimeout(()=>{
+box.style.opacity="0";
+},2500);
+
+}
   box.innerText = msg;
   box.style.display="block";
   setTimeout(()=>box.style.display="none",2500);
@@ -1054,6 +1150,9 @@ Grand Total: ${Number(grand).toFixed(2)}
 <div class="footer">
 <div class="sign">Authorized Signature</div>
 <div class="sign">Received By</div>
+</div>
+<div class="fab" onclick="openTab('invoice')">
+<span class="material-icons-outlined">add</span>
 </div>
 
 </body>
@@ -3474,26 +3573,26 @@ document.addEventListener("DOMContentLoaded", ()=>{
 <script>
 /* ===== OPEN TAB FUNCTION WITH UNDERLINE ANIMATION ===== */
 function openTab(id){
-  // Hide all sections
-  document.querySelectorAll("section").forEach(s => s.style.display = "none");
 
-  // Show the selected section
-  const sec = document.getElementById(id);
-  if(sec) sec.style.display = "block";
+document.querySelectorAll("section").forEach(sec=>{
+sec.classList.remove("active");
+});
 
-  // Update menu active state
-  document.querySelectorAll("#mainMenu .menuItem").forEach(d => d.classList.remove("active"));
-  const tab = document.getElementById("tab-" + id);
-  if(tab) tab.classList.add("active");
+document.querySelectorAll("#mainMenu .menuItem").forEach(tab=>{
+tab.classList.remove("active");
+});
 
-  // Animate underline
-  const underline = document.getElementById("menuUnderline");
-  if(tab && underline){
-    const rect = tab.getBoundingClientRect();
-    const parentRect = tab.parentElement.getBoundingClientRect();
-    underline.style.width = rect.width + "px";
-    underline.style.left = (rect.left - parentRect.left) + "px";
-  }
+setTimeout(()=>{
+const selected=document.getElementById(id);
+if(selected){
+selected.classList.add("active");
+}
+},50);
+
+const activeTab=document.getElementById("tab-"+id);
+if(activeTab){
+activeTab.classList.add("active");
+}
 }
 
 /* ===== ADJUST UNDERLINE ON WINDOW RESIZE ===== */
