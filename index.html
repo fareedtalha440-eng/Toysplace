@@ -76,16 +76,6 @@ req.onupgradeneeded=e=>{
 };
 req.onsuccess=e=>db=e.target.result;
 
-/* LOGIN */
-function login(){
- let u=loginUser.value;
- let p=loginPass.value;
- if(u==="admin" && p==="admin123"){
-  loginBox.style.display="none";
-  app.style.display="block";
- }
-}
-
 /* TAB */
 function openTab(id){
  document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
