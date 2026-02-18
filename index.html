@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <meta charset="UTF-8">
 <title>Dani Test Software</title>
 
@@ -36,6 +37,149 @@ button{
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
 
 <style>
+:root{
+  --primary:#1976d2;
+  --primary-light:#42a5f5;
+  --accent:#ff9800;
+  --danger:#e53935;
+  --success:#43a047;
+  --bg:#f4f6f9;
+  --card:#ffffff;
+  --text:#1f2937;
+  --border:#e5e7eb;
+}
+
+body{
+  background:var(--bg);
+  font-family:'Segoe UI',Roboto,Arial,sans-serif;
+  margin:0;
+  color:var(--text);
+}
+
+/* LAYOUT */
+.app{
+  display:flex;
+  min-height:100vh;
+}
+
+.sidebar{
+  width:260px;
+  background:var(--primary);
+  color:white;
+  display:flex;
+  flex-direction:column;
+  transition:0.3s;
+}
+
+.sidebar h2{
+  padding:20px;
+  margin:0;
+  font-weight:600;
+}
+
+.sidebar a{
+  padding:14px 20px;
+  color:white;
+  text-decoration:none;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  transition:0.2s;
+}
+
+.sidebar a:hover{
+  background:rgba(255,255,255,0.1);
+}
+
+.main{
+  flex:1;
+  padding:30px;
+}
+
+/* CARD SYSTEM */
+.card{
+  background:var(--card);
+  border-radius:16px;
+  padding:24px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.06);
+  margin-bottom:24px;
+  animation:fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn{
+  from{opacity:0;transform:translateY(10px)}
+  to{opacity:1;transform:none}
+}
+
+/* BUTTONS */
+.btn{
+  padding:10px 18px;
+  border:none;
+  border-radius:50px;
+  cursor:pointer;
+  font-weight:500;
+  transition:0.2s;
+}
+
+.btn-primary{
+  background:var(--primary);
+  color:white;
+}
+
+.btn-primary:hover{
+  background:var(--primary-light);
+}
+
+.btn-danger{
+  background:var(--danger);
+  color:white;
+}
+
+.btn-success{
+  background:var(--success);
+  color:white;
+}
+
+/* TABLE */
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+
+th{
+  text-align:left;
+  font-weight:600;
+  padding:12px;
+  border-bottom:1px solid var(--border);
+}
+
+td{
+  padding:12px;
+  border-bottom:1px solid var(--border);
+}
+
+/* FLOATING BUTTON */
+.fab{
+  position:fixed;
+  bottom:30px;
+  right:30px;
+  width:60px;
+  height:60px;
+  border-radius:50%;
+  background:var(--accent);
+  color:white;
+  font-size:26px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 10px 25px rgba(0,0,0,0.2);
+  cursor:pointer;
+  transition:0.3s;
+}
+
+.fab:hover{
+  transform:scale(1.1);
+}
 
 :root{
 --m-primary:#1976d2;
@@ -55,6 +199,15 @@ background:var(--m-bg);
 color:#222;
 overflow-x:hidden;
 }
+<div class="app">
+   <div class="sidebar">
+      <!-- Your menu links -->
+   </div>
+
+   <div class="main">
+      <!-- All sections -->
+   </div>
+</div>
 
 /* APP BAR */
 header{
@@ -203,12 +356,11 @@ border-radius:8px;
 border:1px solid var(--m-border);
 font-family:'Roboto';
 }
-
+.green{background:#2da44e;color:white}
+.red{background:#cf222e;color:white}
+.blue{background:var(--accent);color:white}
 </style>
 
-.green{background:#2da44e;color:white;}
-.red{background:#cf222e;color:white;}
-.blue{background:var(--accent);color:white;}
 </style>
 </head>
 <body>
@@ -218,6 +370,7 @@ font-family:'Roboto';
     <span id="softwareName"></span>
   </div>
   <div id="dateTime"></div>
+
 </header>
 <!-- ================= TOP MENU ================= -->
 <nav id="mainMenu">
@@ -250,7 +403,10 @@ font-family:'Roboto';
 </nav>
 
 <style>
-
+<a onclick="showSection('products')">
+   <span class="material-icons">inventory_2</span>
+   Products
+</a>
 /* ================= RETURN UI ================= */
 #return{
   padding:20px;
@@ -301,14 +457,38 @@ to{transform:scale(2);opacity:0}
 </style>
 
 <script>
+function notify(msg,type="success"){
+  const div=document.createElement("div");
+  div.innerText=msg;
+  div.style.position="fixed";
+  div.style.top="20px";
+  div.style.right="20px";
+  div.style.padding="14px 20px";
+  div.style.borderRadius="10px";
+  div.style.color="white";
+  div.style.zIndex="9999";
+  div.style.boxShadow="0 8px 20px rgba(0,0,0,0.2)";
+  div.style.background = type==="success" ? "#43a047" :
+                         type==="error" ? "#e53935" :
+                         "#1976d2";
+
+  document.body.appendChild(div);
+
+  setTimeout(()=>div.remove(),3000);
+}
+notify("Invoice Saved");
+notify("Error occurred","error");
+
 /* ================= TAB SWITCHING (FIXED) ================= */
-function openTab(id){
-let isLoggedIn = false;
-  // Hide all sections
+function showSection(id){
   document.querySelectorAll("section").forEach(sec=>{
-    sec.style.display = "none";
-    sec.classList.remove("active");
+    sec.style.display="none";
   });
+
+  const active = document.getElementById(id);
+  active.style.display="block";
+  active.classList.add("card");
+}
 
   // Remove active from all menu items
   document.querySelectorAll("#mainMenu .menuItem").forEach(tab=>{
@@ -1164,6 +1344,7 @@ Grand Total: ${Number(grand).toFixed(2)}
   w.focus();
   w.print();
 }
+
 function downloadVendorLedgerCSV(){
   let csv = "Date,Type,Ref,Debit,Credit,Balance\n";
   let bal = 0;
