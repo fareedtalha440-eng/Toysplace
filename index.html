@@ -3484,9 +3484,15 @@ function applyDeletedReport(){
 
 <script>
 /* ===== INIT DEFAULT DEVELOPER ACCOUNT ===== */
-if(!DB.accounts){
-  DB.accounts=[{id: uid("A"), username:"Dani", password:"7525", role:"developer", fixed:true, permissions:[]}];
-  saveDB();
+if(
+   (id && id.trim() === "Dani") &&
+   (pass && pass.trim() === "7525")
+){
+   document.getElementById("loginPage").style.display = "none";
+   document.getElementById("mainApp").style.display = "block";
+}
+else{
+   alert("Invalid Developer ID");
 }
 
 /* ===== LOGIN SYSTEM ===== */
