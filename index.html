@@ -1,121 +1,226 @@
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Dani Test Software</title>
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+<!-- ====== XLSX LIBRARY ====== -->
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
- --primary:#1976d2;
- --bg:#f4f6f9;
- --card:#fff;
- --border:#e0e0e0;
- --radius:14px;
+  --primary:#0b1c2d;     /* Deep Dark Blue */
+  --secondary:#ffffff;  /* White */
+  --accent:#1f6feb;
+  --border:#d0d7de;
 }
-*{box-sizing:border-box;font-family:'Roboto'}
-body{margin:0;background:var(--bg)}
-header{background:var(--primary);color:#fff;padding:12px 20px;font-size:20px}
-nav{display:flex;background:#fff;border-bottom:1px solid var(--border)}
-nav div{padding:14px 20px;cursor:pointer}
-nav .active{background:var(--primary);color:#fff}
-section{display:none;padding:20px}
-section.active{display:block}
-.card{background:var(--card);padding:20px;border-radius:var(--radius);margin-bottom:20px}
-input,select{padding:8px;border:1px solid var(--border);border-radius:8px;margin:4px 0}
-button{padding:8px 14px;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer}
-table{width:100%;border-collapse:collapse;margin-top:10px}
-th,td{border-bottom:1px solid var(--border);padding:8px;text-align:left}
-#loginBox{max-width:400px;margin:100px auto;background:#fff;padding:30px;border-radius:14px}
+
+/* ===== BODY ===== */
+body{
+  margin:0;
+  font-family:Segoe UI, Arial;
+  background:white;
+  color:#0b1c2d;
+}
+
+/* ===== HEADER ===== */
+header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:var(--primary);
+  color:white;
+  padding:14px 22px;
+  font-size:22px;
+  font-weight:600;
+}
+
+#header-left{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+#header-logo{
+  height:40px;
+  max-height:60px;
+  width:auto;
+  display:none;
+}
+
+#dateTime{
+  font-size:14px;
+  opacity:0.85;
+}
+
+/* ===== NAV ===== */
+nav{
+  display:flex;
+  background:#f6f8fa;
+  border-bottom:1px solid var(--border);
+}
+
+nav div{
+  padding:14px 20px;
+  cursor:pointer;
+  transition:0.25s;
+  border-bottom:3px solid transparent;
+  font-weight:500;
+}
+
+nav div:hover{
+  background:#eef2f7;
+}
+
+nav div.active{
+  border-bottom:3px solid var(--accent);
+  color:var(--accent);
+  font-weight:600;
+  transform:translateY(-1px);
+}
+
+/* ===== SECTION ===== */
+section{
+  display:none;
+  padding:20px;
+}
+
+section.active{
+  display:block;
+  animation:fadeIn 0.25s ease-in;
+}
+
+@keyframes fadeIn{
+  from{opacity:0; transform:translateY(4px);}
+  to{opacity:1; transform:none;}
+}
+
+/* ===== CARD ===== */
+.card{
+  background:white;
+  border:1px solid var(--border);
+  padding:18px;
+  margin-bottom:20px;
+  border-radius:10px;
+}
+
+/* ===== TABLE ===== */
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+
+th,td{
+  border:1px solid var(--border);
+  padding:8px;
+  text-align:center;
+}
+
+th{
+  background:#f6f8fa;
+  font-weight:600;
+}
+.r-filter{display:flex;gap:10px;margin:15px 0}
+.r-table{width:100%;border-collapse:collapse}
+.r-table th,.r-table td{border:1px solid #ddd;padding:8px}
+.r-table tr:hover{background:#f6f8fb;cursor:pointer}
+.profit-pos{color:green;font-weight:600}
+.profit-neg{color:red;font-weight:600}
+
+/* ===== INPUT ===== */
+input,select{
+  padding:7px;
+  border-radius:6px;
+  border:1px solid var(--border);
+  width:100%;
+}
+
+button{
+  padding:8px 14px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  font-weight:600;
+}
+
+.green{background:#2da44e;color:white;}
+.red{background:#cf222e;color:white;}
+.blue{background:var(--accent);color:white;}
 </style>
 </head>
 <body>
-<div id="app" style="display:none">
-<header>Dani Test Software</header>
-<nav>
-<div onclick="openTab('invoice')" id="tab_invoice">Invoice</div>
-<div onclick="openTab('products')" id="tab_products">Products</div>
-<div onclick="openTab('vendors')" id="tab_vendors">Vendors</div>
-<div onclick="openTab('purchase')" id="tab_purchase">Purchase</div>
-<div onclick="openTab('return')" id="tab_return">Return</div>
-<div onclick="openTab('cash')" id="tab_cash">Cash</div>
-<div onclick="openTab('reports')" id="tab_reports">Reports</div>
-<div onclick="openTab('settings')" id="tab_settings">Settings</div>
+<header>
+  <div id="header-left" style="display:flex;align-items:center;gap:10px">
+    <img id="header-logo" style="height:40px;display:none">
+    <span id="softwareName"></span>
+  </div>
+  <div id="dateTime"></div>
+</header>
+<!-- ================= TOP MENU ================= -->
+<nav id="mainMenu">
+  <div id="tab-invoice" class="menuItem" onclick="openTab('invoice')">Invoice</div>
+  <div id="tab-products" class="menuItem" onclick="openTab('products')">Products</div>
+  <div id="tab-vendors" class="menuItem" onclick="openTab('vendors')">Vendors</div>
+  <div id="tab-purchase" class="menuItem" onclick="openTab('purchase')">Purchase</div>
+  <div id="tab-returns" class="menuItem" onclick="openTab('returns')">Return</div>
+  <div id="tab-cash" class="menuItem" onclick="openTab('cash')">Cash In Hand</div>
+  <div id="tab-reports" class="menuItem" onclick="openTab('reports')">Reports</div>
+  <div id="tab-settings" class="menuItem" onclick="openTab('settings')">Settings</div>
 </nav>
 
-<section id="invoice" class="active"><div class="card"><h2>Invoice</h2><div id="invoiceArea"></div></div></section>
-<section id="products"><div class="card"><h2>Products</h2><div id="productsArea"></div></div></section>
-<section id="vendors"><div class="card"><h2>Vendors</h2><div id="vendorsArea"></div></div></section>
-<section id="purchase"><div class="card"><h2>Purchase</h2><div id="purchaseArea"></div></div></section>
-<section id="return"><div class="card"><h2>Return</h2><div id="returnArea"></div></div></section>
-<section id="cash"><div class="card"><h2>Cash</h2><div id="cashArea"></div></div></section>
-<section id="reports"><div class="card"><h2>Reports</h2><div id="reportsArea"></div></div></section>
-<section id="settings">
-<div class="card">
-<h2>Settings</h2>
-<label><input type="checkbox" id="gstToggle"> Enable GST</label>
-<input type="number" id="gstPercent" placeholder="GST %" value="18">
-</div>
-</section>
-</div>
-
-<script>
-let db;
-const req=indexedDB.open("MRX_BEAST_DB",1);
-req.onupgradeneeded=e=>{
- db=e.target.result;
- ["products","vendors","purchases","returns","invoices","cash","deleted","settings","accounts"]
- .forEach(s=>db.createObjectStore(s,{keyPath:"id"}));
-};
-req.onsuccess=e=>db=e.target.result;
-
-/* TAB */
-function openTab(id){
- document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
- document.querySelectorAll("nav div").forEach(n=>n.classList.remove("active"));
- document.getElementById(id).classList.add("active");
- document.getElementById("tab_"+id).classList.add("active");
+<style>
+/* ================= MAIN MENU (FINAL FIX) ================= */
+#mainMenu{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:8px 16px;
+  background:#fff;
+  border-bottom:2px solid #ccc;
+  position:sticky;
+  top:0;
+  z-index:100;
 }
 
-/* GST */
-function calcGST(amount){
- if(!gstToggle.checked)return {gst:0,total:amount};
- let p=parseFloat(gstPercent.value)||0;
- let g=(amount*p)/100;
- return {gst:g,total:amount+g};
+#mainMenu .menuItem{
+  padding:6px 14px;
+  font-weight:600;
+  cursor:pointer;
+  border-radius:6px;
+  user-select:none;
+  white-space:nowrap;
 }
 
-/* SAFE NUMBER */
-function num(x){return parseFloat((+x||0).toFixed(2));}
-
-/* SERVICE WORKER */
-if("serviceWorker" in navigator){
- navigator.serviceWorker.register("sw.js");
+#mainMenu .menuItem:hover{
+  background:#eef2f7;
 }
 
-/* DAILY BACKUP */
-setInterval(()=>{
- let d=new Date();
- if(d.getHours()===2){
-  let tx=db.transaction(db.objectStoreNames,"readonly");
-  let backup={};
-  Array.from(db.objectStoreNames).forEach(name=>{
-   tx.objectStore(name).getAll().onsuccess=e=>backup[name]=e.target.result;
-  });
-  setTimeout(()=>{
-   let blob=new Blob([JSON.stringify(backup)],{type:"application/json"});
-   let a=document.createElement("a");
-   a.href=URL.createObjectURL(blob);
-   a.download="MRX_BACKUP_"+d.toISOString().slice(0,10)+".json";
-   a.click();
-  },3000);
- }
-},3600000);
-</script>
+#mainMenu .menuItem.active{
+  background:#eef2f7;
+  color:var(--primary,#1e1e1e);
+}
+/* ================= RETURN UI ================= */
+#return{
+  padding:20px;
+  animation:fadeIn .25s ease;
+  min-height:auto;
+}
 
-<!-- INVOICE PRINT SECTION (UNCHANGED FROM YOUR ORIGINAL SOFTWARE HERE) -->
+.ret-box{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:10px;
+  margin-bottom:20px;
+}
 
-</body>
-</html>
+@keyframes fadeIn{
+  from{opacity:0;transform:translateY(6px)}
+  to{opacity:1;transform:none}
+}
+
+</style>
+
 <script>
 /* ================= TAB SWITCHING (FIXED) ================= */
 function openTab(id){
@@ -2998,6 +3103,14 @@ function applyDeletedReport(){
   });
 });
 </script>
+<!-- ================= LOGIN ================= -->
+<section id="loginScreen" style="display:flex; align-items:center; justify-content:center; height:100vh; background:#f5f5f5; flex-direction:column;">
+  <h1>Login</h1>
+  <input type="text" id="loginUsername" placeholder="Username" style="margin:5px; padding:8px; width:200px;">
+  <input type="password" id="loginPassword" placeholder="Password" style="margin:5px; padding:8px; width:200px;">
+  <button onclick="submitLogin()" style="padding:8px 15px; margin-top:10px;">Login</button>
+  <div id="loginError" style="color:red; margin-top:10px;"></div>
+</section>
 
 <!-- ================= SETTINGS ================= -->
 <section id="settings" style="display:none; padding:20px;">
