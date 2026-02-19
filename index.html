@@ -1232,7 +1232,7 @@ function renderInvoice(){
         <td><input type="number" min="1" step="1" value="${r.qty}" onchange="setInvQty(${i},this.value)"></td>
 <td>${r.valid ? DB.products.find(p=>p.id===r.productId)?.stock ?? 0 : "-"}</td>
 <td><input type="number" value="${r.rate}" onchange="setInvRate(${i},this.value)"></td>
-<tbody id="invoiceRows"></tbody>
+<td>${r.valid?formatNumber(r.qty*r.rate):"<span style='color:red'>Invalid</span>"}</td>
 
       </tr>`;
   });
