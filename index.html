@@ -224,7 +224,21 @@ button{
 <script>
 /* ================= TAB SWITCHING (FIXED) ================= */
 function openTab(id){
-let isLoggedIn = false;
+
+  const session = sessionStorage.getItem("loggedInUser");
+  if(!session){
+    alert("Please login first");
+    return;
+  }
+
+  const user = JSON.parse(session);
+
+  // If not developer check permission
+  if(user.role !== "developer" && !(user.permissions || []).includes(id)){
+    alert("Access denied");
+    return;
+  }
+
   // Hide all sections
   document.querySelectorAll("section").forEach(sec=>{
     sec.style.display = "none";
@@ -3216,7 +3230,7 @@ function submitLogin(){
   const u = loginUsername.value.trim();
   const p = loginPassword.value.trim();
 
-  const user = (DB.users || []).find(x=>x.username===u && x.password===p);
+ const user = (DB.accounts || []).find(x=>x.username===u && x.password===p);
 
   if(!user){
     loginError.innerText = "Invalid Username or Password";
@@ -3224,9 +3238,7 @@ function submitLogin(){
   }
 
   // SUCCESS
-  isLoggedIn = true;
-  currentUser = user;
-
+sessionStorage.setItem("loggedInUser", JSON.stringify(user));
   loginScreen.style.display = "none";
 
   // SHOW MAIN SYSTEM
