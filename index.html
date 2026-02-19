@@ -3230,38 +3230,35 @@ function submitLogin(){
   const u = loginUsername.value.trim();
   const p = loginPassword.value.trim();
 
- const user = (DB.accounts || []).find(x=>x.username===u && x.password===p);
+  const user = (DB.accounts || []).find(x=>x.username===u && x.password===p);
 
   if(!user){
     loginError.innerText = "Invalid Username or Password";
     return;
   }
 
-  // SUCCESS
-sessionStorage.setItem("loggedInUser", JSON.stringify(user));
-  loginScreen.style.display = "none";
+  sessionStorage.setItem("loggedInUser", JSON.stringify(user));
 
-  // SHOW MAIN SYSTEM
-  document.querySelectorAll("section").forEach(sec=>{
-    if(sec.id !== "loginScreen"){
-      sec.style.display = "block";
-    }
-  });
+  document.getElementById("loginScreen").style.display = "none";
 
+  renderSectionsByPermission();
+  openTab("invoice");
 }
 
 /* ===== PERSIST LOGIN ===== */
 document.addEventListener("DOMContentLoaded", ()=>{
-  const acc=sessionStorage.getItem("loggedInUser");
-  if(acc){
-    document.getElementById("loginScreen").style.display="none";
-    renderSectionsByPermission();
-    openTab("invoice");
-  } else {
+  const acc = sessionStorage.getItem("loggedInUser");
+
+  if(!acc){
     document.querySelectorAll("section").forEach(s=>{
       if(s.id!=="loginScreen") s.style.display="none";
     });
+    return;
   }
+
+  document.getElementById("loginScreen").style.display="none";
+  renderSectionsByPermission();
+  openTab("invoice");
 });
 
 /* ===== RENDER SECTIONS BASED ON PERMISSIONS ===== */
