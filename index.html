@@ -953,7 +953,16 @@ function vrSave(){
   const amount=items.reduce((s,i)=>s+i.qty*i.cost,0);
   const no=vrEditIndex!==null?DB.returns[vrEditIndex].no:vrNo.innerText;
 
-  DB.vendorLedger.push({id:uid("VL"),vendor:vrVendor.value,type:"RETURN",ref:no,credit:amount,date:new Date().toISOString()});
+  DB.vendorLedger.push({
+  id:uid("VL"),
+  vendor:vrVendor.value,
+  vendorId: DB.vendors.find(v=>v.name===vrVendor.value)?.id || "",
+  type:"RETURN",
+  ref:no,
+  debit:0,
+  credit:amount,
+  date:new Date().toISOString()
+});
 
   const obj={no,vendor:vrVendor.value,items,amount,dateTime:new Date().toISOString()};
   vrEditIndex!==null?DB.returns[vrEditIndex]=obj:DB.returns.push(obj);
@@ -1049,7 +1058,13 @@ body{font-family:Arial;padding:30px}
 .title{font-size:24px;font-weight:900}
 table{width:100%;border-collapse:collapse;margin-top:15px}
 th,td{border:1px solid #000;padding:8px;text-align:center}
-th{background:#f2f2f2}
+body{font-family:Arial;padding:30px}
+table{width:100%;border-collapse:collapse;margin-top:15px}
+th,td{border:1px solid #000;padding:8px;text-align:center;font-size:14px}
+th{background:#eaeaea;font-weight:700}
+.total{margin-top:20px;text-align:right;font-size:18px;font-weight:900}
+.footer{margin-top:60px;display:flex;justify-content:space-between}
+.sign{border-top:1px solid #000;width:200px;text-align:center;padding-top:5px}
 .total{margin-top:20px;text-align:right;font-size:18px;font-weight:900}
 .footer{margin-top:60px;display:flex;justify-content:space-between}
 .sign{border-top:1px solid #000;width:200px;text-align:center;padding-top:5px}
@@ -1058,14 +1073,12 @@ th{background:#f2f2f2}
 <body>
 
 <div class="header">
-<div>
-<div class="title">VENDOR RETURN INVOICE</div>
+<div style="margin-bottom:20px;text-align:left">
+<div style="font-size:24px;font-weight:900">VENDOR RETURN INVOICE</div>
 <div><b>Return No:</b> ${r.no}</div>
 <div><b>Date:</b> ${d.toLocaleString()}</div>
 <div><b>Vendor:</b> ${r.vendor}</div>
 </div>
-</div>
-
 <table>
 <thead>
 <tr>
@@ -1100,6 +1113,9 @@ Grand Total: ${Number(grand).toFixed(2)}
   w.print();
 }
 function downloadVendorLedgerCSV(){
+
+  const rows = DB.vendorLedger || [];
+
   let csv = "Date,Type,Ref,Debit,Credit,Balance\n";
   let bal = 0;
 
@@ -2309,11 +2325,25 @@ ProductSystem.init();
   <div class="card">
     <h2>Vendors</h2>
 
-    <input id="vendorSearch"
-           placeholder="Search vendor (No, Name)"
-           oninput="renderVendors()"
-           style="margin-bottom:10px;width:100%;">
+    <function vendorSearch(){
 
+  const q = document.getElementById("vendorSearch").value.toLowerCase().trim();
+
+  if(!q){
+    vendorState.filtered = DB.vendors.slice();
+    vendorState.page = 1;
+    renderVendors();
+    return;
+  }
+
+  vendorState.filtered = DB.vendors.filter(v =>
+    (v.name||"").toLowerCase().includes(q) ||
+    (v.phone||"").toLowerCase().includes(q)
+  );
+
+  vendorState.page = 1;
+  renderVendors();
+}
     <div style="display:flex;gap:10px;margin-bottom:12px;">
       <input id="vendorName" placeholder="Vendor Name" style="flex:1">
       <button onclick="addVendor()">Add Vendor</button>
