@@ -1340,7 +1340,8 @@ function renderInvoice(){
 
 <td>
   <input value="${r.barcode}" 
-         oninput="searchInvProduct(${i},this.value,'barcode')">
+       oninput="searchInvProduct(${i},this.value,'barcode')"
+       onkeypress="if(event.key==='Enter'){addInvoiceRow()}">
   <div id="invSugB${i}" class="invSug"></div>
 </td>
 
@@ -1407,16 +1408,16 @@ function searchInvProduct(i,val,field){
   box.innerHTML="";
   if(!q) return;
 
-  const results = DB.products.filter(p=>{
+  // SEARCH ALL PRODUCTS
+  let results = DB.products.filter(p=>{
 
-    if(field==="barcode")
-      return (p.barcode||"").toLowerCase().includes(q);
+    const barcode = (p.barcode||"").toLowerCase();
+    const itemNo  = (p.itemNo||"").toLowerCase();
+    const desc    = (p.desc||"").toLowerCase();
 
-    if(field==="itemNo")
-      return (p.itemNo||"").toLowerCase().includes(q);
-
-    if(field==="desc")
-      return (p.desc||"").toLowerCase().includes(q);
+    if(field==="barcode") return barcode.includes(q);
+    if(field==="itemNo")  return itemNo.includes(q);
+    if(field==="desc")    return desc.includes(q);
 
     return false;
   });
@@ -1426,6 +1427,32 @@ function searchInvProduct(i,val,field){
     return;
   }
 
+  // 🔥 AUTO SELECT IF EXACT BARCODE MATCH
+  if(field==="barcode"){
+    const exact = results.find(p=>
+      (p.barcode||"").toLowerCase()===q
+    );
+    if(exact){
+      selectInvoiceProduct(i,exact);
+      return;
+    }
+  }
+
+  results.slice(0,20).forEach(p=>{
+    const d=document.createElement("div");
+    d.innerText=
+      (p.barcode||"")+
+      " | "+p.itemNo+
+      " | "+p.desc+
+      " (Stock: "+p.stock+")";
+
+    d.onclick=()=>{
+      selectInvoiceProduct(i,p);
+    };
+
+    box.appendChild(d);
+  });
+}
   results.forEach(p=>{
     const d=document.createElement("div");
     d.innerText=`${p.barcode||""} | ${p.itemNo} | ${p.desc} (Stock: ${p.stock})`;
@@ -1455,7 +1482,25 @@ function searchInvProduct(i,val,field){
     box.appendChild(d);
   });
 }
+function selectInvoiceProduct(i,p){
 
+  if(invoiceDraft.some((x,idx)=>idx!==i && x.productId===p.id)){
+    alert("Product already added");
+    return;
+  }
+
+  invoiceDraft[i] = {
+    productId:p.id,
+    barcode:p.barcode||"",
+    itemNo:p.itemNo,
+    desc:p.desc,
+    qty:1,
+    rate:p.rate||0,
+    valid:true
+  };
+
+  renderInvoice();
+}
 /* ===== QTY / RATE ===== */
 function setInvQty(i,v){
   v = Math.floor(+v);
