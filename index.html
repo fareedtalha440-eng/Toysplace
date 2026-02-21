@@ -2518,7 +2518,11 @@ ProductSystem.init();
 
 let vendorPage = 1;
 const vendorsPerPage = 20;
+// HARD SAFETY INIT
 DB.vendors = DB.vendors || [];
+DB.purchases = DB.purchases || [];
+DB.cash = DB.cash || [];
+DB.return = DB.return || [];
 /* ===== MONEY FORMAT ===== */
 function money(v){
   const n = Number(v || 0);
@@ -2538,20 +2542,23 @@ function nextVendorNo(){
 /* ===== ADD VENDOR ===== */
 function addVendor(){
 
+  DB.vendors = DB.vendors || [];
+
   const name = vendorName.value.trim();
   if(!name) return alert("Vendor name required");
 
-  // EDIT MODE
   if(editingVendorId){
+
     const v = DB.vendors.find(x=>x.id===editingVendorId);
     if(v){
       v.name = name;
     }
-    editingVendorId = null;
-  }
-  else{
 
-    if(DB.vendors.some(v=>v.name.toLowerCase()===name.toLowerCase())){
+    editingVendorId = null;
+
+  } else {
+
+    if(DB.vendors.some(v=> (v.name||"").toLowerCase() === name.toLowerCase())){
       alert("Vendor already exists");
       return;
     }
@@ -2562,6 +2569,7 @@ function addVendor(){
       name,
       createdDate: new Date().toISOString()
     });
+
   }
 
   vendorName.value="";
@@ -2569,6 +2577,7 @@ function addVendor(){
   renderVendors();
   loadVendorOptions();
 }
+
 /* ===== EDIT VENDOR ===== */
 let editingVendorId = null;
 
@@ -2626,52 +2635,63 @@ function deleteVendor(id){
 
 /* ===== VENDOR BALANCE ===== */
 function vendorBalance(v){
-  const purchase = DB.purchases
-    .filter(p=>p.vendorId===v.id)
-    .reduce((s,p)=>s+(p.total||0),0);
 
-  const paid = DB.cash
-    .filter(c=>c.type==="OUT" && c.vendorId===v.id)
-    .reduce((s,c)=>s+(c.amount||0),0);
+  if(!v) return 0;
+
+  const purchase = (DB.purchases || [])
+    .filter(p => p.vendorId === v.id)
+    .reduce((s,p)=> s + Number(p.total || 0), 0);
+
+  const paid = (DB.cash || [])
+    .filter(c => c.type==="OUT" && c.vendorId === v.id)
+    .reduce((s,c)=> s + Number(c.amount || 0), 0);
 
   return purchase - paid;
 }
-
 /* ===== RENDER VENDORS ===== */
 function renderVendors(){
+
   DB.vendors = DB.vendors || [];
+
   const tbody = document.getElementById("vendorRows");
+  if(!tbody) return;
+
   tbody.innerHTML="";
 
-  const q = (document.getElementById("vendorSearch")?.value || "").toLowerCase();
+  const q = (document.getElementById("vendorSearch")?.value || "").toLowerCase().trim();
 
-  const vendors = DB.vendors
-    .filter(v =>
-  !q ||
-  (v.name||"").toLowerCase().includes(q) ||
-  (v.no||"").toLowerCase().includes(q) ||
-  (v.phone||"").toLowerCase().includes(q)
-)
-    .sort((a,b)=>new Date(b.createdDate)-new Date(a.createdDate));
+  let vendors = DB.vendors.filter(v =>
+      !q ||
+      (v.name||"").toLowerCase().includes(q) ||
+      (v.no||"").toLowerCase().includes(q) ||
+      (v.phone||"").toLowerCase().includes(q)
+  );
 
-  vendors
-    .slice((vendorPage-1)*vendorsPerPage, vendorPage*vendorsPerPage)
-    .forEach((v,i)=>{
+  vendors = vendors.sort((a,b)=>
+      new Date(b.createdDate || 0) - new Date(a.createdDate || 0)
+  );
+
+  const start = (vendorPage-1)*vendorsPerPage;
+  const end = vendorPage*vendorsPerPage;
+
+  vendors.slice(start,end).forEach((v,i)=>{
+
       const bal = vendorBalance(v);
+
       tbody.innerHTML+=`
         <tr>
-          <td>${(vendorPage-1)*vendorsPerPage+i+1}</td>
-          <td>${v.no}</td>
-          <td>${v.name}</td>
+          <td>${start+i+1}</td>
+          <td>${v.no || ""}</td>
+          <td>${v.name || ""}</td>
           <td>₨ ${money(bal)}</td>
           <td><button onclick="openVendorLedger('${v.id}')">Open</button></td>
           <td><button onclick="editVendor('${v.id}')">Edit</button></td>
           <td><button class="red" onclick="deleteVendor('${v.id}')">Delete</button></td>
         </tr>
       `;
-    });
-}
+  });
 
+}
 /* ===== PAGINATION ===== */
 function nextVendorPage(){ vendorPage++; renderVendors(); }
 function prevVendorPage(){
@@ -2829,7 +2849,11 @@ function loadVendorOptions(){
     filter.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
   });
 }
-
+// FORCE LOAD
+setTimeout(()=>{
+  renderVendors();
+  loadVendorOptions();
+},200);
 </script>
 
 <!-- ================= PURCHASE ================= -->
