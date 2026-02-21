@@ -2488,14 +2488,11 @@ ProductSystem.init();
   <div class="card">
     <h2>Vendors</h2>
 
-   <div style="margin-bottom:10px;">
-  <input 
-    id="vendorSearch"
-    placeholder="Search by Name / Vendor No"
-    oninput="renderVendors()"
-    style="width:100%;padding:8px;"
-  >
-</div>
+    <input id="vendorSearch"
+           placeholder="Search vendor (No, Name)"
+           oninput="vendorPage=1;renderVendors()"
+           style="margin-bottom:10px;width:100%;">
+
     <div style="display:flex;gap:10px;margin-bottom:12px;">
       <input id="vendorName" placeholder="Vendor Name" style="flex:1">
       <button onclick="addVendor()">Add Vendor</button>
@@ -2522,16 +2519,20 @@ ProductSystem.init();
     </div>
   </div>
 </section>
-<script>
-/* ================= VENDOR LOGIC ================= */
 
-let vendorPage = 1;
-const vendorsPerPage = 20;
-// HARD SAFETY INIT
+<script>
+
+/* ================= SAFE INIT ================= */
+
 DB.vendors = DB.vendors || [];
 DB.purchases = DB.purchases || [];
 DB.cash = DB.cash || [];
-DB.return = DB.return || [];
+DB.returns = DB.returns || [];
+DB.deletedLogs = DB.deletedLogs || [];
+
+let vendorPage = 1;
+const vendorsPerPage = 20;
+
 /* ===== MONEY FORMAT ===== */
 function money(v){
   const n = Number(v || 0);
@@ -2541,7 +2542,7 @@ function money(v){
 
 /* ===== NEXT VENDOR NO ===== */
 function nextVendorNo(){
-  if(!DB.vendors || !DB.vendors.length) return "VEN1001";
+  if(!DB.vendors.length) return "VEN1001";
   const nums = DB.vendors
     .map(v=>parseInt(String(v.no||"").replace("VEN","")))
     .filter(n=>!isNaN(n));
@@ -2550,80 +2551,43 @@ function nextVendorNo(){
 
 /* ===== ADD VENDOR ===== */
 function addVendor(){
-
-  DB.vendors = DB.vendors || [];
-
   const name = vendorName.value.trim();
   if(!name) return alert("Vendor name required");
 
-  if(editingVendorId){
-
-    const v = DB.vendors.find(x=>x.id===editingVendorId);
-    if(v){
-      v.name = name;
-    }
-
-    editingVendorId = null;
-
-  } else {
-
-    if(DB.vendors.some(v=> (v.name||"").toLowerCase() === name.toLowerCase())){
-      alert("Vendor already exists");
-      return;
-    }
-
-    DB.vendors.push({
-      id: uid("V"),
-      no: nextVendorNo(),
-      name,
-      createdDate: new Date().toISOString()
-    });
-
+  if(DB.vendors.some(v=>v.name.toLowerCase()===name.toLowerCase())){
+    alert("Vendor already exists");
+    return;
   }
 
-  vendorName.value="";
+  DB.vendors.push({
+    id: uid("V"),
+    no: nextVendorNo(),
+    name,
+    createdDate: new Date().toISOString()
+  });
+
   saveDB();
+  vendorName.value="";
+  vendorPage=1;
   renderVendors();
   loadVendorOptions();
 }
 
-/* ===== EDIT VENDOR ===== */
-let editingVendorId = null;
-
-/* ===== OPEN EDIT ===== */
+/* ===== EDIT ===== */
 function editVendor(id){
-
   const v = DB.vendors.find(x=>x.id===id);
   if(!v) return;
 
-  editingVendorId = id;
-  vendorName.value = v.name;
+  const name = prompt("Edit vendor name", v.name);
+  if(!name) return;
 
-}
-saveDB();
-renderVendors();
-}
-/* ===== SAVE EDIT ===== */
-function saveVendorEdit(){
-  const name = editVendorName.value.trim();
-  if(!name) return alert("Vendor name required");
-
-  const v = DB.vendors.find(x=>x.id===editingVendorId);
-  if(!v) return;
-
-  v.name = name;
+  v.name = name.trim();
   saveDB();
-  closeVendorEdit();
   renderVendors();
   loadVendorOptions();
 }
 
-/* ===== CLOSE ===== */
-function closeVendorEdit(){
-  document.getElementById("vendorEditBlock").style.display="none";
-  editingVendorId = null;
-}
-/* ===== DELETE VENDOR ===== */
+/* ===== DELETE ===== */
 function deleteVendor(id){
   const v = DB.vendors.find(x=>x.id===id);
   if(!v) return;
@@ -2636,79 +2600,96 @@ function deleteVendor(id){
 
   if(!confirm("Delete this vendor?")) return;
 
+  DB.deletedLogs.push({
+    id: uid("DEL"),
+    section:"VENDOR",
+    account: currentUser?.username || "System",
+    ref:v.no,
+    detail:v,
+    date:new Date().toISOString()
+  });
+
   DB.vendors = DB.vendors.filter(x=>x.id!==id);
+
   saveDB();
   renderVendors();
   loadVendorOptions();
 }
 
-/* ===== VENDOR BALANCE ===== */
+/* ===== BALANCE (PURCHASE - PAYMENT - RETURN) ===== */
 function vendorBalance(v){
 
-  if(!v) return 0;
+  const purchase = DB.purchases
+    .filter(p=>p.vendorId===v.id)
+    .reduce((s,p)=>s+(Number(p.total)||0),0);
 
-  const purchase = (DB.purchases || [])
-    .filter(p => p.vendorId === v.id)
-    .reduce((s,p)=> s + Number(p.total || 0), 0);
+  const paid = DB.cash
+    .filter(c=>c.type==="OUT" && c.vendorId===v.id)
+    .reduce((s,c)=>s+(Number(c.amount)||0),0);
 
-  const paid = (DB.cash || [])
-    .filter(c => c.type==="OUT" && c.vendorId === v.id)
-    .reduce((s,c)=> s + Number(c.amount || 0), 0);
+  const returns = DB.returns
+    .filter(r=>r.vendorId===v.id)
+    .reduce((s,r)=>s+(Number(r.amount)||0),0);
 
-  return purchase - paid;
+  return purchase - paid - returns;
 }
-/* ===== RENDER VENDORS ===== */
+
+/* ===== RENDER ===== */
 function renderVendors(){
 
-  DB.vendors = DB.vendors || [];
-
   const tbody = document.getElementById("vendorRows");
-  if(!tbody) return;
-
   tbody.innerHTML="";
 
-  const q = (document.getElementById("vendorSearch")?.value || "").toLowerCase().trim();
+  const q = (vendorSearch.value||"").toLowerCase().trim();
 
-  let vendors = DB.vendors.filter(v =>
-      !q ||
-      (v.name||"").toLowerCase().includes(q) ||
-      (v.no||"").toLowerCase().includes(q) ||
-      (v.phone||"").toLowerCase().includes(q)
-  );
+  const filtered = DB.vendors
+    .filter(v=>{
+      if(!q) return true;
+      return (
+        (v.name||"").toLowerCase().includes(q) ||
+        (v.no||"").toLowerCase().includes(q)
+      );
+    })
+    .sort((a,b)=>new Date(b.createdDate)-new Date(a.createdDate));
 
-  vendors = vendors.sort((a,b)=>
-      new Date(b.createdDate || 0) - new Date(a.createdDate || 0)
-  );
+  const totalPages = Math.ceil(filtered.length / vendorsPerPage);
+  if(vendorPage > totalPages) vendorPage = totalPages || 1;
 
-  const start = (vendorPage-1)*vendorsPerPage;
-  const end = vendorPage*vendorsPerPage;
-
-  vendors.slice(start,end).forEach((v,i)=>{
+  filtered
+    .slice((vendorPage-1)*vendorsPerPage, vendorPage*vendorsPerPage)
+    .forEach((v,i)=>{
 
       const bal = vendorBalance(v);
 
       tbody.innerHTML+=`
-        <tr>
-          <td>${start+i+1}</td>
-          <td>${v.no || ""}</td>
-          <td>${v.name || ""}</td>
-          <td>₨ ${money(bal)}</td>
-          <td><button onclick="openVendorLedger('${v.id}')">Open</button></td>
-          <td><button onclick="editVendor('${v.id}')">Edit</button></td>
-          <td><button class="red" onclick="deleteVendor('${v.id}')">Delete</button></td>
-        </tr>
-      `;
-  });
-
+      <tr>
+        <td>${(vendorPage-1)*vendorsPerPage+i+1}</td>
+        <td>${v.no}</td>
+        <td>${v.name}</td>
+        <td>₨ ${money(bal)}</td>
+        <td><button onclick="openVendorLedger('${v.id}')">Open</button></td>
+        <td><button onclick="editVendor('${v.id}')">Edit</button></td>
+        <td><button class="red" onclick="deleteVendor('${v.id}')">Delete</button></td>
+      </tr>`;
+    });
 }
+
 /* ===== PAGINATION ===== */
-function nextVendorPage(){ vendorPage++; renderVendors(); }
-function prevVendorPage(){
-  if(vendorPage>1){ vendorPage--; renderVendors(); }
+function nextVendorPage(){
+  vendorPage++;
+  renderVendors();
 }
 
-/* ===== VENDOR LEDGER ===== */
+function prevVendorPage(){
+  if(vendorPage>1){
+    vendorPage--;
+    renderVendors();
+  }
+}
+
+/* ===== LEDGER (PURCHASE + PAYMENT + RETURN) ===== */
 function openVendorLedger(vendorId){
+
   const v = DB.vendors.find(x=>x.id===vendorId);
   if(!v) return;
 
@@ -2724,13 +2705,18 @@ function openVendorLedger(vendorId){
       rows.push({date:c.dateTime,type:"Payment",ref:c.ref||c.id,debit:0,credit:c.amount});
     });
 
+  DB.returns.filter(r=>r.vendorId===v.id)
+    .forEach(r=>{
+      rows.push({date:r.dateTime,type:"Return",ref:r.no,debit:0,credit:r.amount});
+    });
+
   rows.sort((a,b)=>new Date(a.date)-new Date(b.date));
 
   let bal = 0;
   const printedAt = new Date().toLocaleString();
 
   const w = window.open("");
-w.document.write(`
+  w.document.write(`
 <html>
 <head>
 <title>Vendor Ledger</title>
@@ -2844,7 +2830,7 @@ Current Balance: ₨ ${money(bal)}
 w.print();
 }
 
-/* ===== CASH DROPDOWNS ===== */
+/* ===== CASH DROPDOWN ===== */
 function loadVendorOptions(){
   const add = document.getElementById("payVendor");
   const filter = document.getElementById("cashVendorFilter");
@@ -2858,13 +2844,12 @@ function loadVendorOptions(){
     filter.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
   });
 }
-// FORCE LOAD
-setTimeout(()=>{
-  renderVendors();
-  loadVendorOptions();
-},200);
-</script>
 
+/* ===== INIT ===== */
+renderVendors();
+loadVendorOptions();
+
+</script>
 <!-- ================= PURCHASE ================= -->
 
 <style>
