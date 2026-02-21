@@ -1984,10 +1984,10 @@ border-radius:12px;padding:20px;">
 <button class="green" onclick="ProductSystem.openCreate()">+ New Product</button>
 <button class="blue" onclick="ProductSystem.exportCSV()">Export CSV</button>
 <input type="file" accept=".xlsx,.xls" onchange="ProductSystem.importExcel(this)">
-<input placeholder="Smart Search..."
+<input id="productSearch"
+       placeholder="Search Products..."
        style="flex:1;padding:10px"
-       oninput="advancedProductSearch()">
-</div>
+       oninput="ProductSystem.advancedProductSearch()"></div>
 
 </div>
 
@@ -2014,13 +2014,6 @@ border-radius:12px;padding:20px;">
 <button onclick="ProductSystem.next()">Next</button>
 </div>
 
-</div>
-
-
-<div style="margin-top:10px;">
-<button class="green" onclick="saveProduct()">Save</button>
-<button class="red" onclick="closeProductForm()">Cancel</button>
-</div>
 </div>
 
 </section>
@@ -2291,7 +2284,7 @@ a.click();
 
 return {
 init,
-smartSearch,
+advancedProductSearch,
 openCreate,
 edit,
 remove,
@@ -2302,7 +2295,6 @@ exportCSV,
 saveProduct,
 closeProductForm
 };
-
 })();
 
 /* ================= LOAD ================= */
