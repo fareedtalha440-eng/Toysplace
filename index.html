@@ -1051,7 +1051,16 @@ function vrSave(){
   date:new Date().toISOString()
 });
 
-  const obj={no,vendor:vrVendor.value,items,amount,dateTime:new Date().toISOString()};
+  const vendorObj = DB.vendors.find(v=>v.name===vrVendor.value);
+
+const obj={
+  no,
+  vendorId: vendorObj?.id || "",
+  vendorName: vendorObj?.name || "",
+  items,
+  amount,
+  dateTime:new Date().toISOString()
+};
   vrEditIndex!==null?DB.returns[vrEditIndex]=obj:DB.returns.push(obj);
 
   saveDB();
@@ -1072,7 +1081,7 @@ function vrLoadPrevious(){
 <td>${r.no}</td>
 <td>${d.toLocaleDateString()}</td>
 <td>${d.toLocaleTimeString()}</td>
-<td>${r.vendor}</td>
+<td>${r.vendorName || ""}</td>
 <td>${r.amount.toFixed(2)}</td>
 <td><button onclick="vrPrint(${i})">Print</button></td>
 <td><button onclick="vrEdit(${i})">Edit</button></td>
@@ -1084,7 +1093,7 @@ function vrLoadPrevious(){
 function vrEdit(i){
   const r=DB.returns[i];
   vrEditIndex=i;
-  vrVendor.value=r.vendor;
+  <div><b>Vendor:</b> ${r.vendorName}</div>
   vrNo.innerText=r.no;
   vrBody.innerHTML="";
   r.items.forEach(it=>{
