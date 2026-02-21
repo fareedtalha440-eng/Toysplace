@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -234,11 +233,21 @@ function openTab(id){
   const user = JSON.parse(session);
 
   // If not developer check permission
-  if(user.role !== "developer" && !(user.permissions || []).includes(id)){
-    alert("Access denied");
-    return;
-  }
+ if(user.role !== "developer"){
 
+if(id==="reports"){
+if(!(user.permissions||[]).includes("normalReports")) return alert("Access denied");
+}
+
+if(id==="settings"){
+if(!(user.permissions||[]).includes("settings")) return alert("Access denied");
+}
+
+if(!["reports","settings"].includes(id) && !(user.permissions||[]).includes(id)){
+return alert("Access denied");
+}
+
+}
   // Hide all sections
   document.querySelectorAll("section").forEach(sec=>{
     sec.style.display = "none";
@@ -269,8 +278,17 @@ document.addEventListener("DOMContentLoaded", ()=>{
   if(!acc) return;
 
   const user = JSON.parse(acc);
-  const order = ["invoice","products","vendors","purchase","returns","cash","reports","settings"];
-
+  const modules = [
+"invoice",
+"products",
+"vendors",
+"purchase",
+"returns",
+"cash",
+"normalReports",
+"adminReports",
+"settings"
+];
   for(const t of order){
     if(user.role==="developer" || (user.permissions||[]).includes(t)){
       openTab(t);
@@ -293,8 +311,9 @@ document.addEventListener("DOMContentLoaded", ()=>{
 });
 </script>
 <script>
-function openInvoiceProfitReport(){
-  document.getElementById("deletedDataReport").style.display="none";
+function showReport(type){
+  const box = document.getElementById("reportView");
+box.innerHTML="";
   const box=document.getElementById("invoiceProfitReport");
   box.style.display="block";
 document.getElementById("deletedDataReport").style.display="none";
@@ -1233,8 +1252,10 @@ function renderInvoice(){
         <td><input type="number" min="1" step="1" value="${r.qty}" onchange="setInvQty(${i},this.value)"></td>
 <td>${r.valid ? DB.products.find(p=>p.id===r.productId)?.stock ?? 0 : "-"}</td>
 <td><input type="number" value="${r.rate}" onchange="setInvRate(${i},this.value)"></td>
-<td>${r.valid?formatNumber(r.qty*r.rate):"<span style='color:red'>Invalid</span>"}</td>
-
+<td>
+  ${r.valid ? formatNumber((+r.qty || 0) * (+r.rate || 0)) 
+  : "<span style='color:red'>Invalid</span>"}
+</td>
       </tr>`;
   });
 
@@ -1646,6 +1667,10 @@ td{position:relative}
       <select id="payVendor" style="flex:1 1 150px;">
         <option value="">Select Vendor</option>
       </select>
+      <label style="display:flex;align-items:center;gap:5px;">
+<input type="checkbox" id="isExpense">
+Expense
+</label>
       <input placeholder="Reference" id="payRef" style="flex:1 1 150px;">
       <input type="number" placeholder="Amount" id="payAmount" style="flex:1 1 120px;">
       <button class="red" onclick="saveCashPayment()">Save</button>
@@ -1746,14 +1771,14 @@ function saveCashPayment(){
     // EDIT EXISTING PAYMENT
     const c = DB.cash.find(x=>x.id===editingCashId);
     if(!c) return alert("Payment not found");
-    DB.cash.push({
-  id,
-  dateTime: dtISO,
-  type:"OUT",
-  vendor: vendor || "",
-  ref: ref || vendor || "",
-  amount,
-  createdDate: new Date().toISOString() // ADD THIS LINE
+   DB.cash.push({
+id,
+dateTime: dtISO,
+type:"OUT",
+vendor: vendor || "",
+ref: ref || vendor || "",
+amount,
+expense: document.getElementById("isExpense").checked || false
 });
 
 
@@ -1846,8 +1871,12 @@ function renderCash(){
   let displayRows = filtered.slice((cashPage-1)*cashPerPage, cashPage*cashPerPage);
 
   displayRows.forEach(c=>{
-    if(c.type==="IN") runningBal += c.amount;
-    else runningBal -= c.amount;
+  if(c.expense){
+runningBal -= c.amount;
+}else{
+if(c.type==="IN") runningBal += c.amount;
+else runningBal -= c.amount;
+}
 
     const dt = new Date(c.dateTime);
     const created = new Date(c.createdDate || c.dateTime).toLocaleString();
@@ -1967,7 +1996,12 @@ loadVendorOptions(); renderCash();
 </div>
 
 </div>
-<div class="card" id="productForm" style="display:none;">
+<div class="card" id="productForm" 
+     style="display:none;position:fixed;top:50%;left:50%;
+     transform:translate(-50%,-50%);
+     width:500px;z-index:9999;background:#fff;
+     box-shadow:0 0 25px rgba(0,0,0,.4);">
+
 <h3 id="productFormTitle">New Product</h3>
 
 <div style="display:flex;gap:10px;flex-wrap:wrap;">
@@ -1975,6 +2009,13 @@ loadVendorOptions(); renderCash();
 <input id="pItemNo" placeholder="Item No">
 <input id="pDesc" placeholder="Description">
 <input id="pRate" type="number" placeholder="Rate">
+</div>
+
+<div style="margin-top:15px;text-align:right;">
+<button class="green" onclick="ProductSystem.saveProduct()">Save</button>
+<button class="red" onclick="ProductSystem.closeProductForm()">Cancel</button>
+</div>
+
 </div>
 
 <div style="margin-top:10px;">
@@ -2253,7 +2294,9 @@ remove,
 next,
 prev,
 importExcel,
-exportCSV
+exportCSV,
+saveProduct,
+closeProductForm
 };
 
 })();
@@ -2351,15 +2394,44 @@ let editingVendorId = null;
 
 /* ===== OPEN EDIT ===== */
 function editVendor(id){
-  const v = DB.vendors.find(x=>x.id===id);
-  if(!v) return;
 
-  editingVendorId = id;
-  document.getElementById("vendorEditBlock").style.display="block";
-  document.getElementById("vendorEditTitle").innerText="Edit Vendor ("+v.no+")";
-  document.getElementById("editVendorName").value = v.name;
+const v = DB.vendors.find(x=>x.id===id);
+if(!v) return;
+
+vendorName.value = v.name;
+v._editing = true;
+
 }
 
+function addVendor(){
+
+const name = vendorName.value.trim();
+if(!name) return alert("Vendor name required");
+
+let existing = DB.vendors.find(x=>x._editing);
+
+if(existing){
+existing.name = name;
+delete existing._editing;
+}else{
+
+if(DB.vendors.some(v=>v.name===name)){
+alert("Vendor already exists");
+return;
+}
+
+DB.vendors.push({
+id: uid("V"),
+name,
+balance:0
+});
+
+}
+
+vendorName.value="";
+saveDB();
+renderVendors();
+}
 /* ===== SAVE EDIT ===== */
 function saveVendorEdit(){
   const name = editVendorName.value.trim();
@@ -2664,7 +2736,7 @@ function loadVendorOptions(){
 .filter-row select{margin-right:10px}
 </style>
 
-<section id="purchase">
+<section id="purchase" style="width:80%;padding:20px;box-sizing:border-box;">
 
 <div style="display:flex;justify-content:space-between;align-items:center">
   <h3>Purchase</h3>
@@ -3786,7 +3858,17 @@ document.addEventListener("DOMContentLoaded",()=>{
 </script>
 <!-- ================= REPORTS ================= -->
 
-<section id="reports">
+<section id="reports" style="padding:20px;">
+
+<div id="reportMenu" style="display:flex;gap:15px;flex-wrap:wrap;margin-bottom:15px;">
+<button onclick="showReport('profit')" class="blue">📊 Profit</button>
+<button onclick="showReport('product')" class="blue">📦 Product</button>
+<button onclick="showReport('deleted')" class="blue">🗑 Deleted</button>
+</div>
+
+<div id="reportView" style="width:100%;min-height:500px;"></div>
+
+</section>
 
   <!-- ===== NORMAL REPORTS ===== -->
   <div class="card">
