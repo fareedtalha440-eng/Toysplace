@@ -1393,56 +1393,83 @@ function renderInvoice(){
 
 /* ===== SEARCH PRODUCT ===== */
 function searchInvProduct(i,val,field){
+
   const q = val.trim().toLowerCase();
   const row = invoiceDraft[i];
-  row.valid=false;
+  row.valid = false;
 
-  const box=document.getElementById(
-    field==="barcode"?"invSugB"+i:field==="itemNo"?"invSugI"+i:"invSugD"+i
+  const box = document.getElementById(
+    field==="barcode" ? "invSugB"+i :
+    field==="itemNo" ? "invSugI"+i :
+    "invSugD"+i
   );
+
   box.innerHTML="";
   if(!q) return;
 
-  const results=DB.products.filter(p=>
-    (field==="barcode"&&(p.barcode||"").toLowerCase().includes(q))||
-    (field==="itemNo"&&(p.itemNo||"").toLowerCase().includes(q))||
-    (field==="desc"&&(p.desc||"").toLowerCase().includes(q))
-  );
+  const results = DB.products.filter(p=>{
+
+    if(field==="barcode")
+      return (p.barcode||"").toLowerCase().includes(q);
+
+    if(field==="itemNo")
+      return (p.itemNo||"").toLowerCase().includes(q);
+
+    if(field==="desc")
+      return (p.desc||"").toLowerCase().includes(q);
+
+    return false;
+  });
 
   if(!results.length){
-    box.innerHTML="<div style='padding:4px;color:red'>Product not found</div>";
+    box.innerHTML="<div style='padding:4px;color:red'>No product found</div>";
     return;
   }
 
   results.forEach(p=>{
     const d=document.createElement("div");
-    d.innerText=`${p.itemNo} - ${p.desc} (Stock: ${p.stock})`;
-    d.style.padding="4px";
+    d.innerText=`${p.barcode||""} | ${p.itemNo} | ${p.desc} (Stock: ${p.stock})`;
+    d.style.padding="6px";
     d.style.cursor="pointer";
+
     d.onclick=()=>{
-      if(invoiceDraft.some((x,idx)=>idx!==i&&x.productId===p.id)){
+
+      if(invoiceDraft.some((x,idx)=>idx!==i && x.productId===p.id)){
         alert("Product already added");
         return;
       }
-      invoiceDraft[i]={productId:p.id,barcode:p.barcode||"",itemNo:p.itemNo,desc:p.desc,qty:1,rate:p.rate,valid:true};
+
+      invoiceDraft[i] = {
+        productId:p.id,
+        barcode:p.barcode||"",
+        itemNo:p.itemNo,
+        desc:p.desc,
+        qty:1,
+        rate:p.rate||0,
+        valid:true
+      };
+
       renderInvoice();
     };
+
     box.appendChild(d);
   });
 }
 
 /* ===== QTY / RATE ===== */
 function setInvQty(i,v){
-  v=Math.floor(+v);
-  if(v<=0||isNaN(v)) v=1;
-  invoiceDraft[i].qty=v;
-  recalcInvoiceFast();
+  v = Math.floor(+v);
+  if(v<=0 || isNaN(v)) v = 1;
+
+  invoiceDraft[i].qty = v;
+  renderInvoice();   // ✅ important
 }
 function setInvRate(i,v){
-  v=+v;
-  if(v<0||isNaN(v)) v=0;
-  invoiceDraft[i].rate=v;
-  recalcInvoiceFast();
+  v = +v;
+  if(v<0 || isNaN(v)) v = 0;
+
+  invoiceDraft[i].rate = v;
+  renderInvoice();   // ✅ important
 }
 function delInvRow(i){
   invoiceDraft.splice(i,1);
