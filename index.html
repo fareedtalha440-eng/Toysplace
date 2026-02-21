@@ -100,6 +100,7 @@ section.active{
   background:white;
   border:1px solid var(--border);
   padding:18px;
+  width:100%;
   margin-bottom:20px;
   border-radius:10px;
 }
@@ -2704,11 +2705,13 @@ function loadVendorOptions(){
 
 <style>
 #purchase{
-  max-width:1200px;
-  margin:auto;
+  width:100%;
+  max-width:100%;
+  margin:0;
   padding:20px;
+  box-sizing:border-box;
 }
-#purchase h3{color:var(--primary);margin:20px 0}
+  #purchase h3{color:var(--primary);margin:20px 0}
 .p-block{border:1px solid var(--border);padding:20px;margin-bottom:30px;border-radius:12px}
 .p-block{
   width:100%;
@@ -2762,7 +2765,7 @@ function loadVendorOptions(){
 .filter-row select{margin-right:10px}
 </style>
 
-<section id="purchase" style="width:100%;padding:20px;box-sizing:border-box;">
+<section id="purchase">
 
 <div style="display:flex;justify-content:space-between;align-items:center">
   <h3>Purchase</h3>
@@ -2804,7 +2807,10 @@ function loadVendorOptions(){
 <button onclick="addPurchaseRow()">Add New Product</button>
 
 <h3>Total: ₨ <span id="purchaseTotal">0.00</span></h3>
-<button onclick="savePurchase()">Save Purchase</button>
+<div style="display:flex;gap:10px;margin-top:15px">
+  <button onclick="savePurchase()">Save Purchase</button>
+  <button onclick="cancelPurchase()" style="background:#dc2626;color:#fff">Cancel</button>
+</div>
 </div>
 
 <!-- ================= PREVIOUS PURCHASE ================= -->
@@ -2866,7 +2872,13 @@ function generatePurchaseNo(){
   });
   purchaseNo.innerText = "PUR-" + String(max+1).padStart(5,"0");
 }
+function cancelPurchase(){
+  if(!confirm("Cancel this purchase draft?")) return;
 
+  purchaseDraft = [];
+  addPurchaseRow();
+  renderPurchaseRows();
+}
 /* ===== LOAD VENDORS ===== */
 function loadPurchaseVendors(){
   purchaseVendor.innerHTML='<option value="">Select Vendor</option>';
