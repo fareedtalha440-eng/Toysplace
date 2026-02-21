@@ -2548,7 +2548,7 @@ ProductSystem.init();
 
 let vendorPage = 1;
 const vendorsPerPage = 20;
-
+DB.vendors = DB.vendors || [];
 /* ===== MONEY FORMAT ===== */
 function money(v){
   const n = Number(v || 0);
@@ -2567,50 +2567,51 @@ function nextVendorNo(){
 
 /* ===== ADD VENDOR ===== */
 function addVendor(){
+
   const name = vendorName.value.trim();
   if(!name) return alert("Vendor name required");
 
-  if(DB.vendors.some(v=>v.name.toLowerCase()===name.toLowerCase())){
-    alert("Vendor already exists");
-    return;
+  // EDIT MODE
+  if(editingVendorId){
+    const v = DB.vendors.find(x=>x.id===editingVendorId);
+    if(v){
+      v.name = name;
+    }
+    editingVendorId = null;
+  }
+  else{
+
+    if(DB.vendors.some(v=>v.name.toLowerCase()===name.toLowerCase())){
+      alert("Vendor already exists");
+      return;
+    }
+
+    DB.vendors.push({
+      id: uid("V"),
+      no: nextVendorNo(),
+      name,
+      createdDate: new Date().toISOString()
+    });
   }
 
-  DB.vendors.push({
-    id: uid("V"),
-    no: nextVendorNo(),
-    name,
-    createdDate: new Date().toISOString()
-  });
-
-  saveDB();
   vendorName.value="";
+  saveDB();
   renderVendors();
   loadVendorOptions();
 }
-
 /* ===== EDIT VENDOR ===== */
 let editingVendorId = null;
 
 /* ===== OPEN EDIT ===== */
 function editVendor(id){
 
-const v = DB.vendors.find(x=>x.id===id);
-if(!v) return;
+  const v = DB.vendors.find(x=>x.id===id);
+  if(!v) return;
 
-vendorName.value = v.name;
-v._editing = true;
-
-}
-
-DB.vendors.push({
-id: uid("V"),
-name,
-balance:0
-});
+  editingVendorId = id;
+  vendorName.value = v.name;
 
 }
-
-vendorName.value="";
 saveDB();
 renderVendors();
 }
