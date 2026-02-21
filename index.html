@@ -2464,25 +2464,14 @@ ProductSystem.init();
   <div class="card">
     <h2>Vendors</h2>
 
-    <function vendorSearch(){
-
-  const q = document.getElementById("vendorSearch").value.toLowerCase().trim();
-
-  if(!q){
-    vendorState.filtered = DB.vendors.slice();
-    vendorState.page = 1;
-    renderVendors();
-    return;
-  }
-
-  vendorState.filtered = DB.vendors.filter(v =>
-    (v.name||"").toLowerCase().includes(q) ||
-    (v.phone||"").toLowerCase().includes(q)
-  );
-
-  vendorState.page = 1;
-  renderVendors();
-}
+   <div style="margin-bottom:10px;">
+  <input 
+    id="vendorSearch"
+    placeholder="Search by Name / Vendor No"
+    oninput="renderVendors()"
+    style="width:100%;padding:8px;"
+  >
+</div>
     <div style="display:flex;gap:10px;margin-bottom:12px;">
       <input id="vendorName" placeholder="Vendor Name" style="flex:1">
       <button onclick="addVendor()">Add Vendor</button>
@@ -2568,23 +2557,6 @@ v._editing = true;
 
 }
 
-function addVendor(){
-
-const name = vendorName.value.trim();
-if(!name) return alert("Vendor name required");
-
-let existing = DB.vendors.find(x=>x._editing);
-
-if(existing){
-existing.name = name;
-delete existing._editing;
-}else{
-
-if(DB.vendors.some(v=>v.name===name)){
-alert("Vendor already exists");
-return;
-}
-
 DB.vendors.push({
 id: uid("V"),
 name,
@@ -2655,10 +2627,15 @@ function renderVendors(){
   const tbody = document.getElementById("vendorRows");
   tbody.innerHTML="";
 
-  const q = (vendorSearch.value||"").toLowerCase();
+  const q = (document.getElementById("vendorSearch")?.value || "").toLowerCase();
 
   const vendors = DB.vendors
-    .filter(v=>!q || v.name.toLowerCase().includes(q) || v.no.toLowerCase().includes(q))
+    .filter(v =>
+  !q ||
+  (v.name||"").toLowerCase().includes(q) ||
+  (v.no||"").toLowerCase().includes(q) ||
+  (v.phone||"").toLowerCase().includes(q)
+)
     .sort((a,b)=>new Date(b.createdDate)-new Date(a.createdDate));
 
   vendors
