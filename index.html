@@ -854,6 +854,9 @@ Total Return:
 /* ================= HARD INIT ================= */
 if(!DB.returns) DB.returns=[];
 if(!DB.vendorLedger) DB.vendorLedger=[];
+if(!DB.purchases) DB.purchases=[];
+if(!DB.products) DB.products=[];
+if(!DB.vendors) DB.vendors=[];
 let vrEditIndex=null;
 
 /* ================= DOM READY ================= */
@@ -1453,35 +1456,7 @@ function searchInvProduct(i,val,field){
     box.appendChild(d);
   });
 }
-  results.forEach(p=>{
-    const d=document.createElement("div");
-    d.innerText=`${p.barcode||""} | ${p.itemNo} | ${p.desc} (Stock: ${p.stock})`;
-    d.style.padding="6px";
-    d.style.cursor="pointer";
-
-    d.onclick=()=>{
-
-      if(invoiceDraft.some((x,idx)=>idx!==i && x.productId===p.id)){
-        alert("Product already added");
-        return;
-      }
-
-      invoiceDraft[i] = {
-        productId:p.id,
-        barcode:p.barcode||"",
-        itemNo:p.itemNo,
-        desc:p.desc,
-        qty:1,
-        rate:p.rate||0,
-        valid:true
-      };
-
-      renderInvoice();
-    };
-
-    box.appendChild(d);
-  });
-}
+ 
 function selectInvoiceProduct(i,p){
 
   if(invoiceDraft.some((x,idx)=>idx!==i && x.productId===p.id)){
@@ -1971,16 +1946,7 @@ function saveCashPayment(){
     // EDIT EXISTING PAYMENT
     const c = DB.cash.find(x=>x.id===editingCashId);
     if(!c) return alert("Payment not found");
-   DB.cash.push({
-id,
-dateTime: dtISO,
-type:"OUT",
-vendor: vendor || "",
-ref: ref || vendor || "",
-amount,
-expense: document.getElementById("isExpense").checked || false
-});
-
+   
 
     // Adjust vendor balance
     if(c.vendor){
@@ -2010,10 +1976,12 @@ expense: document.getElementById("isExpense").checked || false
     DB.cash.push({
       id,
       dateTime: dtISO,
+      createdDate: new Date().toISOString(),
       type:"OUT",
       vendor: vendor || "",
       ref: ref || vendor || "",
-      amount
+      amount,
+      expense: document.getElementById("isExpense").checked || false
     });
   }
 
@@ -2071,34 +2039,36 @@ function renderCash(){
   let displayRows = filtered.slice((cashPage-1)*cashPerPage, cashPage*cashPerPage);
 
   displayRows.forEach(c=>{
-  if(c.expense){
-runningBal -= c.amount;
-}else{
-if(c.expense){
-runningBal -= c.amount;
-}else{
-if(c.type==="IN") runningBal += c.amount;
-else runningBal -= c.amount;
-}
+
+    if(c.expense){
+      runningBal -= c.amount;
+    }
+    else if(c.type==="IN"){
+      runningBal += c.amount;
+    }
+    else{
+      runningBal -= c.amount;
+    }
+
     const dt = new Date(c.dateTime);
     const created = new Date(c.createdDate || c.dateTime).toLocaleString();
     const vendorName = c.vendor || (c.type==="IN"?"Cash Customer":"");
+
     tbody.innerHTML+=`
       <tr>
         <td>${dt.toLocaleDateString()}</td>
         <td>${dt.toLocaleTimeString()}</td>
-        <td>${c.type}</td>
+        <td>${c.expense ? "EXPENSE" : c.type}</td>
         <td>${vendorName}</td>
         <td>${formatNumber(c.amount)}</td>
         <td>${c.ref || ""}</td>
         <td>${formatNumber(runningBal)}</td>
         <td>${c.type==="OUT"?`<button onclick="editCashPayment('${c.id}')">Edit</button>`:""}</td>
         <td>${c.type==="OUT"?`<button onclick="deleteCashPayment('${c.id}')">Delete</button>`:""}</td>
-        <td>${created}</td> <!-- NEW COLUMN -->
+        <td>${created}</td>
       </tr>
     `;
-  });
-
+});
   document.getElementById("cashBal").innerText = formatNumber(cashBalance());
 }
 
