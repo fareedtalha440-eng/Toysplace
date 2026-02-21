@@ -1977,10 +1977,6 @@ border-radius:12px;padding:20px;">
 <input id="pRate" type="number" placeholder="Rate">
 </div>
 
-<div style="margin-top:20px;text-align:right;">
-<button class="green" onclick="ProductSystem.saveProduct()">Save</button>
-<button class="red" onclick="ProductSystem.closeProductForm()">Cancel</button>
-</div>
 
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:15px">
@@ -1990,7 +1986,7 @@ border-radius:12px;padding:20px;">
 <input type="file" accept=".xlsx,.xls" onchange="ProductSystem.importExcel(this)">
 <input placeholder="Smart Search..."
        style="flex:1;padding:10px"
-       oninput="ProductSystem.smartSearch(this.value)">
+       oninput="advancedProductSearch()">
 </div>
 
 </div>
@@ -2020,13 +2016,6 @@ border-radius:12px;padding:20px;">
 
 </div>
 
-
-<div style="margin-top:15px;text-align:right;">
-<button class="green" onclick="ProductSystem.saveProduct()">Save</button>
-<button class="red" onclick="ProductSystem.closeProductForm()">Cancel</button>
-</div>
-
-</div>
 
 <div style="margin-top:10px;">
 <button class="green" onclick="saveProduct()">Save</button>
@@ -2088,24 +2077,22 @@ tbody.innerHTML += `
 
 /* ================= SEARCH ================= */
 
-function smartSearch(query){
+function advancedProductSearch(){
 
-query = (query||"").toLowerCase().trim();
+  const q = document.getElementById("productSearch").value.toLowerCase().trim();
 
-state.filtered = DB.products.filter(p=>{
+  if(!q){
+    renderProducts();
+    return;
+  }
 
-const b = (p.barcode||"").toLowerCase();
-const i = (p.itemNo||"").toLowerCase();
-const d = (p.desc||"").toLowerCase();
+  const results = DB.products.filter(p =>
+    (p.itemNo || "").toLowerCase().includes(q) ||
+    (p.desc || "").toLowerCase().includes(q) ||
+    (p.barcode || "").toLowerCase().includes(q)
+  );
 
-return b.includes(query)
-|| i.includes(query)
-|| d.includes(query);
-
-});
-
-state.page = 1;
-render();
+  renderProducts(results); // important: must support filtered render
 }
 let editingProductId = null;
 
@@ -2260,7 +2247,14 @@ id: uid("P"),
 barcode,
 itemNo,
 desc: r["Description"]||"",
-rate: +r["Retail Rate"]||0,
+rate: Number(
+  r["Rate"] ??
+  r["RATE"] ??
+  r["rate"] ??
+  r["Retail Rate"] ??
+  r["Retail rate"] ??
+  0
+),
 stock:0
 });
 
