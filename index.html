@@ -3925,60 +3925,6 @@ function openReport(name){
 }
 /* ================= MASTER FIFO PROFIT ENGINE ================= */
 
-function generateAdvancedProfit(){
-
-  const from = document.getElementById("profitFrom").value;
-  const to   = document.getElementById("profitTo").value;
-  const productFilter = document.getElementById("profitProduct").value;
-  const vendorFilter  = document.getElementById("profitVendor").value;
-  const accountFilter = document.getElementById("profitAccount").value;
-
-  let invoices = (DB.invoices || []).filter(inv => {
-
-    if(from && inv.date < from) return false;
-    if(to && inv.date > to) return false;
-    if(accountFilter && inv.user !== accountFilter) return false;
-
-    return true;
-  });
-
-  let totalSales = 0;
-  let totalCOGS = 0;
-  let detailRows = [];
-
-  invoices.forEach(inv => {
-
-    inv.items.forEach(item => {
-
-      const product = DB.products.find(p => p.id === item.productId);
-      if(!product) return;
-
-      if(productFilter && product.id !== productFilter) return;
-
-      const fifoCost = calculateFIFO(product.id, item.qty, inv.date);
-
-      const saleAmount = item.qty * item.rate;
-      const costAmount = fifoCost;
-      const gross = saleAmount - costAmount;
-
-      totalSales += saleAmount;
-      totalCOGS  += costAmount;
-
-      detailRows.push({
-        date: inv.date,
-        invoice: inv.no,
-        product: product.desc,
-        qty: item.qty,
-        sale: saleAmount,
-        cost: costAmount,
-        gross: gross
-      });
-
-    });
-
-  });
-
-  const grossProfit = totalSales - totalCOGS;
 
   /* ===== EXPENSE CALCULATION ===== */
 
@@ -4030,58 +3976,169 @@ function generateAdvancedProfit(){
 
 }
 
-/* ================= FIFO COSTING ================= */
+/* ================= MASTER ACCURATE FIFO PROFIT ENGINE ================= */
 
-function calculateFIFO(productId, qty, saleDate){
+function generateAdvancedProfit(){
 
-  let remainingQty = qty;
-  let totalCost = 0;
+  const from = document.getElementById("profitFrom").value;
+  const to   = document.getElementById("profitTo").value;
+  const productFilter = document.getElementById("profitProduct").value;
+  const vendorFilter  = document.getElementById("profitVendor").value;
+  const accountFilter = document.getElementById("profitAccount").value;
+
+  /* ===== FILTER INVOICES ===== */
+
+  let invoices = (DB.invoices || []).filter(inv => {
+    if(from && inv.date < from) return false;
+    if(to && inv.date > to) return false;
+    if(accountFilter && inv.user !== accountFilter) return false;
+    return true;
+  });
+
+  /* ===== BUILD FIFO STOCK MAP ===== */
+
+  const fifoMap = buildFifoStock();
+
+  let totalSales = 0;
+  let totalCOGS  = 0;
+  let detailRows = [];
+
+  invoices.sort((a,b)=> new Date(a.date) - new Date(b.date));
+
+  invoices.forEach(inv => {
+
+    inv.items.forEach(item => {
+
+      const product = DB.products.find(p => p.id === item.productId);
+      if(!product) return;
+
+      if(productFilter && product.id !== productFilter) return;
+      if(vendorFilter && product.vendorId !== vendorFilter) return;
+
+      const saleAmount = item.qty * item.rate;
+      const costAmount = consumeFIFO(fifoMap, product.id, item.qty);
+
+      totalSales += saleAmount;
+      totalCOGS  += costAmount;
+
+      detailRows.push({
+        date: inv.date,
+        invoice: inv.no,
+        product: product.desc,
+        qty: item.qty,
+        sale: saleAmount,
+        cost: costAmount,
+        gross: saleAmount - costAmount
+      });
+
+    });
+
+  });
+
+  const grossProfit = totalSales - totalCOGS;
+
+  /* ===== EXPENSE CALCULATION ===== */
+
+  let totalExpense = 0;
+
+  (DB.cash || []).forEach(c => {
+    if(!c.isExpense) return;
+    const d = c.date.split("T")[0];
+    if(from && d < from) return;
+    if(to && d > to) return;
+    totalExpense += Number(c.amount || 0);
+  });
+
+  /* ===== EXPENSE DISTRIBUTION BY SALES RATIO ===== */
+
+  detailRows.forEach(r=>{
+    const ratio = totalSales > 0 ? r.sale / totalSales : 0;
+    const expenseShare = totalExpense * ratio;
+    r.net = r.gross - expenseShare;
+  });
+
+  const netProfit = grossProfit - totalExpense;
+  const profitPercent = totalSales > 0
+    ? (netProfit / totalSales) * 100
+    : 0;
+
+  /* ===== UPDATE SUMMARY ===== */
+
+  document.getElementById("pfSales").innerText   = totalSales.toFixed(2);
+  document.getElementById("pfCogs").innerText    = totalCOGS.toFixed(2);
+  document.getElementById("pfGross").innerText   = grossProfit.toFixed(2);
+  document.getElementById("pfExpense").innerText = totalExpense.toFixed(2);
+  document.getElementById("pfNet").innerText     = netProfit.toFixed(2);
+  document.getElementById("pfPercent").innerText = profitPercent.toFixed(2) + "%";
+
+  /* ===== DETAIL TABLE ===== */
+
+  const tbody = document.getElementById("profitDetailRows");
+  tbody.innerHTML = "";
+
+  detailRows.forEach(r => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${r.date}</td>
+      <td>${r.invoice}</td>
+      <td>${r.product}</td>
+      <td>${r.qty}</td>
+      <td>${r.sale.toFixed(2)}</td>
+      <td>${r.cost.toFixed(2)}</td>
+      <td>${r.net.toFixed(2)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+}
+
+/* ================= BUILD FIFO STOCK ================= */
+
+function buildFifoStock(){
+
+  const map = {};
 
   const purchases = (DB.purchases || [])
-    .filter(p => new Date(p.dateTime) <= new Date(saleDate))
     .sort((a,b)=> new Date(a.dateTime) - new Date(b.dateTime));
 
-  for(let purchase of purchases){
+  purchases.forEach(p=>{
+    p.items.forEach(it=>{
 
-    for(let item of (purchase.items || [])){
+      if(!map[it.productId]) map[it.productId] = [];
 
-      if(item.productId !== productId) continue;
-      if(remainingQty <= 0) break;
+      map[it.productId].push({
+        qty: Number(it.qty),
+        cost: Number(it.cost)
+      });
 
-      const available = item.qty;
-      const used = Math.min(available, remainingQty);
+    });
+  });
 
-      totalCost += used * item.cost;
-      remainingQty -= used;
+  return map;
+}
 
-    }
+/* ================= CONSUME FIFO ================= */
 
-    if(remainingQty <= 0) break;
+function consumeFIFO(map, productId, qty){
+
+  let remaining = qty;
+  let totalCost = 0;
+
+  const layers = map[productId] || [];
+
+  for(let layer of layers){
+
+    if(remaining <= 0) break;
+    if(layer.qty <= 0) continue;
+
+    const used = Math.min(layer.qty, remaining);
+
+    totalCost += used * layer.cost;
+
+    layer.qty -= used;
+    remaining -= used;
   }
 
   return totalCost;
-}
-  function loadProfitFilters(){
-
-  const productSel = document.getElementById("profitProduct");
-  const vendorSel  = document.getElementById("profitVendor");
-  const accountSel = document.getElementById("profitAccount");
-
-  productSel.innerHTML = '<option value="">All Products</option>';
-  vendorSel.innerHTML  = '<option value="">All Vendors</option>';
-  accountSel.innerHTML = '<option value="">All Accounts</option>';
-
-  (DB.products || []).forEach(p=>{
-    productSel.innerHTML += `<option value="${p.id}">${p.desc}</option>`;
-  });
-
-  (DB.vendors || []).forEach(v=>{
-    vendorSel.innerHTML += `<option value="${v.id}">${v.name}</option>`;
-  });
-
-  [...new Set((DB.invoices || []).map(i=>i.user))].forEach(u=>{
-    if(u) accountSel.innerHTML += `<option value="${u}">${u}</option>`;
-  });
-
 }
 </script>
