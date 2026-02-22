@@ -2155,7 +2155,10 @@ border-radius:12px;padding:20px;">
 <input id="pDesc" placeholder="Description">
 <input id="pRate" type="number" placeholder="Rate">
 </div>
-
+<div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end">
+  <button class="green" onclick="ProductSystem.saveProduct()">Save</button>
+  <button class="red" onclick="ProductSystem.closeProductForm()">Cancel</button>
+</div>
 
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:15px">
@@ -2254,9 +2257,11 @@ function advancedProductSearch(){
   const q = document.getElementById("productSearch").value.toLowerCase().trim();
 
   if(!q){
-    renderProducts();
+    state.filtered = DB.products.slice();
+    state.page = 1;
+    render();
     return;
-  }
+}
 
   const results = DB.products.filter(p =>
     (p.itemNo || "").toLowerCase().includes(q) ||
@@ -2264,7 +2269,9 @@ function advancedProductSearch(){
     (p.barcode || "").toLowerCase().includes(q)
   );
 
-  renderProducts(results); // important: must support filtered render
+  state.filtered = results;
+state.page = 1;
+render();
 }
 let editingProductId = null;
 
@@ -3079,21 +3086,27 @@ function searchProduct(inp,i){
 }
   document.querySelectorAll(".suggest-box").forEach(x=>x.remove());
   const val=inp.value.trim();
+  if(val.length < 1) return;
   purchaseDraft[i].productId=null;   // IMPORTANT: reset
 
   if(!val)return;
 
-  const list=DB.products.filter(p=>
-    p.barcode.toLowerCase().includes(val.toLowerCase()) ||
-    p.itemNo.toLowerCase().includes(val.toLowerCase()) ||
-    p.desc.toLowerCase().includes(val.toLowerCase())
-  ).slice(0,5);
-
+  const list = (DB.products || []).filter(p =>
+  (p.barcode || "").toLowerCase().includes(val.toLowerCase()) ||
+  (p.itemNo || "").toLowerCase().includes(val.toLowerCase()) ||
+  (p.desc || "").toLowerCase().includes(val.toLowerCase())
+).slice(0,5);
+  
   const box=document.createElement("div");
   box.className="suggest-box";
-  inp.parentNode.style.position="relative";
-  inp.parentNode.appendChild(box);
+  box.className = "suggest-box";
+box.style.position = "absolute";
+box.style.left = inp.offsetLeft + "px";
+box.style.top = (inp.offsetTop + inp.offsetHeight) + "px";
+box.style.width = inp.offsetWidth + "px";
 
+inp.closest("td").appendChild(box);
+  
   if(!list.length){
     const d=document.createElement("div");
     d.innerText="❌ No match found";
@@ -3127,7 +3140,11 @@ function selectProduct(i,p){
 }
 
 
-document.addEventListener("click",()=>document.querySelectorAll(".suggest-box").forEach(x=>x.remove()));
+document.addEventListener("click", (e) => {
+  if(!e.target.closest(".suggest-box") && !e.target.closest("#purchaseRows")){
+    document.querySelectorAll(".suggest-box").forEach(x=>x.remove());
+  }
+});
 
 /* ===== UTILS ===== */
 function setQty(i,v){
