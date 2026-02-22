@@ -312,70 +312,6 @@ document.addEventListener("DOMContentLoaded", ()=>{
 });
 </script>
 <script>
-function loadProfitFilters(){
-
-  profitProduct.innerHTML='<option value="">All Products</option>';
-  DB.products.forEach(p=>{
-    profitProduct.innerHTML+=`<option value="${p.id}">${p.itemNo} - ${p.desc}</option>`;
-  });
-
-  profitVendor.innerHTML='<option value="">All Vendors</option>';
-  DB.vendors.forEach(v=>{
-    profitVendor.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
-  });
-
-  profitAccount.innerHTML='<option value="">All Accounts</option>';
-  (DB.accounts||[]).forEach(a=>{
-    profitAccount.innerHTML+=`<option value="${a.id}">${a.name}</option>`;
-  });
-}
-  function applyAdvancedProfit(){
-
-  const from = profitFrom.value;
-  const to   = profitTo.value;
-  const productId = profitProduct.value;
-  const vendorId  = profitVendor.value;
-  const accountId = profitAccount.value;
-
-  let totalSales=0;
-  let totalCogs=0;
-  let totalExpense=0;
-
-  profitDetailRows.innerHTML="";
-
-  (DB.invoices||[]).forEach(inv=>{
-
-    if(from && inv.date<from) return;
-    if(to && inv.date>to) return;
-
-    inv.items.forEach(it=>{
-
-      if(productId && it.productId!==productId) return;
-
-      const sale = it.qty * it.rate;
-
-      const cost = getPurchaseCost(it.productId, inv.date) * it.qty;
-
-      totalSales += sale;
-      totalCogs += cost;
-
-      const profit = sale - cost;
-
-      const tr=document.createElement("tr");
-      tr.innerHTML=`
-      <td>${inv.date}</td>
-      <td>${inv.no}</td>
-      <td>${it.desc||it.itemNo}</td>
-      <td>${it.qty}</td>
-      <td>${sale.toFixed(2)}</td>
-      <td>${cost.toFixed(2)}</td>
-      <td>${profit.toFixed(2)}</td>
-      `;
-      profitDetailRows.appendChild(tr);
-
-    });
-
-  });
 
   /* ===== EXPENSE CALCULATION ===== */
   (DB.expenses||[]).forEach(e=>{
@@ -431,39 +367,6 @@ document.getElementById("productDetailsReport").style.display="none";
   `;
 }
 
-function applyProfitReport(){
-  const from=pFrom.value,to=pTo.value,user=pUser.value;
-  profitRows.innerHTML="";
-
-  DB.invoices.forEach(inv=>{
-    const d=new Date(inv.dateTime);
-    if(from && d<new Date(from)) return;
-    if(to && d>new Date(to+"T23:59:59")) return;
-
-    let cost=0;
-    inv.items.forEach(it=>{
-      const purchase=DB.purchases
-        .filter(p=>p.items.some(x=>x.itemNo===it.itemNo))
-        .sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
-      if(purchase){
-        const pi=purchase.items.find(x=>x.itemNo===it.itemNo);
-        cost+= (pi?pi.cost:0)*it.qty;
-      }
-    });
-
-    const profit=inv.total-cost;
-    profitRows.innerHTML+=`
-      <tr onclick="alertInvoiceProfit('${inv.id}')">
-        <td>${inv.id}</td>
-        <td>${d.toLocaleDateString()}</td>
-        <td>${inv.user||""}</td>
-        <td>${inv.total.toFixed(2)}</td>
-        <td>${cost.toFixed(2)}</td>
-        <td class="${profit>=0?'profit-pos':'profit-neg'}">${profit.toFixed(2)}</td>
-      </tr>
-    `;
-  });
-}
 
 function alertInvoiceProfit(id){
   const inv=DB.invoices.find(x=>x.id===id);
@@ -3448,85 +3351,7 @@ function getPurchaseCost(productId, invDate){
   return lastCost;
 }
 
-/* ===== PROFIT REPORT ===== */
-function applyProfitReport(){
-  profitRows.innerHTML="";
-  profitDetail.innerHTML="";
 
-  const from=profitFrom.value, to=profitTo.value, user=profitUser.value;
-
-  (DB.invoices||[]).forEach(inv=>{
-    if(from && inv.date<from) return;
-    if(to && inv.date>to) return;
-    if(user && inv.user!==user) return;
-
-    let cost=0, profit=0;
-
-    inv.items.forEach(it=>{
-      const c = getPurchaseCost(it.productId, inv.date);
-      cost += c * it.qty;
-      profit += (it.rate - c) * it.qty;
-    });
-
-    const tr=document.createElement("tr");
-    tr.innerHTML=`
-      <td>${inv.no}</td>
-      <td>${inv.date}</td>
-      <td>${inv.user||""}</td>
-      <td>${inv.total}</td>
-      <td>${cost.toFixed(2)}</td>
-      <td class="${profit>=0?'profit-pos':'profit-neg'}">${profit.toFixed(2)}</td>
-    `;
-    tr.onclick=()=>showProfitDetail(inv);
-    profitRows.appendChild(tr);
-  });
-}
-
-function showProfitDetail(inv){
-  let html=`<h4>Invoice ${inv.no}</h4>
-  <table class="r-table">
-  <tr><th>Item</th><th>Qty</th><th>Sale</th><th>Cost</th><th>Profit</th></tr>`;
-
-  inv.items.forEach(it=>{
-    const c=getPurchaseCost(it.itemNo,inv.date);
-    const p=(it.rate-c)*it.qty;
-    html+=`
-      <tr>
-        <td>${it.desc||it.itemNo}</td>
-        <td>${it.qty}</td>
-        <td>${it.rate}</td>
-        <td>${c}</td>
-        <td class="${p>=0?'profit-pos':'profit-neg'}">${p.toFixed(2)}</td>
-      </tr>`;
-  });
-
-  html+="</table>";
-  profitDetail.innerHTML=html;
-}
-
-/* ===== DELETED REPORT ===== */
-function applyDeletedReport(){
-  deletedRows.innerHTML="";
-  const from=delFrom.value,to=delTo.value,user=delUser.value,mod=delModule.value;
-
-  DB.logs.forEach(l=>{
-    if(l.action!=="DELETE") return;
-
-    const d=l.dateTime.split("T")[0];
-    if(from && d<from) return;
-    if(to && d>to) return;
-    if(user && l.user!==user) return;
-    if(mod && !l.ref.startsWith(mod)) return;
-
-    deletedRows.innerHTML+=`
-      <tr>
-        <td>${new Date(l.dateTime).toLocaleString()}</td>
-        <td>${l.user}</td>
-        <td>${l.ref.split(" ")[0]}</td>
-        <td>${l.ref}</td>
-      </tr>`;
-  });
-}
 
 /* ===== LOAD USERS ===== */
  document.addEventListener("DOMContentLoaded",()=>{
@@ -3981,85 +3806,7 @@ function getPurchaseCost(productId, invDate){
   return lastCost;
 }
 
-/* ===== PROFIT REPORT ===== */
-function applyProfitReport(){
-  profitRows.innerHTML="";
-  profitDetail.innerHTML="";
 
-  const from=profitFrom.value, to=profitTo.value, user=profitUser.value;
-
-  (DB.invoices||[]).forEach(inv=>{
-    if(from && inv.date<from) return;
-    if(to && inv.date>to) return;
-    if(user && inv.user!==user) return;
-
-    let cost=0, profit=0;
-
-    inv.items.forEach(it=>{
-      const c = getPurchaseCost(it.productId, inv.date);
-      cost += c * it.qty;
-      profit += (it.rate - c) * it.qty;
-    });
-
-    const tr=document.createElement("tr");
-    tr.innerHTML=`
-      <td>${inv.no}</td>
-      <td>${inv.date}</td>
-      <td>${inv.user||""}</td>
-      <td>${inv.total}</td>
-      <td>${cost.toFixed(2)}</td>
-      <td class="${profit>=0?'profit-pos':'profit-neg'}">${profit.toFixed(2)}</td>
-    `;
-    tr.onclick=()=>showProfitDetail(inv);
-    profitRows.appendChild(tr);
-  });
-}
-
-function showProfitDetail(inv){
-  let html=`<h4>Invoice ${inv.no}</h4>
-  <table class="r-table">
-  <tr><th>Item</th><th>Qty</th><th>Sale</th><th>Cost</th><th>Profit</th></tr>`;
-
-  inv.items.forEach(it=>{
-    const c=getPurchaseCost(it.itemNo,inv.date);
-    const p=(it.rate-c)*it.qty;
-    html+=`
-      <tr>
-        <td>${it.desc||it.itemNo}</td>
-        <td>${it.qty}</td>
-        <td>${it.rate}</td>
-        <td>${c}</td>
-        <td class="${p>=0?'profit-pos':'profit-neg'}">${p.toFixed(2)}</td>
-      </tr>`;
-  });
-
-  html+="</table>";
-  profitDetail.innerHTML=html;
-}
-
-/* ===== DELETED REPORT ===== */
-function applyDeletedReport(){
-  deletedRows.innerHTML="";
-  const from=delFrom.value,to=delTo.value,user=delUser.value,mod=delModule.value;
-
-  DB.logs.forEach(l=>{
-    if(l.action!=="DELETE") return;
-
-    const d=l.dateTime.split("T")[0];
-    if(from && d<from) return;
-    if(to && d>to) return;
-    if(user && l.user!==user) return;
-    if(mod && !l.ref.startsWith(mod)) return;
-
-    deletedRows.innerHTML+=`
-      <tr>
-        <td>${new Date(l.dateTime).toLocaleString()}</td>
-        <td>${l.user}</td>
-        <td>${l.ref.split(" ")[0]}</td>
-        <td>${l.ref}</td>
-      </tr>`;
-  });
-}
 
 /* ===== LOAD USERS ===== */
 document.addEventListener("DOMContentLoaded",()=>{
@@ -4128,7 +3875,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <option value="">All Accounts</option>
 </select>
 
-<button onclick="applyAdvancedProfit()">Generate</button>
+<button onclick="generateAdvancedProfit()">Generate</button>
 
 </div>
 
@@ -4166,3 +3913,175 @@ document.addEventListener("DOMContentLoaded",()=>{
   <div id="deletedDataReport" class="card" style="display:none;margin-top:20px;"></div>
 
 </section>
+<script>
+function openReport(name){
+
+  document.querySelectorAll(".report-page").forEach(d=>{
+    d.style.display="none";
+  });
+
+  const el = document.getElementById(name+"Report");
+  if(el) el.style.display="block";
+}
+/* ================= MASTER FIFO PROFIT ENGINE ================= */
+
+function generateAdvancedProfit(){
+
+  const from = document.getElementById("profitFrom").value;
+  const to   = document.getElementById("profitTo").value;
+  const productFilter = document.getElementById("profitProduct").value;
+  const vendorFilter  = document.getElementById("profitVendor").value;
+  const accountFilter = document.getElementById("profitAccount").value;
+
+  let invoices = (DB.invoices || []).filter(inv => {
+
+    if(from && inv.date < from) return false;
+    if(to && inv.date > to) return false;
+    if(accountFilter && inv.user !== accountFilter) return false;
+
+    return true;
+  });
+
+  let totalSales = 0;
+  let totalCOGS = 0;
+  let detailRows = [];
+
+  invoices.forEach(inv => {
+
+    inv.items.forEach(item => {
+
+      const product = DB.products.find(p => p.id === item.productId);
+      if(!product) return;
+
+      if(productFilter && product.id !== productFilter) return;
+
+      const fifoCost = calculateFIFO(product.id, item.qty, inv.date);
+
+      const saleAmount = item.qty * item.rate;
+      const costAmount = fifoCost;
+      const gross = saleAmount - costAmount;
+
+      totalSales += saleAmount;
+      totalCOGS  += costAmount;
+
+      detailRows.push({
+        date: inv.date,
+        invoice: inv.no,
+        product: product.desc,
+        qty: item.qty,
+        sale: saleAmount,
+        cost: costAmount,
+        gross: gross
+      });
+
+    });
+
+  });
+
+  const grossProfit = totalSales - totalCOGS;
+
+  /* ===== EXPENSE CALCULATION ===== */
+
+  let totalExpense = 0;
+
+  (DB.cash || []).forEach(c => {
+    if(!c.isExpense) return;
+    const d = c.date.split("T")[0];
+    if(from && d < from) return;
+    if(to && d > to) return;
+    totalExpense += Number(c.amount || 0);
+  });
+
+  /* ===== EXPENSE DISTRIBUTION BY SALES RATIO ===== */
+
+  let netProfit = grossProfit - totalExpense;
+
+  const profitPercent = totalSales > 0
+    ? (netProfit / totalSales) * 100
+    : 0;
+
+  /* ===== UPDATE SUMMARY ===== */
+
+  document.getElementById("pfSales").innerText   = totalSales.toFixed(2);
+  document.getElementById("pfCogs").innerText    = totalCOGS.toFixed(2);
+  document.getElementById("pfGross").innerText   = grossProfit.toFixed(2);
+  document.getElementById("pfExpense").innerText = totalExpense.toFixed(2);
+  document.getElementById("pfNet").innerText     = netProfit.toFixed(2);
+  document.getElementById("pfPercent").innerText = profitPercent.toFixed(2) + "%";
+
+  /* ===== DETAIL TABLE ===== */
+
+  const tbody = document.getElementById("profitDetailRows");
+  tbody.innerHTML = "";
+
+  detailRows.forEach(r => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${r.date}</td>
+      <td>${r.invoice}</td>
+      <td>${r.product}</td>
+      <td>${r.qty}</td>
+      <td>${r.sale.toFixed(2)}</td>
+      <td>${r.cost.toFixed(2)}</td>
+      <td>${r.gross.toFixed(2)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+}
+
+/* ================= FIFO COSTING ================= */
+
+function calculateFIFO(productId, qty, saleDate){
+
+  let remainingQty = qty;
+  let totalCost = 0;
+
+  const purchases = (DB.purchases || [])
+    .filter(p => new Date(p.dateTime) <= new Date(saleDate))
+    .sort((a,b)=> new Date(a.dateTime) - new Date(b.dateTime));
+
+  for(let purchase of purchases){
+
+    for(let item of (purchase.items || [])){
+
+      if(item.productId !== productId) continue;
+      if(remainingQty <= 0) break;
+
+      const available = item.qty;
+      const used = Math.min(available, remainingQty);
+
+      totalCost += used * item.cost;
+      remainingQty -= used;
+
+    }
+
+    if(remainingQty <= 0) break;
+  }
+
+  return totalCost;
+}
+  function loadProfitFilters(){
+
+  const productSel = document.getElementById("profitProduct");
+  const vendorSel  = document.getElementById("profitVendor");
+  const accountSel = document.getElementById("profitAccount");
+
+  productSel.innerHTML = '<option value="">All Products</option>';
+  vendorSel.innerHTML  = '<option value="">All Vendors</option>';
+  accountSel.innerHTML = '<option value="">All Accounts</option>';
+
+  (DB.products || []).forEach(p=>{
+    productSel.innerHTML += `<option value="${p.id}">${p.desc}</option>`;
+  });
+
+  (DB.vendors || []).forEach(v=>{
+    vendorSel.innerHTML += `<option value="${v.id}">${v.name}</option>`;
+  });
+
+  [...new Set((DB.invoices || []).map(i=>i.user))].forEach(u=>{
+    if(u) accountSel.innerHTML += `<option value="${u}">${u}</option>`;
+  });
+
+}
+</script>
