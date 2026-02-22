@@ -910,12 +910,15 @@ function vrSearch(inp,type){
   if(!q) return;
 
   DB.products.forEach(p=>{
-    let ok=false;
-    if(type==="barcode" && (p.barcode||"").toLowerCase().includes(q)) ok=true;
-    if(type==="item" && (p.itemNo||"").toLowerCase().includes(q)) ok=true;
-    if(type==="desc" && (p.desc||"").toLowerCase().includes(q)) ok=true;
-    if(!ok) return;
+    // skip zero stock products
+if((p.stock || 0) <= 0) return;
 
+let ok=false;
+if(type==="barcode" && (p.barcode||"").toLowerCase().includes(q)) ok=true;
+if(type==="item" && (p.itemNo||"").toLowerCase().includes(q)) ok=true;
+if(type==="desc" && (p.desc||"").toLowerCase().includes(q)) ok=true;
+if(!ok) return;
+    
     if([...vrBody.children].some(r=>r!==inp.closest("tr") && r.children[1].children[0].value===p.itemNo)) return;
 
     const d=document.createElement("div");
@@ -1180,6 +1183,7 @@ th{background:#eaeaea;font-weight:700}
 <tr>
 <th>#</th>
 <th>Item No</th>
+<th>Description</th>
 <th>Qty</th>
 <th>Cost</th>
 <th>Amount</th>
@@ -3303,11 +3307,12 @@ function printPurchase(id){
   const rows = p.items.map((it,i)=>{
     const amt = it.qty * it.cost;
     grand += amt;
-    return `
+    const prod = DB.products.find(x=>x.itemNo===it.itemNo);
+return `
 <tr>
-<td>${i+1}</td>
+<td>${index+1}</td>
 <td>${it.itemNo}</td>
-<td>${it.desc}</td>
+<td>${prod?.desc || ""}</td>
 <td>${it.qty}</td>
 <td>${Number(it.cost).toFixed(2)}</td>
 <td>${Number(amt).toFixed(2)}</td>
