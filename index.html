@@ -946,14 +946,16 @@ function vrSave(){
   const amount=items.reduce((s,i)=>s+i.qty*i.cost,0);
   const no=vrEditIndex!==null?DB.returns[vrEditIndex].no:vrNo.innerText;
 
-  DB.vendorLedger.push({
+  const vendorObj = DB.vendors.find(v=>v.name===vrVendor.value);
+
+DB.vendorLedger.push({
   id:uid("VL"),
-  vendor:vrVendor.value,
-  vendorId: DB.vendors.find(v=>v.name===vrVendor.value)?.id || "",
-  type:"RETURN",
+  vendorId: vendorObj?.id || "",
+  vendorName: vendorObj?.name || "",
+  type:"Vendor Return",
   ref:no,
   debit:0,
-  credit:amount,
+  credit:Number(amount),
   date:new Date().toISOString()
 });
 
@@ -999,7 +1001,7 @@ function vrLoadPrevious(){
 function vrEdit(i){
   const r=DB.returns[i];
   vrEditIndex=i;
-  <div><b>Vendor:</b> ${r.vendorName}</div>
+  vrVendor.value = r.vendorName;
   vrNo.innerText=r.no;
   vrBody.innerHTML="";
   r.items.forEach(it=>{
