@@ -549,9 +549,17 @@ function logAction(action, ref=""){
   <script>
 
 document.addEventListener("DOMContentLoaded",()=>{
-  loadPDFilters();
-});
 
+  window.vrVendor = document.getElementById("vrVendor");
+  window.vrBody = document.getElementById("vrBody");
+  window.vrTotal = document.getElementById("vrTotal");
+  window.vrNo = document.getElementById("vrNo");
+  window.vrPrev = document.getElementById("vrPrev");
+
+  vrLoadVendors();
+  vrGenerateNo();
+  vrLoadPrevious();
+});
 function loadPDFilters(){
   const pSel=document.getElementById("pdProduct");
   const vSel=document.getElementById("pdVendor");
@@ -771,12 +779,36 @@ document.addEventListener("DOMContentLoaded",()=>{
 
 /* ================= VENDORS ================= */
 function vrLoadVendors(){
-  vrVendor.innerHTML='<option value="">Select Vendor</option>';
-  DB.vendors.forEach(v=>{
-    vrVendor.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
+
+  const select = document.getElementById("vrVendor");
+
+  if(!select) return;
+
+  select.innerHTML = '<option value="">Select Vendor</option>';
+
+  (DB.vendors || []).forEach(v=>{
+    select.innerHTML += `<option value="${v.name}">${v.name}</option>`;
   });
 }
+  .dropdown{
+  position:absolute;
+  background:#fff;
+  border:1px solid #ccc;
+  width:250px;
+  max-height:200px;
+  overflow-y:auto;
+  z-index:9999;
+}
 
+.dd-item{
+  padding:6px;
+  cursor:pointer;
+}
+
+.dd-item:hover,
+.dd-item.active{
+  background:#eaeaea;
+}
 /* ================= RETURN NO ================= */
 function vrGenerateNo(){
   let max=0;
@@ -793,10 +825,20 @@ function vrAddRow(){
 
   const tr=document.createElement("tr");
   tr.innerHTML=`
-<td><input onkeydown="vrKeyNav(event,this,'barcode')" oninput="vrSearch(this,'barcode')"><div class="dropdown"></div></td>
-<td><input onkeydown="vrKeyNav(event,this,'item')" oninput="vrSearch(this,'item')"><div class="dropdown"></div></td>
-<td><input onkeydown="vrKeyNav(event,this,'desc')" oninput="vrSearch(this,'desc')"><div class="dropdown"></div></td>
-<td class="stk">0</td>
+<td style="position:relative">
+<input onkeydown="vrKeyNav(event,this,'barcode')" oninput="vrSearch(this,'barcode')">
+<div class="dropdown"></div>
+</td>
+
+<td style="position:relative">
+<input onkeydown="vrKeyNav(event,this,'item')" oninput="vrSearch(this,'item')">
+<div class="dropdown"></div>
+</td>
+
+<td style="position:relative">
+<input onkeydown="vrKeyNav(event,this,'desc')" oninput="vrSearch(this,'desc')">
+<div class="dropdown"></div>
+</td><td class="stk">0</td>
 <td><input type="number" min="1" oninput="vrCalc()"></td>
 <td><input type="number" min="0.01" step="0.01" oninput="vrCalc()"></td>
 <td class="amt">0.00</td>
