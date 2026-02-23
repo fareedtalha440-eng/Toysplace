@@ -948,10 +948,27 @@ function vrSave(){
   const amount=items.reduce((s,i)=>s+i.qty*i.cost,0);
   const no=vrEditIndex!==null?DB.returns[vrEditIndex].no:vrNo.innerText;
 
-  DB.vendorLedger.push({id:uid("VL"),vendor:vrVendor.value,type:"RETURN",ref:no,credit:amount,date:new Date().toISOString()});
+  const vendorObj = DB.vendors.find(v=>v.id===vrVendor.value);
 
-  const obj={no,vendor:vrVendor.value,items,amount,dateTime:new Date().toISOString()};
-  vrEditIndex!==null?DB.returns[vrEditIndex]=obj:DB.returns.push(obj);
+DB.vendorLedger.push({
+  id:uid("VL"),
+  vendorId: vendorObj?.id || "",
+  vendorName: vendorObj?.name || "",
+  type:"Return",
+  ref:no,
+  debit:0,
+  credit:Number(amount),
+  date:new Date().toISOString()
+});
+
+const obj={
+  no,
+  vendorId: vendorObj?.id || "",
+  vendorName: vendorObj?.name || "",
+  items,
+  amount,
+  dateTime:new Date().toISOString()
+};
 
   saveDB();
   vrEditIndex=null;
