@@ -1751,8 +1751,18 @@ td{position:relative}
         <option value="">Select Vendor</option>
       </select>
       <label style="display:flex;align-items:center;gap:5px;">
-<input type="checkbox" id="isExpense">
-Expense
+<select id="payType">
+  <option value="OUT">OUT (Cash → Vendor)</option>
+  <option value="IN">IN (Vendor → Cash)</option>
+</select>
+
+<label style="display:flex;align-items:center;gap:5px;">
+  <input type="checkbox" id="isExpense">
+  <select id="payType">
+  <option value="OUT">OUT (Cash → Vendor)</option>
+  <option value="IN">IN (Vendor → Cash)</option>
+</select>
+  Expense
 </label>
       <input placeholder="Reference" id="payRef" style="flex:1 1 150px;">
       <input type="number" placeholder="Amount" id="payAmount" style="flex:1 1 120px;">
@@ -1829,14 +1839,17 @@ function loadVendorOptions(){
   selectAdd.innerHTML='<option value="">Select Vendor</option>';
   selectFilter.innerHTML='<option value="">All Vendors</option>';
   DB.vendors.forEach(v=>{
-    selectAdd.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
-    selectFilter.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
+    selectAdd.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
+selectFilter.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
   });
 }
 
 /* ===== CASH BALANCE ===== */
-function cashBalance(){
-  return DB.cash.reduce((s,t)=>t.type==="IN"?s+t.amount:s-t.amount,0);
+ffunction cashBalance(){
+  return DB.cash.reduce((s,t)=>{
+    if(t.type==="IN") return s + t.amount;
+    return s - t.amount;
+  },0);
 }
 
 /* ===== SAVE PAYMENT (ADD / EDIT) ===== */
@@ -1845,6 +1858,7 @@ function saveCashPayment(){
   const vendor = document.getElementById("payVendor").value.trim();
   const ref = document.getElementById("payRef").value.trim();
   const amount = +document.getElementById("payAmount").value;
+  const type = document.getElementById("payType").value;
 
   if(!date || !amount) return alert("Date and Amount required");
 
@@ -1868,34 +1882,54 @@ function saveCashPayment(){
     c.amount = amount;
 
     if(vendor){
-      const v = DB.vendors.find(x=>x.name===vendor);
-      if(v) v.balance = (v.balance || 0) - amount; // apply new
+  const v = DB.vendors.find(x=>x.name===vendor);
+  if(v){
+    if(type==="OUT"){
+      v.balance = (v.balance || 0) - amount;
+    } else {
+      v.balance = (v.balance || 0) + amount;
     }
+  }
+}
 
     editingCashId = null;
   } else {
     // ADD NEW PAYMENT
     const id = getNextPaymentId();
     if(vendor){
-      const v = DB.vendors.find(x=>x.name===vendor);
-      if(v) v.balance = (v.balance || 0) - amount;
+  const v = DB.vendors.find(x=>x.name===vendor);
+  if(v){
+
+    if(type==="OUT"){
+      v.balance = (v.balance || 0) - amount;
+    } else {
+      v.balance = (v.balance || 0) + amount;
     }
 
-    DB.cash.push({
-      id,
-      dateTime: dtISO,
-      createdDate: new Date().toISOString(),
-      type:"OUT",
-      vendor: vendor || "",
-      ref: ref || vendor || "",
-      amount,
-      expense: document.getElementById("isExpense").checked || false
+    // ===== ADD TO VENDOR LEDGER =====
+    DB.vendorLedger.push({
+      id: uid("VL"),
+      vendor: v.name,
+      type: type==="OUT" ? "PAYMENT" : "RECEIVED",
+      ref: id,
+      debit: type==="OUT" ? amount : 0,
+      credit: type==="IN" ? amount : 0,
+      date: new Date().toISOString()
     });
-  }
 
-  saveDB(); resetCashForm(); renderCash();
+  }
 }
 
+DB.cash.push({
+  id,
+  dateTime: dtISO,
+  createdDate: new Date().toISOString(),
+  type: type,   // 👈 IMPORTANT (was "OUT")
+  vendor: vendor || "",
+  ref: ref || vendor || "",
+  amount,
+  expense: document.getElementById("isExpense").checked || false
+});
 function resetCashForm(){
   document.getElementById("payDate").value="";
   document.getElementById("payVendor").value="";
@@ -1931,7 +1965,7 @@ function renderCash(){
   if(to) filtered = filtered.filter(c=>new Date(c.dateTime)<=new Date(to));
 
   const vendorFilter = document.getElementById("cashVendorFilter").value.trim();
-  if(vendorFilter) filtered = filtered.filter(c=>c.vendor===vendorFilter);
+  if(vendorFilter) filtered = filtered.filter(c=>c.vendorId===vendorFilter);
 
   const searchText = document.getElementById("cashSearch").value.trim().toLowerCase();
   if(searchText) filtered = filtered.filter(c=> 
@@ -1960,7 +1994,7 @@ function renderCash(){
 
     const dt = new Date(c.dateTime);
     const created = new Date(c.createdDate || c.dateTime).toLocaleString();
-    const vendorName = c.vendor || (c.type==="IN"?"Cash Customer":"");
+    const vendorName = c.vendorName || "";
 
     tbody.innerHTML+=`
       <tr>
