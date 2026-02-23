@@ -778,7 +778,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 function vrLoadVendors(){
   vrVendor.innerHTML='<option value="">Select Vendor</option>';
   DB.vendors.forEach(v=>{
-    vrVendor.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
+    vrVendor.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
   });
 }
 
@@ -960,7 +960,6 @@ DB.vendorLedger.push({
   credit:Number(amount),
   date:new Date().toISOString()
 });
-
 const obj={
   no,
   vendorId: vendorObj?.id || "",
