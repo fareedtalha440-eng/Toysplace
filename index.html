@@ -395,6 +395,7 @@ let DB = {
   deleted: JSON.parse(localStorage.getItem("deleted") || "[]"),
   settings: JSON.parse(localStorage.getItem("settings") || "{}"),
   accounts: JSON.parse(localStorage.getItem("accounts") || "[]")  // Added accounts
+  vendorLedger: JSON.parse(localStorage.getItem("vendorLedger") || "[]")
 };
 
 // Initialize default developer account if not exists
@@ -1750,18 +1751,13 @@ td{position:relative}
       <select id="payVendor" style="flex:1 1 150px;">
         <option value="">Select Vendor</option>
       </select>
-      <label style="display:flex;align-items:center;gap:5px;">
-<select id="payType">
+     <select id="payType" style="flex:1 1 150px;">
   <option value="OUT">OUT (Cash → Vendor)</option>
   <option value="IN">IN (Vendor → Cash)</option>
 </select>
 
 <label style="display:flex;align-items:center;gap:5px;">
   <input type="checkbox" id="isExpense">
-  <select id="payType">
-  <option value="OUT">OUT (Cash → Vendor)</option>
-  <option value="IN">IN (Vendor → Cash)</option>
-</select>
   Expense
 </label>
       <input placeholder="Reference" id="payRef" style="flex:1 1 150px;">
@@ -2640,11 +2636,16 @@ function openVendorLedger(vendorId){
       rows.push({date:p.dateTime,type:"Purchase",ref:p.id,debit:p.total,credit:0});
     });
 
-  DB.cash.filter(c=>c.type==="OUT" && c.vendorId===v.id)
-    .forEach(c=>{
-      rows.push({date:c.dateTime,type:"Payment",ref:c.ref||c.id,debit:0,credit:c.amount});
+ DB.cash.filter(c=>c.type==="OUT" && c.vendorId===v.id)
+  .forEach(c=>{
+    rows.push({
+      date:c.dateTime,
+      type: c.expense ? "Payment (EXP)" : "Payment",
+      ref:c.ref||c.id,
+      debit:0,
+      credit:c.amount
     });
-
+  });
   DB.returns.filter(r=>r.vendorId===v.id)
     .forEach(r=>{
       rows.push({date:r.dateTime,type:"Return",ref:r.no,debit:0,credit:r.amount});
@@ -3725,7 +3726,73 @@ function resetSystem(){
   saveDB();
   location.reload();
 }
+let editingCashId = null;
 
+function saveCashPayment(){
+
+  const date = document.getElementById("payDate").value || new Date().toISOString().split("T")[0];
+  const vendorId = document.getElementById("payVendor").value;
+  const type = document.getElementById("payType").value;
+  const ref = document.getElementById("payRef").value || "";
+  const amount = +document.getElementById("payAmount").value;
+  const isExpense = document.getElementById("isExpense")?.checked || false;
+
+  if(!vendorId) return alert("Select vendor");
+  if(!amount || amount<=0) return alert("Enter valid amount");
+
+  const vendorObj = DB.vendors.find(v=>v.id===vendorId);
+
+  const obj = {
+    id: editingCashId || uid("C"),
+    date,
+    vendorId,
+    vendorName: vendorObj?.name || "",
+    type,
+    ref,
+    amount,
+    isExpense,
+    dateTime:new Date().toISOString()
+  };
+
+  if(editingCashId){
+    const index = DB.cash.findIndex(x=>x.id===editingCashId);
+    DB.cash[index]=obj;
+  }else{
+    DB.cash.push(obj);
+    DB.vendorLedger.push({
+  id: uid("VL"),
+  vendorId: obj.vendorId,
+  vendorName: obj.vendorName,
+  type: "Payment",
+  amount: obj.amount,
+  expense: obj.isExpense || false,
+  date: obj.date
+});
+  }
+
+  // ADD TO VENDOR LEDGER
+  DB.vendorLedger = DB.vendorLedger || [];
+
+  DB.vendorLedger.push({
+    id:uid("VL"),
+    vendorId,
+    vendorName: vendorObj?.name || "",
+    type:"Payment",
+    ref:ref || obj.id,
+    debit: type==="OUT" ? amount : 0,
+    credit: type==="IN" ? amount : 0,
+    expense:isExpense,
+    date:new Date().toISOString()
+  });
+
+  saveDB();
+  editingCashId=null;
+
+  document.getElementById("payRef").value="";
+  document.getElementById("payAmount").value="";
+
+  renderCash();
+}
 /* ===== INITIAL RENDER ===== */
 renderAccounts();
 
