@@ -2635,14 +2635,16 @@ function openVendorLedger(vendorId){
       rows.push({date:p.dateTime,type:"Purchase",ref:p.id,debit:p.total,credit:0});
     });
 
- DB.cash.filter(c=>c.type==="OUT" && c.vendorId===v.id)
+ DB.cash.filter(c=>c.vendor===v.name)
   .forEach(c=>{
     rows.push({
       date:c.dateTime,
-      type: c.expense ? "Payment (EXP)" : "Payment",
+      type: c.expense 
+            ? (c.type==="OUT" ? "Payment (EXP)" : "Received (EXP)")
+            : (c.type==="OUT" ? "Payment" : "Received"),
       ref:c.ref||c.id,
-      debit:0,
-      credit:c.amount
+      debit: c.type==="OUT" ? 0 : c.amount,
+      credit: c.type==="OUT" ? c.amount : 0
     });
   });
   DB.returns.filter(r=>r.vendorId===v.id)
