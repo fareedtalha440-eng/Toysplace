@@ -218,51 +218,7 @@ button{
   from{opacity:0;transform:translateY(6px)}
   to{opacity:1;transform:none}
 }
-/* ================= CASH SECTION CSS ================= */
 
-  .cash-sticky-bar {
-    position: sticky;
-    top: 0;
-    background: #111;
-    color: #fff;
-    padding: 15px;
-    display: flex;
-    justify-content: space-between;
-    z-index: 1000;
-    font-size: 18px;
-    font-weight: bold;
-  }
-
-  .cash-balance {
-    color: #00ff88;
-  }
-
-  .form-grid,
-  .filter-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 15px;
-  }
-
-  .cash-table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  .cash-table th,
-  .cash-table td {
-    padding: 8px;
-    border-bottom: 1px solid #ddd;
-    text-align: center;
-  }
-
-  .btn-primary {
-    padding: 8px 15px;
-    background: #007bff;
-    color: #fff;
-    border: none;
-    cursor: pointer;
-  }
 </style>
 
 <script>
@@ -1777,7 +1733,53 @@ td{position:relative}
 <!-- ================= CASH IN HAND SECTION ================= -->
 
 <section id="cashSection" class="section">
+<style>
+  /* ================= CASH SECTION CSS ================= */
 
+  .cash-sticky-bar {
+    position: sticky;
+    top: 0;
+    background: #111;
+    color: #fff;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    z-index: 1000;
+    font-size: 18px;
+    font-weight: bold;
+  }
+
+  .cash-balance {
+    color: #00ff88;
+  }
+
+  .form-grid,
+  .filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
+  }
+
+  .cash-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .cash-table th,
+  .cash-table td {
+    padding: 8px;
+    border-bottom: 1px solid #ddd;
+    text-align: center;
+  }
+
+  .btn-primary {
+    padding: 8px 15px;
+    background: #007bff;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+  }
+  </style>
   <!-- 1️⃣ Sticky Balance Bar -->
   <div class="cash-sticky-bar">
     <div class="cash-title">💰 Cash In Hand</div>
