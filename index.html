@@ -1840,9 +1840,14 @@ selectFilter.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
 }
 
 /* ===== CASH BALANCE ===== */
-ffunction cashBalance(){
+function cashBalance(){
   return DB.cash.reduce((s,t)=>{
-    if(t.type==="IN") return s + t.amount;
+    if(t.expense){
+      return s - t.amount;
+    }
+    if(t.type==="IN"){
+      return s + t.amount;
+    }
     return s - t.amount;
   },0);
 }
@@ -1850,7 +1855,9 @@ ffunction cashBalance(){
 /* ===== SAVE PAYMENT (ADD / EDIT) ===== */
 function saveCashPayment(){
   const date = document.getElementById("payDate").value;
-  const vendor = document.getElementById("payVendor").value.trim();
+  const vendorId = document.getElementById("payVendor").value;
+const vendorObj = DB.vendors.find(v=>v.id===vendorId);
+const vendor = vendorObj ? vendorObj.name : "";
   const ref = document.getElementById("payRef").value.trim();
   const amount = +document.getElementById("payAmount").value;
   const type = document.getElementById("payType").value;
@@ -1925,6 +1932,10 @@ DB.cash.push({
   amount,
   expense: document.getElementById("isExpense").checked || false
 });
+  saveDB();
+resetCashForm();
+renderCash();
+}
 function resetCashForm(){
   document.getElementById("payDate").value="";
   document.getElementById("payVendor").value="";
@@ -2635,7 +2646,7 @@ function openVendorLedger(vendorId){
       rows.push({date:p.dateTime,type:"Purchase",ref:p.id,debit:p.total,credit:0});
     });
 
- DB.cash.filter(c=>c.vendor===v.name)
+DB.cash.filter(c=>c.vendor===v.name)
   .forEach(c=>{
     rows.push({
       date:c.dateTime,
@@ -2643,8 +2654,8 @@ function openVendorLedger(vendorId){
             ? (c.type==="OUT" ? "Payment (EXP)" : "Received (EXP)")
             : (c.type==="OUT" ? "Payment" : "Received"),
       ref:c.ref||c.id,
-      debit: c.type==="OUT" ? 0 : c.amount,
-      credit: c.type==="OUT" ? c.amount : 0
+      debit: c.type==="OUT" ? c.amount : 0,
+      credit: c.type==="IN" ? c.amount : 0
     });
   });
   DB.returns.filter(r=>r.vendorId===v.id)
