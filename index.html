@@ -97,29 +97,29 @@ section.active{
 
 /* ===== CARD ===== */
 .card{
-  background:white;
-  border:1px solid var(--border);
-  padding:18px;
-  width:100%;
-  margin-bottom:20px;
-  border-radius:10px;
+  background:#fff;
+  border:1px solid #d0d7de;
+  padding:22px;
+  margin-bottom:25px;
+  border-radius:12px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.04);
 }
-
 /* ===== TABLE ===== */
 table{
   width:100%;
   border-collapse:collapse;
-}
-
-th,td{
-  border:1px solid var(--border);
-  padding:8px;
-  text-align:center;
+  background:white;
 }
 
 th{
   background:#f6f8fa;
-  font-weight:600;
+  font-weight:700;
+}
+
+th,td{
+  border:1px solid #e1e4e8;
+  padding:10px;
+  text-align:center;
 }
 .r-filter{display:flex;gap:10px;margin:15px 0}
 .r-table{width:100%;border-collapse:collapse}
@@ -777,6 +777,9 @@ document.addEventListener("DOMContentLoaded",()=>{
 /* ================= VENDORS ================= */
 function vrLoadVendors(){
   vrVendor.innerHTML='<option value="">Select Vendor</option>';
+DB.vendors.forEach(v=>{
+  vrVendor.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
+});
   DB.vendors.forEach(v=>{
     vrVendor.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
   });
@@ -1732,168 +1735,90 @@ td{position:relative}
 </style>
 <!-- ================= CASH IN HAND SECTION ================= -->
 
-<section id="cash" class="section">
-<style>
-  /* ================= CASH SECTION MODERN UI ================= */
-<!-- ================= CASH ENTRY ================= -->
+<section id="cash">
 
-<div class="card">
+<div class="card" style="max-width:1000px;margin:auto">
 
-  <div class="cash-sticky-bar">
-    <div>Cash In Hand</div>
-    <div>PKR <span id="cashTotal">0</span></div>
-  </div>
+<h2 style="font-size:26px;font-weight:900;margin-bottom:20px">
+Cash In Hand
+</h2>
 
-  <div class="cash-row">
+<!-- ===== TOTAL BALANCE BOX ===== -->
+<div style="
+background:#0b1c2d;
+color:#fff;
+padding:25px;
+border-radius:12px;
+margin-bottom:25px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+">
 
-    <input type="date" id="cashDate">
+<div style="font-size:18px;font-weight:600">
+Current Balance
+</div>
 
-    <select id="cashVendor">
-      <option value="">Select Vendor</option>
-    </select>
-
-    <select id="cashType">
-      <option value="OUT">OUT</option>
-      <option value="IN">IN</option>
-    </select>
-
-    <select id="cashExpense">
-      <option value="NO">Normal</option>
-      <option value="YES">Expense</option>
-    </select>
-
-    <input type="text" id="cashReference" placeholder="Reference">
-
-    <input type="number" id="cashAmount" placeholder="Amount (PKR)">
-
-    <button class="blue" onclick="saveCash()">Save</button>
-
-  </div>
+<div style="font-size:32px;font-weight:900">
+Rs. <span id="cashBalance">0.00</span>
+</div>
 
 </div>
-  .cash-row{
-  display:grid;
-  grid-template-columns: 140px 1fr 120px 120px 1fr 160px 100px;
-  gap:12px;
-  align-items:center;
-  margin-top:20px;
-}
 
-.cash-row input,
-.cash-row select{
-  padding:9px;
-  border-radius:8px;
-  border:1px solid #d1d5db;
-}
+<!-- ===== ADD PAYMENT ROW ===== -->
+<div style="
+display:grid;
+grid-template-columns: 150px 1fr 150px 150px 120px;
+gap:15px;
+align-items:end;
+margin-bottom:20px;
+">
 
-.cash-row button{
-  height:40px;
-}
-  </style>
-  <!-- 1️⃣ Sticky Balance Bar -->
-  <div class="cash-sticky-bar">
-    <div class="cash-title">💰 Cash In Hand</div>
-    <div class="cash-balance" id="cashBalanceDisplay">₹ 0.00</div>
-  </div>
+<div>
+<label>Type</label>
+<select id="cashType">
+<option value="IN">IN</option>
+<option value="OUT">OUT</option>
+</select>
+</div>
 
-  <!-- 2️⃣ Add / Edit Payment Panel -->
-  <div class="card">
+<div>
+<label>Reference</label>
+<input id="cashRef">
+</div>
 
-    <h3 id="cashFormTitle">Add Payment</h3>
+<div>
+<label>Amount (PKR)</label>
+<input type="number" id="cashAmount">
+</div>
 
-    <div class="form-grid">
+<div>
+<label>Date</label>
+<input type="date" id="cashDate">
+</div>
 
-      <input type="hidden" id="editCashId">
+<div>
+<button class="green" onclick="addCashEntry()" style="width:100%">Add</button>
+</div>
 
-      <div>
-        <label>Date</label>
-        <input type="date" id="cashDate">
-      </div>
+</div>
 
-      <div>
-        <label>Vendor</label>
-        <select id="cashVendor"></select>
-      </div>
+<!-- ===== TABLE ===== -->
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Date</th>
+<th>Type</th>
+<th>Reference</th>
+<th>Amount (PKR)</th>
+<th>Delete</th>
+</tr>
+</thead>
+<tbody id="cashRows"></tbody>
+</table>
 
-      <div>
-        <label>Type</label>
-        <select id="cashType">
-          <option value="OUT">OUT</option>
-          <option value="IN">IN</option>
-        </select>
-      </div>
-
-      <div>
-        <label>Amount</label>
-        <input type="number" id="cashAmount" step="0.01">
-      </div>
-
-      <div>
-        <label>Reference</label>
-        <input type="text" id="cashReference">
-      </div>
-
-      <div class="checkbox-field">
-        <input type="checkbox" id="cashExpense">
-        <label>Mark as Expense</label>
-      </div>
-
-    </div>
-
-    <button onclick="saveCashPayment()" class="btn-primary">💾 Save</button>
-
-  </div>
-
-  <!-- 3️⃣ Filters -->
-  <div class="card">
-
-    <div class="filter-grid">
-
-      <input type="date" id="filterFrom">
-      <input type="date" id="filterTo">
-
-      <select id="filterVendor">
-        <option value="">All Vendors</option>
-      </select>
-
-      <input type="text" id="filterSearch" placeholder="Search vendor / ref / amount">
-
-      <button onclick="applyCashFilters()">🔎 Search</button>
-      <button onclick="downloadCashCSV()">📥 Download CSV</button>
-
-    </div>
-
-  </div>
-
-  <!-- 4️⃣ Table -->
-  <div class="card">
-
-    <table class="cash-table">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Time</th>
-          <th>Type</th>
-          <th>Vendor</th>
-          <th>Amount</th>
-          <th>Reference</th>
-          <th>Balance</th>
-          <th>Edit</th>
-          <th>Delete</th>
-          <th>Created</th>
-        </tr>
-      </thead>
-      <tbody id="cashTableBody"></tbody>
-    </table>
-
-    <div class="pagination">
-      <button onclick="prevCashPage()">Prev</button>
-      <span id="cashPageInfo"></span>
-      <button onclick="nextCashPage()">Next</button>
-    </div>
-
-  </div>
-
+</div>
 </section>
   <script>
 // =======================
@@ -1982,7 +1907,62 @@ function saveCashPayment() {
   renderCashTable();
   updateCashBalance();
 }
+function renderCash(){
+  const tbody=document.getElementById("cashRows");
+  const bal=document.getElementById("cashBalance");
+  tbody.innerHTML="";
 
+  let total=0;
+
+  DB.cash.forEach((c,i)=>{
+    if(c.type==="IN") total+=Number(c.amount||0);
+    else total-=Number(c.amount||0);
+
+    tbody.innerHTML+=`
+    <tr>
+      <td>${i+1}</td>
+      <td>${new Date(c.dateTime||c.date).toLocaleDateString()}</td>
+      <td>${c.type}</td>
+      <td>${c.ref||""}</td>
+      <td>Rs. ${Number(c.amount).toFixed(2)}</td>
+      <td><button class="red" onclick="deleteCash(${i})">X</button></td>
+    </tr>`;
+  });
+
+  bal.innerText=total.toFixed(2);
+}
+
+function addCashEntry(){
+  const type=document.getElementById("cashType").value;
+  const ref=document.getElementById("cashRef").value;
+  const amount=+document.getElementById("cashAmount").value;
+  const date=document.getElementById("cashDate").value;
+
+  if(!amount || amount<=0) return alert("Enter amount");
+
+  DB.cash.push({
+    id:uid("C"),
+    type,
+    ref,
+    amount,
+    dateTime: date? new Date(date).toISOString():new Date().toISOString()
+  });
+
+  saveDB();
+  renderCash();
+
+  cashRef.value="";
+  cashAmount.value="";
+}
+
+function deleteCash(i){
+  if(!confirm("Delete entry?")) return;
+  DB.cash.splice(i,1);
+  saveDB();
+  renderCash();
+}
+
+document.addEventListener("DOMContentLoaded",renderCash);
 // =======================
 // VENDOR IMPACT
 // =======================
