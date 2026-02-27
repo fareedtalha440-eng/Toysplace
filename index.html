@@ -374,11 +374,11 @@ function alertInvoiceProfit(id){
   let msg="Invoice "+id+"\\n\\n";
   inv.items.forEach(it=>{
     const purchase=DB.purchases
-      .filter(p=>p.items.some(x=>x.itemNo===it.itemNo))
+      .filter(p=>p.items.some(x=>x.product.id===it.product.id))
       .sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
-    const cost=(purchase?.items.find(x=>x.itemNo===it.itemNo)?.cost||0)*it.qty;
+    const cost=(purchase?.items.find(x=>x.product.id===it.product.id)?.cost||0)*it.qty;
     const sale=it.qty*it.rate;
-    msg+=`${it.itemNo} Profit: ${(sale-cost).toFixed(2)}\\n`;
+    msg+=`${it.product.id} Profit: ${(sale-cost).toFixed(2)}\\n`;
   });
   alert(msg);
 }
@@ -497,7 +497,7 @@ const RULES = {
   qtyIntegerOnly: true,
   noDuplicateInvoiceProduct: true,
   noDuplicatePurchaseProduct: true,
-  uniqueItemNo: true,
+  uniqueproduct.id: true,
   uniqueBarcode: true,
   uniqueVendorName: true,
   auditLog: true
@@ -569,7 +569,7 @@ function loadPDFilters(){
 
   pSel.innerHTML='<option value="">Select Product</option>';
   DB.products.forEach(p=>{
-    pSel.innerHTML+=`<option value="${p.id}">${p.itemNo} - ${p.desc}</option>`;
+    pSel.innerHTML+=`<option value="${p.id}">${p.product.id} - ${p.desc}</option>`;
   });
 
   vSel.innerHTML='<option value="">All Vendors</option>';
@@ -593,7 +593,7 @@ function generateProductDetails(){
   let balance=0;
 
   DB.purchases.forEach(p=>{
-    const item=p.items.find(i=>i.itemNo===product.itemNo);
+    const item=p.product.id.find(i=>i.product.id===product.id);
     if(!item) return;
     if(vendor && p.vendor!==vendor) return;
 
@@ -638,7 +638,7 @@ function generateProductDetails(){
   });
 
   DB.returns.forEach(r=>{
-    const item=r.items.find(i=>i.itemNo===product.itemNo);
+    const item=r.items.find(i=>i.product.id===product.product.id);
     if(!item) return;
     if(vendor && r.vendor!==vendor) return;
 
@@ -821,15 +821,15 @@ function vrSearch(inp,type){
   DB.products.forEach(p=>{
     let ok=false;
     if(type==="barcode" && (p.barcode||"").toLowerCase().includes(q)) ok=true;
-    if(type==="item" && (p.itemNo||"").toLowerCase().includes(q)) ok=true;
+    if(type==="item" && (p.product.id||"").toLowerCase().includes(q)) ok=true;
     if(type==="desc" && (p.desc||"").toLowerCase().includes(q)) ok=true;
     if(!ok) return;
 
-    if([...vrBody.children].some(r=>r!==inp.closest("tr") && r.children[1].children[0].value===p.itemNo)) return;
+    if([...vrBody.children].some(r=>r!==inp.closest("tr") && r.children[1].children[0].value===p.product.id)) return;
 
     const d=document.createElement("div");
     d.className="dd-item";
-    d.innerText=`${p.itemNo} | ${p.desc} (Stock ${p.stock})`;
+    d.innerText=`${p.product.id} | ${p.desc} (Stock ${p.stock})`;
     d.onclick=()=>vrSelectProduct(inp,p);
     box.appendChild(d);
   });
@@ -858,12 +858,8 @@ function vrSelectProduct(inp,p){
   }
 
   // FIND VENDOR OBJECT
-  const vendorObj = DB.vendors.find(v => v.name === vrVendor.value);
-  if(!vendorObj){
-    ruleMessage("Vendor not found");
-    return;
+  const vendorObj = DB.vendors.find(v => v.id === vrVendor.value);
   }
-
   // GET LAST PURCHASE FOR THIS VENDOR + PRODUCT
   const sortedPurchases = DB.purchases
     .filter(x => x.vendorId === vendorObj.id)
@@ -889,7 +885,7 @@ function vrSelectProduct(inp,p){
 
   // FILL ROW
   r.children[0].children[0].value = p.barcode || "";
-  r.children[1].children[0].value = p.itemNo;
+  r.children[1].children[0].value = p.product.id;
   r.children[2].children[0].value = p.desc;
   r.querySelector(".stk").innerText = p.stock;
   r.children[5].children[0].value = autoCost;
@@ -925,24 +921,24 @@ function vrSave(){
 
   const items=[];
   [...vrBody.children].forEach(r=>{
-    const itemNo=r.children[1].children[0].value;
+    const product.id=r.children[1].children[0].value;
     const qty=+r.children[4].children[0].value;
     const cost=+r.children[5].children[0].value;
-    if(itemNo && qty>0 && cost>0) items.push({itemNo,qty,cost});
+    if(product.id && qty>0 && cost>0) items.push({product.id,qty,cost});
   });
   if(!items.length) return ruleMessage("No valid items");
 
   if(vrEditIndex!==null){
     const old=DB.returns[vrEditIndex];
     old.items.forEach(it=>{
-      const p=DB.products.find(x=>x.itemNo===it.itemNo);
+      const p=DB.products.find(x=>x.product.id===it.product.id);
       if(p) p.stock+=it.qty;
     });
     DB.vendorLedger=DB.vendorLedger.filter(l=>l.ref!==old.no);
   }
 
   items.forEach(it=>{
-    const p=DB.products.find(x=>x.itemNo===it.itemNo);
+    const p=DB.products.find(x=>x.product.id===it.product.id);
     p.stock-=it.qty;
   });
 
@@ -1012,8 +1008,8 @@ function vrEdit(i){
   r.items.forEach(it=>{
     vrAddRow();
     const tr=vrBody.lastChild;
-    const p=DB.products.find(x=>x.itemNo===it.itemNo);
-    tr.children[1].children[0].value=it.itemNo;
+    const p=DB.products.find(x=>x.product.id===it.product.id);
+    tr.children[1].children[0].value=it.product.id;
     tr.children[2].children[0].value=p?.desc||"";
     tr.querySelector(".stk").innerText=p?.stock||0;
     tr.children[4].children[0].value=it.qty;
@@ -1026,7 +1022,7 @@ function vrDelete(i){
   if(!confirm("Delete return permanently?")) return;
   const r=DB.returns[i];
   r.items.forEach(it=>{
-    const p=DB.products.find(x=>x.itemNo===it.itemNo);
+    const p=DB.products.find(x=>x.product.id===it.product.id);
     if(p) p.stock+=it.qty;
   });
   DB.vendorLedger=DB.vendorLedger.filter(l=>l.ref!==r.no);
@@ -1050,7 +1046,7 @@ function vrPrint(i){
     return `
 <tr>
 <td>${index+1}</td>
-<td>${it.itemNo}</td>
+<td>${it.product.id}</td>
 <th>Description</th>
 <td>${it.qty}</td>
 <td>${Number(it.cost).toFixed(2)}</td>
@@ -1244,7 +1240,7 @@ function updateLiveInvoiceNo(){
 
 /* ===== ADD ROW ===== */
 function addInvoiceRow(){
-  invoiceDraft.push({productId:"",barcode:"",itemNo:"",desc:"",qty:1,rate:0,valid:false});
+  invoiceDraft.push({productId:"",barcode:"",product.id:"",desc:"",qty:1,rate:0,valid:false});
   renderInvoice();
 }
 
@@ -1265,8 +1261,8 @@ function renderInvoice(){
 </td>
 
 <td>
-  <input value="${r.itemNo}" 
-         oninput="searchInvProduct(${i},this.value,'itemNo')">
+  <input value="${r.product.id}" 
+         oninput="searchInvProduct(${i},this.value,'product.id')">
   <div id="invSugI${i}" class="invSug"></div>
 </td>
 
@@ -1320,7 +1316,7 @@ function searchInvProduct(i,val,field){
 
   const box = document.getElementById(
     field==="barcode" ? "invSugB"+i :
-    field==="itemNo" ? "invSugI"+i :
+    field==="product.id" ? "invSugI"+i :
     "invSugD"+i
   );
 
@@ -1331,11 +1327,11 @@ function searchInvProduct(i,val,field){
   let results = DB.products.filter(p=>{
 
     const barcode = (p.barcode||"").toLowerCase();
-    const itemNo  = (p.itemNo||"").toLowerCase();
+    const product.id  = (p.product.id||"").toLowerCase();
     const desc    = (p.desc||"").toLowerCase();
 
     if(field==="barcode") return barcode.includes(q);
-    if(field==="itemNo")  return itemNo.includes(q);
+    if(field==="product.id")  return product.id.includes(q);
     if(field==="desc")    return desc.includes(q);
 
     return false;
@@ -1361,7 +1357,7 @@ function searchInvProduct(i,val,field){
     const d=document.createElement("div");
     d.innerText=
       (p.barcode||"")+
-      " | "+p.itemNo+
+      " | "+p.product.id+
       " | "+p.desc+
       " (Stock: "+p.stock+")";
 
@@ -1383,7 +1379,7 @@ function selectInvoiceProduct(i,p){
   invoiceDraft[i] = {
     productId:p.id,
     barcode:p.barcode||"",
-    itemNo:p.itemNo,
+    product.id:p.product.id,
     desc:p.desc,
     qty:1,
     rate:p.rate||0,
@@ -1668,7 +1664,7 @@ td{padding:2px 0}
 ${inv.items.map((r,i)=>`
 <tr>
 <td>${i+1}</td>
-<td>${r.itemNo}<br><small>${r.desc||""}</small></td>
+<td>${r.product.id}<br><small>${r.desc||""}</small></td>
 <td>${r.qty}</td>
 <td>${r.rate}</td>
 <td class="right">Rs.${Number(r.qty*r.rate).toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
@@ -1874,76 +1870,50 @@ function calculateVendorBalance(vendorId){
 }
 /* ===== SAVE PAYMENT (ADD / EDIT) ===== */
 function saveCashPayment(){
+
   const date = document.getElementById("payDate").value;
   const vendorId = document.getElementById("payVendor").value;
-const vendorObj = DB.vendors.find(v=>v.id===vendorId);
-const vendor = vendorObj ? vendorObj.name : "";
+  const vendorObj = DB.vendors.find(v=>v.id===vendorId);
+  const vendorName = vendorObj ? vendorObj.name : "";
   const ref = document.getElementById("payRef").value.trim();
   const amount = +document.getElementById("payAmount").value;
   const type = document.getElementById("payType").value;
+  const expense = document.getElementById("isExpense").checked;
 
   if(!date || !amount) return alert("Date and Amount required");
 
-  let dtISO = new Date(date).toISOString();
+  const id = getNextPaymentId();
 
-  if(editingCashId){
-    // EDIT EXISTING PAYMENT
-    const c = DB.cash.find(x=>x.id===editingCashId);
-    if(!c) return alert("Payment not found");
-   
+  DB.cash.push({
+    id,
+    dateTime: new Date(date).toISOString(),
+    createdDate: new Date().toISOString(),
+    type,
+    vendorId: vendorId || "",
+    vendorName: vendorName || "",
+    ref: ref || id,
+    amount: Number(amount),
+    expense
+  });
 
-    // Adjust vendor balance
-    if(c.vendor){
-      const v = DB.vendors.find(x=>x.name===c.vendor);
-      
+  if(vendorId){
+    DB.vendorLedger = DB.vendorLedger || [];
+    DB.vendorLedger.push({
+      id: uid("VL"),
+      vendorId: vendorId,
+      vendorName: vendorName,
+      type: type==="OUT" ? "Payment" : "Received",
+      ref: ref || id,
+      debit: type==="OUT" ? Number(amount) : 0,
+      credit: type==="IN" ? Number(amount) : 0,
+      expense,
+      date: new Date().toISOString()
+    });
+  }
 
-    c.dateTime = dtISO;
-    c.vendor = vendor || "";
-    c.ref = ref || vendor || "";
-    c.amount = amount;
-
-    if(vendor){
-  const v = DB.vendors.find(x=>x.name===vendor);
-  
-}
-
-    editingCashId = null;
-  } else {
-    // ADD NEW PAYMENT
-    const id = getNextPaymentId();
-    if(vendor){
-  const v = DB.vendors.find(x=>x.name===vendor);
-
-    
-    // ===== ADD TO VENDOR LEDGER =====
-   DB.vendorLedger.push({
-  id: uid("VL"),
-  vendorId: v.id,
-  vendorName: v.name,
-  type: type==="OUT" ? "Payment" : "Received",
-  ref: ref || id,
-  debit: type==="OUT" ? Number(amount) : 0,
-  credit: type==="IN" ? Number(amount) : 0,
-  expense: document.getElementById("isExpense").checked || false,
-  date: new Date().toISOString()
-});
-
-  
-}
-
-DB.cash.push({
-  id,
-  dateTime: dtISO,
-  createdDate: new Date().toISOString(),
-  type: type,   // 👈 IMPORTANT (was "OUT")
-  vendor: vendor || "",
-  ref: ref || vendor || "",
-  amount,
-  expense: document.getElementById("isExpense").checked || false
-});
   saveDB();
-resetCashForm();
-renderCash();
+  resetCashForm();
+  renderCash();
 }
 function resetCashForm(){
   document.getElementById("payDate").value="";
@@ -2105,7 +2075,7 @@ border-radius:12px;padding:20px;">
 
 <div style="display:grid;gap:10px;">
 <input id="pBarcode" placeholder="Barcode">
-<input id="pItemNo" placeholder="Item No">
+<input id="pproduct.id" placeholder="Item No">
 <input id="pDesc" placeholder="Description">
 <input id="pRate" type="number" placeholder="Rate">
 </div>
@@ -2189,7 +2159,7 @@ tbody.innerHTML += `
 <tr>
 <td>${start+index+1}</td>
 <td>${p.barcode||""}</td>
-<td>${p.itemNo}</td>
+<td>${p.product.id}</td>
 <td>${p.desc}</td>
 <td>${Number(p.rate).toLocaleString(undefined,{minimumFractionDigits:2})}</td>
 <td>${p.stock||0}</td>
@@ -2218,7 +2188,7 @@ function advancedProductSearch(){
 }
 
   const results = DB.products.filter(p =>
-    (p.itemNo || "").toLowerCase().includes(q) ||
+    (p.product.id || "").toLowerCase().includes(q) ||
     (p.desc || "").toLowerCase().includes(q) ||
     (p.barcode || "").toLowerCase().includes(q)
   );
@@ -2236,7 +2206,7 @@ editingProductId = null;
 document.getElementById("productForm").style.display="block";
 productFormTitle.innerText="New Product";
 pBarcode.value="";
-pItemNo.value="";
+pproduct.id.value="";
 pDesc.value="";
 pRate.value="";
 }
@@ -2254,7 +2224,7 @@ document.getElementById("productForm").style.display="block";
 productFormTitle.innerText="Edit Product";
 
 pBarcode.value=p.barcode||"";
-pItemNo.value=p.itemNo||"";
+pproduct.id.value=p.product.id||"";
 pDesc.value=p.desc||"";
 pRate.value=p.rate||0;
 }
@@ -2264,11 +2234,11 @@ pRate.value=p.rate||0;
 function saveProduct(){
 
 const barcode=pBarcode.value.trim();
-const itemNo=pItemNo.value.trim();
+const product.id=pproduct.id.value.trim();
 const desc=pDesc.value.trim();
 const rate=+pRate.value||0;
 
-if(!itemNo||!desc){
+if(!product.id||!desc){
 alert("Item No & Description Required");
 return;
 }
@@ -2279,13 +2249,13 @@ const p=DB.products.find(x=>x.id===editingProductId);
 if(!p) return;
 
 p.barcode=barcode;
-p.itemNo=itemNo;
+p.product.id=product.id;
 p.desc=desc;
 p.rate=rate;
 
 }else{
 
-if(DB.products.some(p=>p.itemNo===itemNo)){
+if(DB.products.some(p=>p.product.id===product.id)){
 alert("Item No already exists");
 return;
 }
@@ -2298,7 +2268,7 @@ return;
 DB.products.push({
 id: uid("P"),
 barcode,
-itemNo,
+product.id,
 desc,
 rate,
 stock:0
@@ -2368,17 +2338,17 @@ const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
 
 rows.forEach(r=>{
 
-const itemNo = r["Item No"]||"";
+const product.id = r["Item No"]||"";
 const barcode = r["Barcode"]||"";
 
-if(!itemNo) return;
-if(DB.products.some(p=>p.itemNo===itemNo)) return;
+if(!product.id) return;
+if(DB.products.some(p=>p.product.id===product.id)) return;
 if(barcode && DB.products.some(p=>p.barcode===barcode)) return;
 
 DB.products.push({
 id: uid("P"),
 barcode,
-itemNo,
+product.id,
 desc: r["Description"]||"",
 rate: Number(
   r["Rate"] ??
@@ -2410,7 +2380,7 @@ function exportCSV(){
 let csv = "Barcode,Item No,Description,Rate,Stock\n";
 
 DB.products.forEach(p=>{
-csv += `"${p.barcode}","${p.itemNo}","${p.desc}",${p.rate},${p.stock}\n`;
+csv += `"${p.barcode}","${p.product.id}","${p.desc}",${p.rate},${p.stock}\n`;
 });
 
 const a = document.createElement("a");
@@ -2958,7 +2928,6 @@ loadVendorOptions();
 <th>Vendor</th>
 <th>Amount</th>
 <th>Print</th>
-<th>Edit</th>
 <th>Delete</th>
 </tr>
 </thead>
@@ -3006,7 +2975,7 @@ function loadPurchaseVendors(){
 
 /* ===== ADD ROW ===== */
 function addPurchaseRow(){
-  purchaseDraft.push({productId:null,barcode:"",itemNo:"",desc:"",qty:1,cost:0});
+  purchaseDraft.push({productId:null,barcode:"",product.id:"",desc:"",qty:1,cost:0});
   renderPurchaseRows();
 }
 
@@ -3024,7 +2993,7 @@ function renderPurchaseRows(){
     purchaseRows.innerHTML+=`
 <tr>
 <td><input value="${r.barcode}" oninput="searchProduct(this,${i})"></td>
-<td><input value="${r.itemNo}" oninput="searchProduct(this,${i})"></td>
+<td><input value="${r.product.id}" oninput="searchProduct(this,${i})"></td>
 <td><input value="${r.desc}" oninput="searchProduct(this,${i})"></td>
 <td>${stock}</td>
 <td><input type="number" value="${r.qty}" onchange="setQty(${i},this.value)"></td>
@@ -3052,7 +3021,7 @@ function searchProduct(inp,i){
 
   const list = (DB.products || []).filter(p =>
   (p.barcode || "").toLowerCase().includes(val.toLowerCase()) ||
-  (p.itemNo || "").toLowerCase().includes(val.toLowerCase()) ||
+  (p.product.id || "").toLowerCase().includes(val.toLowerCase()) ||
   (p.desc || "").toLowerCase().includes(val.toLowerCase())
 ).slice(0,5);
   
@@ -3076,7 +3045,7 @@ inp.closest("td").appendChild(box);
 
   list.forEach(p=>{
     const d=document.createElement("div");
-    d.innerText=`${p.barcode} | ${p.itemNo} | ${p.desc}`;
+    d.innerText=`${p.barcode} | ${p.product.id} | ${p.desc}`;
     d.onclick=()=>selectProduct(i,p);
     box.appendChild(d);
   });
@@ -3091,7 +3060,7 @@ function selectProduct(i,p){
   Object.assign(purchaseDraft[i],{
     productId:p.id,
     barcode:p.barcode,
-    itemNo:p.itemNo,
+    product.id:p.product.id,
     desc:p.desc
   });
 
@@ -3220,7 +3189,6 @@ function renderPurchaseHistory(){
     <td>${vendor}</td>
     <td>${total}</td>
     <td><button onclick="printPurchase('${p.id}')">Print</button></td>
-    <td><button onclick="editPurchase('${p.id}')">Edit</button></td>
     <td><button onclick="deletePurchase('${p.id}')">Delete</button></td>
   </tr>`;
 });
@@ -3241,16 +3209,7 @@ function clearPurchaseFilter(){
   purchasePage = 1;
   renderPurchaseHistory();
 }
-function editPurchase(id){
-  const p=DB.purchases.find(x=>x.id===id);
-  if(!p)return;
 
-  if(!confirm("Editing will not reverse old stock automatically. Continue?")) return;
-
-  purchaseVendor.value=p.vendorId;
-  purchaseDraft=JSON.parse(JSON.stringify(p.items));
-  renderPurchaseRows();
-}
 function printPurchase(id){
 
   const p = DB.purchases.find(x=>x.id===id);
@@ -3262,11 +3221,11 @@ function printPurchase(id){
   const rows = p.items.map((it,i)=>{
     const amt = it.qty * it.cost;
     grand += amt;
-    const prod = DB.products.find(x=>x.itemNo===it.itemNo);
+    const prod = DB.products.find(x=>x.product.id===it.product.id);
 return `
 <tr>
 <td>${index+1}</td>
-<td>${it.itemNo}</td>
+<td>${it.product.id}</td>
 <td>${prod?.desc || ""}</td>
 <td>${it.qty}</td>
 <td>${Number(it.cost).toFixed(2)}</td>
@@ -3362,9 +3321,9 @@ function uploadPurchaseExcel(input){
   r.onload=e=>{
     const wb=XLSX.read(e.target.result,{type:"binary"});
     XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]).forEach(row=>{
-      const p=DB.products.find(x=>x.barcode==row.Barcode||x.itemNo==row["Item No"]||x.desc==row.Description);
+      const p=DB.products.find(x=>x.barcode==row.Barcode||x.product.id==row["Item No"]||x.desc==row.Description);
       if(!p)return;
-      purchaseDraft.push({productId:p.id,barcode:p.barcode,itemNo:p.itemNo,desc:p.desc,qty:+row.Qty||0,cost:+row.Cost||0});
+      purchaseDraft.push({productId:p.id,barcode:p.barcode,product.id:p.product.id,desc:p.desc,qty:+row.Qty||0,cost:+row.Cost||0});
     });
     renderPurchaseRows();
   };
