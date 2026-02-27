@@ -97,6 +97,7 @@ section.active{
 
 /* ===== CARD ===== */
 .card{
+  width:100%;
   background:#fff;
   border:1px solid #d0d7de;
   padding:22px;
@@ -1735,7 +1736,7 @@ td{position:relative}
 </style>
 <!-- ================= CASH IN HAND SECTION ================= -->
 
-<section id="cash">
+<section id="cash" style="display:none;padding:30px;min-height:100vh;width:100%;">
 
 <div class="card" style="max-width:1000px;margin:auto">
 
@@ -1807,12 +1808,32 @@ margin-bottom:20px;
 <table>
 <thead>
 <tr>
-<th>#</th>
-<th>Date</th>
-<th>Type</th>
-<th>Reference</th>
-<th>Amount (PKR)</th>
-<th>Delete</th>
+<td>
+  <select id="cashType">
+    <option value="IN">IN</option>
+    <option value="OUT">OUT</option>
+  </select>
+</td>
+
+<td>
+  <select id="Vendor"></select>
+</td>
+
+<td>
+  <input type="checkbox" id="cashExpense">
+</td>
+
+<td>
+  <input type="text" id="cashRef">
+</td>
+
+<td>
+  <input type="number" id="cashAmount">
+</td>
+
+<td>
+  <button onclick="saveCash()">Save</button>
+</td>
 </tr>
 </thead>
 <tbody id="cashRows"></tbody>
@@ -1840,7 +1861,14 @@ document.addEventListener("DOMContentLoaded", () => {
   renderCashTable();
   updateCashBalance();
 });
-
+function loadCashVendors(){
+  const sel = document.getElementById("cashVendor");
+  if(!sel) return;
+  sel.innerHTML = '<option value="">Select Vendor</option>';
+  DB.vendors.forEach(v=>{
+    sel.innerHTML += `<option value="${v.id}">${v.name}</option>`;
+  });
+}
 // =======================
 // SAVE PAYMENT
 // =======================
@@ -1906,6 +1934,27 @@ function saveCashPayment() {
   resetCashForm();
   renderCashTable();
   updateCashBalance();
+}
+    function editCash(id){
+
+  const c = DB.cash.find(x=>x.id===id);
+  if(!c) return;
+
+  document.getElementById("cashType").value = c.type;
+  document.getElementById("cashVendor").value = c.vendorId || "";
+  document.getElementById("cashExpense").checked = c.expense || false;
+  document.getElementById("cashRef").value = c.ref || "";
+  document.getElementById("cashAmount").value = c.amount;
+
+  DB.cash = DB.cash.filter(x=>x.id!==id);
+  DB.vendorLedger = DB.vendorLedger.filter(x=>x.ref!==c.ref);
+DB.cash.forEach(c=>{
+  if(c.expense){
+    totalExpense += Number(c.amount||0);
+  }
+});
+  saveDB();
+  renderCash();
 }
 function renderCash(){
   const tbody=document.getElementById("cashRows");
@@ -2817,7 +2866,19 @@ DB.cash.filter(c=>c.vendor===v.name)
     .forEach(r=>{
       rows.push({date:r.dateTime,type:"Return",ref:r.no,debit:0,credit:r.amount});
     });
+DB.cash.forEach(c=>{
 
+  if(c.vendorId !== vendor.id) return;
+
+  rows.push({
+    date:new Date(c.dateTime),
+    type:c.type==="IN"?"Payment Received":"Payment Paid",
+    ref:c.ref,
+    debit:c.type==="IN"?c.amount:0,
+    credit:c.type==="OUT"?c.amount:0
+  });
+
+});
   rows.sort((a,b)=>new Date(a.date)-new Date(b.date));
 
   let bal = 0;
@@ -3895,47 +3956,52 @@ function resetSystem(){
 }
 let editingCashId = null;
 
-function saveCashPayment(){
+function saveCash(){
 
-  const date = document.getElementById("payDate").value || new Date().toISOString().split("T")[0];
-  const vendorId = document.getElementById("payVendor").value;
-  const type = document.getElementById("payType").value;
-  const ref = document.getElementById("payRef").value || "";
-  const amount = +document.getElementById("payAmount").value;
-  const isExpense = document.getElementById("isExpense")?.checked || false;
+  const type = document.getElementById("cashType").value;
+  const vendorId = document.getElementById("cashVendor").value;
+  const expense = document.getElementById("cashExpense").checked;
+  const ref = document.getElementById("cashRef").value;
+  const amount = +document.getElementById("cashAmount").value;
 
-  if(!vendorId) return alert("Select vendor");
-  if(!amount || amount<=0) return alert("Enter valid amount");
+  if(!amount || amount<=0) return alert("Invalid amount");
 
-  const vendorObj = DB.vendors.find(v=>v.id===vendorId);
+  const id = uid("C");
+  const dateTime = new Date().toISOString();
 
-  const obj = {
-    id: editingCashId || uid("C"),
-    date,
-    vendorId,
-    vendorName: vendorObj?.name || "",
+  DB.cash.push({
+    id,
     type,
+    vendorId,
     ref,
     amount,
-    isExpense,
-    dateTime:new Date().toISOString()
-  };
+    expense,
+    dateTime
+  });
 
-  if(editingCashId){
-    const index = DB.cash.findIndex(x=>x.id===editingCashId);
-    DB.cash[index]=obj;
-  }else{
-    DB.cash.push(obj);
+  if(vendorId){
+
+    const vendorObj = DB.vendors.find(v=>v.id===vendorId);
+
+    DB.vendorLedger = DB.vendorLedger || [];
+
     DB.vendorLedger.push({
-  id: uid("VL"),
-  vendorId: obj.vendorId,
-  vendorName: obj.vendorName,
-  type: "Payment",
-  amount: obj.amount,
-  expense: obj.isExpense || false,
-  date: obj.date
-});
+      id:uid("VL"),
+      vendorId,
+      vendorName:vendorObj?.name||"",
+      type:type==="IN"?"Payment Received":"Payment Paid",
+      ref,
+      debit: type==="IN"?amount:0,
+      credit: type==="OUT"?amount:0,
+      expense:expense,
+      date:new Date().toISOString()
+    });
+
   }
+
+  saveDB();
+  renderCash();
+}
 
   // ADD TO VENDOR LEDGER
   DB.vendorLedger = DB.vendorLedger || [];
