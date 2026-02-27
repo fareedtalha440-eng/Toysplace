@@ -314,10 +314,16 @@ document.addEventListener("DOMContentLoaded", ()=>{
 </script>
 <script>
 
+function calculateProfit(from, to){
+
+  let totalExpense = 0;
+  let totalSales = 0;   // make sure you calculate this before
+  let totalCogs = 0;    // make sure you calculate this before
+
   /* ===== EXPENSE CALCULATION ===== */
   (DB.expenses||[]).forEach(e=>{
-    if(from && e.date<from) return;
-    if(to && e.date>to) return;
+    if(from && e.date < from) return;
+    if(to && e.date > to) return;
     totalExpense += Number(e.amount||0);
   });
 
@@ -325,12 +331,14 @@ document.addEventListener("DOMContentLoaded", ()=>{
   const net = gross - totalExpense;
   const percent = totalSales ? (net/totalSales)*100 : 0;
 
-  pfSales.innerText = totalSales.toFixed(2);
-  pfCogs.innerText = totalCogs.toFixed(2);
-  pfGross.innerText = gross.toFixed(2);
-  pfExpense.innerText = totalExpense.toFixed(2);
-  pfNet.innerText = net.toFixed(2);
-  pfPercent.innerText = percent.toFixed(2)+"%";
+  document.getElementById("pfSales").innerText = totalSales.toFixed(2);
+  document.getElementById("pfCogs").innerText = totalCogs.toFixed(2);
+  document.getElementById("pfGross").innerText = gross.toFixed(2);
+  document.getElementById("pfExpense").innerText = totalExpense.toFixed(2);
+  document.getElementById("pfNet").innerText = net.toFixed(2);
+  document.getElementById("pfPercent").innerText = percent.toFixed(2)+"%";
+
+}
 
 function showReport(type){
   const reportView = document.getElementById("reportView");
@@ -3328,7 +3336,7 @@ function uploadPurchaseExcel(input){
     XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]).forEach(row=>{
       const p=DB.products.find(x=>x.barcode==row.Barcode||x.itemNo==row["Item No"]||x.desc==row.Description);
       if(!p)return;
-      purchaseDraft.push({productId:p.id,barcode:p.barcode,itemNo:p.product.id,desc:p.desc,qty:+row.Qty||0,cost:+row.Cost||0});
+      purchaseDraft.push({productId:p.id,barcode:p.barcode,itemNo:p.itemNo,,desc:p.desc,qty:+row.Qty||0,cost:+row.Cost||0});
     });
     renderPurchaseRows();
   };
@@ -3372,7 +3380,8 @@ function getPurchaseCost(productId, invDate){
     profitUser.innerHTML+=`<option>${u}</option>`;
     delUser.innerHTML+=`<option>${u}</option>`;
   });
-  }
+
+});
 </script>
 <!-- ================= LOGIN ================= -->
 <section id="loginScreen" style="display:flex; align-items:center; justify-content:center; height:100vh; background:#f5f5f5; flex-direction:column;">
@@ -3811,6 +3820,7 @@ function getPurchaseCost(productId, invDate){
     });
 
   return lastCost;
+  }
 }
 
 
@@ -3930,8 +3940,11 @@ function openReport(name){
   const el = document.getElementById(name+"Report");
   if(el) el.style.display="block";
 }
+
+
 /* ================= MASTER FIFO PROFIT ENGINE ================= */
 
+function calculateProfitReport(from, to) {
 
   /* ===== EXPENSE CALCULATION ===== */
 
@@ -3982,7 +3995,6 @@ function openReport(name){
   });
 
 }
-
 /* ================= MASTER ACCURATE FIFO PROFIT ENGINE ================= */
 
 function generateAdvancedProfit(){
