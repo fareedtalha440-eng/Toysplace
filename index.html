@@ -859,7 +859,10 @@ function vrSelectProduct(inp,p){
 
   // FIND VENDOR OBJECT
   const vendorObj = DB.vendors.find(v => v.id === vrVendor.value);
-  }
+if(!vendorObj){
+  ruleMessage("Vendor not selected");
+  return;
+}
   // GET LAST PURCHASE FOR THIS VENDOR + PRODUCT
   const sortedPurchases = DB.purchases
     .filter(x => x.vendorId === vendorObj.id)
@@ -921,25 +924,25 @@ function vrSave(){
 
   const items=[];
   [...vrBody.children].forEach(r=>{
-    const product.id=r.children[1].children[0].value;
+    const productId = r.children[1].children[0].value;
     const qty=+r.children[4].children[0].value;
     const cost=+r.children[5].children[0].value;
-    if(product.id && qty>0 && cost>0) items.push({product.id,qty,cost});
+    if(productId && qty>0 && cost>0) items.push({productId,qty,cost});
   });
   if(!items.length) return ruleMessage("No valid items");
 
   if(vrEditIndex!==null){
     const old=DB.returns[vrEditIndex];
     old.items.forEach(it=>{
-      const p=DB.products.find(x=>x.product.id===it.product.id);
-      if(p) p.stock+=it.qty;
+      const p=DB.products.find(x=>x.product.id===it.productId);
+if(p) p.stock+=it.qty;
     });
     DB.vendorLedger=DB.vendorLedger.filter(l=>l.ref!==old.no);
   }
 
   items.forEach(it=>{
-    const p=DB.products.find(x=>x.product.id===it.product.id);
-    p.stock-=it.qty;
+    const p=DB.products.find(x=>x.product.id===it.productId);
+if(p) p.stock-=it.qty;
   });
 
   const amount=items.reduce((s,i)=>s+i.qty*i.cost,0);
@@ -1008,8 +1011,8 @@ function vrEdit(i){
   r.items.forEach(it=>{
     vrAddRow();
     const tr=vrBody.lastChild;
-    const p=DB.products.find(x=>x.product.id===it.product.id);
-    tr.children[1].children[0].value=it.product.id;
+    const p=DB.products.find(x=>x.product.id===it.productId);
+    tr.children[1].children[0].value=it.productId;
     tr.children[2].children[0].value=p?.desc||"";
     tr.querySelector(".stk").innerText=p?.stock||0;
     tr.children[4].children[0].value=it.qty;
@@ -1022,7 +1025,7 @@ function vrDelete(i){
   if(!confirm("Delete return permanently?")) return;
   const r=DB.returns[i];
   r.items.forEach(it=>{
-    const p=DB.products.find(x=>x.product.id===it.product.id);
+    const p=DB.products.find(x=>x.product.id===it.productId);
     if(p) p.stock+=it.qty;
   });
   DB.vendorLedger=DB.vendorLedger.filter(l=>l.ref!==r.no);
@@ -1045,7 +1048,7 @@ function vrPrint(i){
 
     return `
 <tr>
-<td>${index+1}</td>
+<td>${i+1}</td>
 <td>${it.product.id}</td>
 <th>Description</th>
 <td>${it.qty}</td>
@@ -1379,7 +1382,7 @@ function selectInvoiceProduct(i,p){
   invoiceDraft[i] = {
     productId:p.id,
     barcode:p.barcode||"",
-    product.id:p.product.id,
+    itemNo:p.product.id,,
     desc:p.desc,
     qty:1,
     rate:p.rate||0,
@@ -2975,7 +2978,7 @@ function loadPurchaseVendors(){
 
 /* ===== ADD ROW ===== */
 function addPurchaseRow(){
-  purchaseDraft.push({productId:null,barcode:"",product.id:"",desc:"",qty:1,cost:0});
+  purchaseDraft.push({productId:null,barcode:"",itemNo:"",desc:"",qty:1,cost:0});
   renderPurchaseRows();
 }
 
@@ -2993,7 +2996,7 @@ function renderPurchaseRows(){
     purchaseRows.innerHTML+=`
 <tr>
 <td><input value="${r.barcode}" oninput="searchProduct(this,${i})"></td>
-<td><input value="${r.product.id}" oninput="searchProduct(this,${i})"></td>
+<td><input value="${r.itemNo}" oninput="searchProduct(this,${i})"></td>
 <td><input value="${r.desc}" oninput="searchProduct(this,${i})"></td>
 <td>${stock}</td>
 <td><input type="number" value="${r.qty}" onchange="setQty(${i},this.value)"></td>
@@ -3060,7 +3063,7 @@ function selectProduct(i,p){
   Object.assign(purchaseDraft[i],{
     productId:p.id,
     barcode:p.barcode,
-    product.id:p.product.id,
+    itemNo:p.product.id,
     desc:p.desc
   });
 
@@ -3224,7 +3227,7 @@ function printPurchase(id){
     const prod = DB.products.find(x=>x.product.id===it.product.id);
 return `
 <tr>
-<td>${index+1}</td>
+<td>${i+1}</td>
 <td>${it.product.id}</td>
 <td>${prod?.desc || ""}</td>
 <td>${it.qty}</td>
@@ -3323,7 +3326,7 @@ function uploadPurchaseExcel(input){
     XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]).forEach(row=>{
       const p=DB.products.find(x=>x.barcode==row.Barcode||x.product.id==row["Item No"]||x.desc==row.Description);
       if(!p)return;
-      purchaseDraft.push({productId:p.id,barcode:p.barcode,product.id:p.product.id,desc:p.desc,qty:+row.Qty||0,cost:+row.Cost||0});
+      purchaseDraft.push({productId:p.id,barcode:p.barcode,itemNo:p.product.id,desc:p.desc,qty:+row.Qty||0,cost:+row.Cost||0});
     });
     renderPurchaseRows();
   };
