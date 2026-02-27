@@ -959,6 +959,7 @@ DB.vendorLedger.push({
   ref:no,
   debit:0,
   credit:Number(amount),
+  expense:false,
   date:new Date().toISOString()
 });
 const obj={
@@ -969,6 +970,11 @@ const obj={
   amount,
   dateTime:new Date().toISOString()
 };
+  if(vrEditIndex!==null){
+  DB.returns[vrEditIndex]=obj;
+}else{
+  DB.returns.push(obj);
+}
 
   saveDB();
   vrEditIndex=null;
@@ -988,7 +994,7 @@ function vrLoadPrevious(){
 <td>${r.no}</td>
 <td>${d.toLocaleDateString()}</td>
 <td>${d.toLocaleTimeString()}</td>
-<td>${r.vendor}</td>
+<td>${r.vendorName}</td>
 <td>${r.amount.toFixed(2)}</td>
 <td><button onclick="vrPrint(${i})">Print</button></td>
 <td><button onclick="vrEdit(${i})">Edit</button></td>
@@ -1000,7 +1006,7 @@ function vrLoadPrevious(){
 function vrEdit(i){
   const r=DB.returns[i];
   vrEditIndex=i;
-  vrVendor.value=r.vendor;
+  vrVendor.value=r.vendorId;
   vrNo.innerText=r.no;
   vrBody.innerHTML="";
   r.items.forEach(it=>{
@@ -1045,6 +1051,7 @@ function vrPrint(i){
 <tr>
 <td>${index+1}</td>
 <td>${it.itemNo}</td>
+<th>Description</th>
 <td>${it.qty}</td>
 <td>${Number(it.cost).toFixed(2)}</td>
 <td>${Number(amt).toFixed(2)}</td>
@@ -1852,7 +1859,19 @@ function cashBalance(){
     return s - t.amount;
   },0);
 }
+function calculateVendorBalance(vendorId){
 
+  let bal = 0;
+
+  (DB.vendorLedger || [])
+    .filter(l=>l.vendorId===vendorId)
+    .forEach(l=>{
+      bal += Number(l.debit || 0);
+      bal -= Number(l.credit || 0);
+    });
+
+  return bal;
+}
 /* ===== SAVE PAYMENT (ADD / EDIT) ===== */
 function saveCashPayment(){
   const date = document.getElementById("payDate").value;
@@ -1876,8 +1895,7 @@ const vendor = vendorObj ? vendorObj.name : "";
     // Adjust vendor balance
     if(c.vendor){
       const v = DB.vendors.find(x=>x.name===c.vendor);
-      if(v) v.balance = (v.balance || 0) + c.amount; // revert old amount
-    }
+      
 
     c.dateTime = dtISO;
     c.vendor = vendor || "";
@@ -1886,13 +1904,7 @@ const vendor = vendorObj ? vendorObj.name : "";
 
     if(vendor){
   const v = DB.vendors.find(x=>x.name===vendor);
-  if(v){
-    if(type==="OUT"){
-      v.balance = (v.balance || 0) - amount;
-    } else {
-      v.balance = (v.balance || 0) + amount;
-    }
-  }
+  
 }
 
     editingCashId = null;
@@ -1901,26 +1913,22 @@ const vendor = vendorObj ? vendorObj.name : "";
     const id = getNextPaymentId();
     if(vendor){
   const v = DB.vendors.find(x=>x.name===vendor);
-  if(v){
 
-    if(type==="OUT"){
-      v.balance = (v.balance || 0) - amount;
-    } else {
-      v.balance = (v.balance || 0) + amount;
-    }
-
+    
     // ===== ADD TO VENDOR LEDGER =====
-    DB.vendorLedger.push({
-      id: uid("VL"),
-      vendor: v.name,
-      type: type==="OUT" ? "PAYMENT" : "RECEIVED",
-      ref: id,
-      debit: type==="OUT" ? amount : 0,
-      credit: type==="IN" ? amount : 0,
-      date: new Date().toISOString()
-    });
+   DB.vendorLedger.push({
+  id: uid("VL"),
+  vendorId: v.id,
+  vendorName: v.name,
+  type: type==="OUT" ? "Payment" : "Received",
+  ref: ref || id,
+  debit: type==="OUT" ? Number(amount) : 0,
+  credit: type==="IN" ? Number(amount) : 0,
+  expense: document.getElementById("isExpense").checked || false,
+  date: new Date().toISOString()
+});
 
-  }
+  
 }
 
 DB.cash.push({
@@ -1988,17 +1996,11 @@ function renderCash(){
   let displayRows = filtered.slice((cashPage-1)*cashPerPage, cashPage*cashPerPage);
 
   displayRows.forEach(c=>{
-
-    if(c.expense){
-      runningBal -= c.amount;
-    }
-    else if(c.type==="IN"){
-      runningBal += c.amount;
-    }
-    else{
-      runningBal -= c.amount;
-    }
-
+    if(c.type==="IN"){
+  runningBal += Number(c.amount);
+}else{
+  runningBal -= Number(c.amount);
+}
     const dt = new Date(c.dateTime);
     const created = new Date(c.createdDate || c.dateTime).toLocaleString();
     const vendorName = c.vendorName || "";
@@ -2053,7 +2055,19 @@ function deleteCashPayment(id){
   DB.cash = DB.cash.filter(x=>x.id!==id);
   saveDB(); renderCash();
 }
+function deleteVendor(id){
 
+  if(calculateVendorBalance(id) !== 0){
+    alert("Vendor balance not zero");
+    return;
+  }
+
+  DB.vendors = DB.vendors.filter(v=>v.id!==id);
+  DB.vendorLedger = DB.vendorLedger.filter(l=>l.vendorId!==id);
+
+  saveDB();
+  renderVendors();
+}
 /* ===== DOWNLOAD CSV ===== */
 function downloadCashCSV(){
   const rows=[["Date","Time","Type","Vendor","Amount","Reference","Balance"]];
@@ -2731,10 +2745,7 @@ td{
 <body>
 
 <div class="header">
-<div>
-<div class="company">YOUR COMPANY NAME</div>
-<div class="sub">Vendor Ledger Statement</div>
-</div>
+
 <div>
 <div><b>Vendor:</b> ${v.name}</div>
 <div><b>No:</b> ${v.no}</div>
@@ -2744,6 +2755,7 @@ td{
 
 <table>
 <tr>
+<tr style="background:#000;color:#fff">
 <th>#</th>
 <th>Date</th>
 <th>Type</th>
@@ -3741,71 +3753,7 @@ function resetSystem(){
 }
 let editingCashId = null;
 
-function saveCashPayment(){
 
-  const date = document.getElementById("payDate").value || new Date().toISOString().split("T")[0];
-  const vendorId = document.getElementById("payVendor").value;
-  const type = document.getElementById("payType").value;
-  const ref = document.getElementById("payRef").value || "";
-  const amount = +document.getElementById("payAmount").value;
-  const isExpense = document.getElementById("isExpense")?.checked || false;
-
-  if(!vendorId) return alert("Select vendor");
-  if(!amount || amount<=0) return alert("Enter valid amount");
-
-  const vendorObj = DB.vendors.find(v=>v.id===vendorId);
-
-  const obj = {
-    id: editingCashId || uid("C"),
-    date,
-    vendorId,
-    vendorName: vendorObj?.name || "",
-    type,
-    ref,
-    amount,
-    isExpense,
-    dateTime:new Date().toISOString()
-  };
-
-  if(editingCashId){
-    const index = DB.cash.findIndex(x=>x.id===editingCashId);
-    DB.cash[index]=obj;
-  }else{
-    DB.cash.push(obj);
-    DB.vendorLedger.push({
-  id: uid("VL"),
-  vendorId: obj.vendorId,
-  vendorName: obj.vendorName,
-  type: "Payment",
-  amount: obj.amount,
-  expense: obj.isExpense || false,
-  date: obj.date
-});
-  }
-
-  // ADD TO VENDOR LEDGER
-  DB.vendorLedger = DB.vendorLedger || [];
-
-  DB.vendorLedger.push({
-    id:uid("VL"),
-    vendorId,
-    vendorName: vendorObj?.name || "",
-    type:"Payment",
-    ref:ref || obj.id,
-    debit: type==="OUT" ? amount : 0,
-    credit: type==="IN" ? amount : 0,
-    expense:isExpense,
-    date:new Date().toISOString()
-  });
-
-  saveDB();
-  editingCashId=null;
-
-  document.getElementById("payRef").value="";
-  document.getElementById("payAmount").value="";
-
-  renderCash();
-}
 /* ===== INITIAL RENDER ===== */
 renderAccounts();
 
