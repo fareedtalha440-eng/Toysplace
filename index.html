@@ -3034,7 +3034,7 @@ function searchProduct(inp,i){
 
   const list = (DB.products || []).filter(p =>
   (p.barcode || "").toLowerCase().includes(val.toLowerCase()) ||
-  (p.itemNo || "").toLowerCase().includes(val.toLowerCase())
+  (p.itemNo || "").toLowerCase().includes(val.toLowerCase()) ||
   (p.desc || "").toLowerCase().includes(val.toLowerCase())
 ).slice(0,5);
   
@@ -3234,11 +3234,11 @@ function printPurchase(id){
   const rows = p.items.map((it,i)=>{
     const amt = it.qty * it.cost;
     grand += amt;
-    const prod = DB.products.find(x=>x.product.id===it.product.id);
+    const prod = DB.products.find(x=>x.id===it.productId);
 return `
 <tr>
 <td>${i+1}</td>
-<td>${it.product.id}</td>
+<td>${it.itemNo}</td>
 <td>${prod?.desc || ""}</td>
 <td>${it.qty}</td>
 <td>${Number(it.cost).toFixed(2)}</td>
@@ -3336,7 +3336,7 @@ function uploadPurchaseExcel(input){
     XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]).forEach(row=>{
       const p=DB.products.find(x=>x.barcode==row.Barcode||x.itemNo==row["Item No"]||x.desc==row.Description);
       if(!p)return;
-      purchaseDraft.push({productId:p.id,barcode:p.barcode,itemNo:p.itemNo,,desc:p.desc,qty:+row.Qty||0,cost:+row.Cost||0});
+      purchaseDraft.push({productId:p.id,barcode:p.barcode,itemNo:p.itemNo,desc:p.desc,qty:+row.Qty||0,cost:+row.Cost||0});
     });
     renderPurchaseRows();
   };
@@ -3373,6 +3373,7 @@ function getPurchaseCost(productId, invDate){
     });
 
   return lastCost;
+  }
 /* ===== LOAD USERS ===== */
  document.addEventListener("DOMContentLoaded",()=>{
 
@@ -3485,21 +3486,29 @@ function getPurchaseCost(productId, invDate){
 
 <script>
 /* ===== INIT DEFAULT DEVELOPER ACCOUNT ===== */
+if(!window.DB) window.DB = {};
+
 if(!DB.accounts){
-  DB.accounts=[{id: uid("A"), username:"Dani", password:"7525", role:"developer", fixed:true, permissions:[]}];
+  DB.accounts=[{
+    id: uid("A"),
+    username:"Dani",
+    password:"7525",
+    role:"developer",
+    fixed:true,
+    permissions:[]
+  }];
   saveDB();
 }
-
 /* ===== LOGIN SYSTEM ===== */
 function submitLogin(){
 
-  const u = loginUsername.value.trim();
-  const p = loginPassword.value.trim();
+  const u = document.getElementById("loginUsername").value.trim();
+const p = document.getElementById("loginPassword").value.trim();
 
   const user = (DB.accounts || []).find(x=>x.username===u && x.password===p);
 
   if(!user){
-    loginError.innerText = "Invalid Username or Password";
+    document.getElementById("loginError").innerText = "Invalid Username or Password";
     return;
   }
 
@@ -3821,10 +3830,6 @@ function getPurchaseCost(productId, invDate){
 
   return lastCost;
   }
-}
-
-
-
 /* ===== LOAD USERS ===== */
 document.addEventListener("DOMContentLoaded",()=>{
   [...new Set((DB.logs||[]).map(l=>l.user))].forEach(u=>{
