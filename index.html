@@ -333,15 +333,17 @@ document.addEventListener("DOMContentLoaded", ()=>{
   pfPercent.innerText = percent.toFixed(2)+"%";
 
 function showReport(type){
-  const box = document.getElementById("reportView");
-box.innerHTML="";
-  const box=document.getElementById("invoiceProfitReport");
+  const reportView = document.getElementById("reportView");
+  reportView.innerHTML="";
+
+  const box = document.getElementById("invoiceProfitReport");
   box.style.display="block";
-document.getElementById("deletedDataReport").style.display="none";
-document.getElementById("productDetailsReport").style.display="none";
+
+  document.getElementById("deletedDataReport").style.display="none";
+  document.getElementById("productDetailsReport").style.display="none";
+
   box.innerHTML=`
     <h2>Invoice Wise Profit</h2>
-
     <div class="r-filter">
       <input type="date" id="pFrom">
       <input type="date" id="pTo">
@@ -3370,7 +3372,7 @@ function getPurchaseCost(productId, invDate){
     profitUser.innerHTML+=`<option>${u}</option>`;
     delUser.innerHTML+=`<option>${u}</option>`;
   });
-
+  }
 </script>
 <!-- ================= LOGIN ================= -->
 <section id="loginScreen" style="display:flex; align-items:center; justify-content:center; height:100vh; background:#f5f5f5; flex-direction:column;">
@@ -3779,15 +3781,11 @@ window.addEventListener("resize", () => {
 document.addEventListener("DOMContentLoaded", () => {
   const activeTab = document.querySelector("#mainMenu .menuItem.active");
   if(!activeTab) document.getElementById("tab-invoice").click();
-}
+});
 /* ================= MENU UNDERLINE HARD LOCK ================= */
 
 /* Lock menu height so nothing can push it */
-#mainMenu{
-  height:52px !important;
-  align-items:center !important;
-  overflow:hidden !important;
-}
+
 </script>
 <script>
 DB.logs = DB.logs || [];
