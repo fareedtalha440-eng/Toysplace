@@ -1330,11 +1330,11 @@ function searchInvProduct(i,val,field){
   let results = DB.products.filter(p=>{
 
     const barcode = (p.barcode||"").toLowerCase();
-    const product.id  = (p.product.id||"").toLowerCase();
+    const itemNo  = (p.itemNo||"").toLowerCase();
     const desc    = (p.desc||"").toLowerCase();
 
     if(field==="barcode") return barcode.includes(q);
-    if(field==="product.id")  return product.id.includes(q);
+    if(field==="itemNo")  return itemNo.includes(q);
     if(field==="desc")    return desc.includes(q);
 
     return false;
@@ -1382,7 +1382,7 @@ function selectInvoiceProduct(i,p){
   invoiceDraft[i] = {
     productId:p.id,
     barcode:p.barcode||"",
-    itemNo:p.product.id,,
+    itemNo:p.itemNo,
     desc:p.desc,
     qty:1,
     rate:p.rate||0,
@@ -2191,7 +2191,7 @@ function advancedProductSearch(){
 }
 
   const results = DB.products.filter(p =>
-    (p.product.id || "").toLowerCase().includes(q) ||
+    (p.itemNo || "").toLowerCase().includes(q)
     (p.desc || "").toLowerCase().includes(q) ||
     (p.barcode || "").toLowerCase().includes(q)
   );
@@ -2209,7 +2209,7 @@ editingProductId = null;
 document.getElementById("productForm").style.display="block";
 productFormTitle.innerText="New Product";
 pBarcode.value="";
-pproduct.id.value="";
+pItemNo.value="";
 pDesc.value="";
 pRate.value="";
 }
@@ -2227,7 +2227,7 @@ document.getElementById("productForm").style.display="block";
 productFormTitle.innerText="Edit Product";
 
 pBarcode.value=p.barcode||"";
-pproduct.id.value=p.product.id||"";
+pItemNo.value=p.itemNo||"";
 pDesc.value=p.desc||"";
 pRate.value=p.rate||0;
 }
@@ -2237,11 +2237,11 @@ pRate.value=p.rate||0;
 function saveProduct(){
 
 const barcode=pBarcode.value.trim();
-const product.id=pproduct.id.value.trim();
+const itemNo=pItemNo.value.trim();
 const desc=pDesc.value.trim();
 const rate=+pRate.value||0;
 
-if(!product.id||!desc){
+if(!itemNo||!desc){
 alert("Item No & Description Required");
 return;
 }
@@ -2252,13 +2252,13 @@ const p=DB.products.find(x=>x.id===editingProductId);
 if(!p) return;
 
 p.barcode=barcode;
-p.product.id=product.id;
+p.itemNo=itemNo;
 p.desc=desc;
 p.rate=rate;
 
 }else{
 
-if(DB.products.some(p=>p.product.id===product.id)){
+if(DB.products.some(p=>p.itemNo===itemNo)){
 alert("Item No already exists");
 return;
 }
@@ -2271,7 +2271,7 @@ return;
 DB.products.push({
 id: uid("P"),
 barcode,
-product.id,
+itemNo,
 desc,
 rate,
 stock:0
@@ -2341,17 +2341,17 @@ const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
 
 rows.forEach(r=>{
 
-const product.id = r["Item No"]||"";
+const itemNo = r["Item No"]||"";
 const barcode = r["Barcode"]||"";
 
-if(!product.id) return;
-if(DB.products.some(p=>p.product.id===product.id)) return;
+if(!itemNo) return;
+if(DB.products.some(p=>p.itemNo===itemNo)) return;
 if(barcode && DB.products.some(p=>p.barcode===barcode)) return;
 
 DB.products.push({
 id: uid("P"),
 barcode,
-product.id,
+itemNo,
 desc: r["Description"]||"",
 rate: Number(
   r["Rate"] ??
@@ -3024,7 +3024,7 @@ function searchProduct(inp,i){
 
   const list = (DB.products || []).filter(p =>
   (p.barcode || "").toLowerCase().includes(val.toLowerCase()) ||
-  (p.product.id || "").toLowerCase().includes(val.toLowerCase()) ||
+  (p.itemNo || "").toLowerCase().includes(val.toLowerCase())
   (p.desc || "").toLowerCase().includes(val.toLowerCase())
 ).slice(0,5);
   
@@ -3048,7 +3048,7 @@ inp.closest("td").appendChild(box);
 
   list.forEach(p=>{
     const d=document.createElement("div");
-    d.innerText=`${p.barcode} | ${p.product.id} | ${p.desc}`;
+    d.innerText=`${p.barcode} | ${p.itemNo} | ${p.desc}`;
     d.onclick=()=>selectProduct(i,p);
     box.appendChild(d);
   });
@@ -3063,7 +3063,7 @@ function selectProduct(i,p){
   Object.assign(purchaseDraft[i],{
     productId:p.id,
     barcode:p.barcode,
-    itemNo:p.product.id,
+    itemNo:p.itemNo,
     desc:p.desc
   });
 
@@ -3324,7 +3324,7 @@ function uploadPurchaseExcel(input){
   r.onload=e=>{
     const wb=XLSX.read(e.target.result,{type:"binary"});
     XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]).forEach(row=>{
-      const p=DB.products.find(x=>x.barcode==row.Barcode||x.product.id==row["Item No"]||x.desc==row.Description);
+      const p=DB.products.find(x=>x.barcode==row.Barcode||x.itemNo==row["Item No"]||x.desc==row.Description);
       if(!p)return;
       purchaseDraft.push({productId:p.id,barcode:p.barcode,itemNo:p.product.id,desc:p.desc,qty:+row.Qty||0,cost:+row.Cost||0});
     });
