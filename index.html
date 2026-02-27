@@ -2078,7 +2078,7 @@ border-radius:12px;padding:20px;">
 
 <div style="display:grid;gap:10px;">
 <input id="pBarcode" placeholder="Barcode">
-<input id="pproduct.id" placeholder="Item No">
+<input id="pItemNo" placeholder="Item No">
 <input id="pDesc" placeholder="Description">
 <input id="pRate" type="number" placeholder="Rate">
 </div>
@@ -2162,7 +2162,7 @@ tbody.innerHTML += `
 <tr>
 <td>${start+index+1}</td>
 <td>${p.barcode||""}</td>
-<td>${p.product.id}</td>
+<td>${p.itemNo}</td>
 <td>${p.desc}</td>
 <td>${Number(p.rate).toLocaleString(undefined,{minimumFractionDigits:2})}</td>
 <td>${p.stock||0}</td>
@@ -2191,7 +2191,7 @@ function advancedProductSearch(){
 }
 
   const results = DB.products.filter(p =>
-    (p.itemNo || "").toLowerCase().includes(q)
+    (p.itemNo || "").toLowerCase().includes(q) ||
     (p.desc || "").toLowerCase().includes(q) ||
     (p.barcode || "").toLowerCase().includes(q)
   );
@@ -2383,7 +2383,7 @@ function exportCSV(){
 let csv = "Barcode,Item No,Description,Rate,Stock\n";
 
 DB.products.forEach(p=>{
-csv += `"${p.barcode}","${p.product.id}","${p.desc}",${p.rate},${p.stock}\n`;
+csv += `"${p.barcode}","${p.itemNo}","${p.desc}",${p.rate},${p.stock}\n`;
 });
 
 const a = document.createElement("a");
