@@ -1218,7 +1218,7 @@ function updateLiveInvoiceNo(){
 }
 
 /* ===== ADD ROW ===== */
-function addInvoiceRow(p);{
+function addInvoiceRow(){
   invoiceDraft.push({productId:"",barcode:"",itemNo:"",desc:"",qty:1,rate:0,valid:false});
   renderInvoice();
 }
@@ -1240,9 +1240,9 @@ function renderInvoice(){
 </td>
 
 <td>
-  <input value="${r.itemNo||""}" 
-       oninput="searchInvProduct(${i},this.value,'itemNo')">
-<div id="invSugI${i}" class="invSug"></div>
+  <input value="${r.itemNo}" 
+         oninput="searchInvProduct(${i},this.value,'itemNo')">
+  <div id="invSugI${i}" class="invSug"></div>
 </td>
 
 <td>
@@ -1295,7 +1295,7 @@ function searchInvProduct(i,val,field){
 
   const box = document.getElementById(
     field==="barcode" ? "invSugB"+i :
-    field==="product.id" ? "invSugI"+i :
+    field==="itemNo" ? "invSugI"+i :
     "invSugD"+i
   );
 
@@ -1306,12 +1306,12 @@ function searchInvProduct(i,val,field){
   let results = DB.products.filter(p=>{
 
     const barcode = (p.barcode||"").toLowerCase();
-    const itemNo  = (p.product?.id||"").toLowerCase();
+    const itemNo  = (p.itemNo||"").toLowerCase();
     const desc    = (p.desc||"").toLowerCase();
 
     if(field==="barcode") return barcode.includes(q);
-if(field==="itemNo")  return (p.product?.id||"").toLowerCase().includes(q);
-if(field==="desc")    return desc.includes(q);
+    if(field==="itemNo")  return itemNo.includes(q);
+    if(field==="desc")    return desc.includes(q);
 
     return false;
   });
@@ -1336,7 +1336,7 @@ if(field==="desc")    return desc.includes(q);
     const d=document.createElement("div");
     d.innerText=
       (p.barcode||"")+
-      " | "+p.product.id+
+      " | "+p.itemNo+
       " | "+p.desc+
       " (Stock: "+p.stock+")";
 
@@ -1469,11 +1469,7 @@ function cancelInvoice(){
   renderInvoice();
   updateLiveInvoiceNo();
 }
-document.addEventListener("DOMContentLoaded",()=>{
-  renderInvoice();
-  renderInvoiceList();
-  updateLiveInvoiceNo();
-});
+
 /* ===== INVOICE LIST ===== */
 function renderInvoiceList(){
   const tbody=document.getElementById("invoiceList");
@@ -1647,7 +1643,7 @@ td{padding:2px 0}
 ${inv.items.map((r,i)=>`
 <tr>
 <td>${i+1}</td>
-<td>${r.product.id}<br><small>${r.desc||""}</small></td>
+<td>${r.itemNo}<br><small>${r.desc||""}</small></td>
 <td>${r.qty}</td>
 <td>${r.rate}</td>
 <td class="right">Rs.${Number(r.qty*r.rate).toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
