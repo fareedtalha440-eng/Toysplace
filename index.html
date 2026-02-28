@@ -2457,18 +2457,18 @@ ProductSystem.init();
 
 <script>
 
-/* ================= SAFE DATABASE INIT ================= */
+/* ================= HARD SAFE INIT ================= */
 
-DB.vendors      = Array.isArray(DB.vendors) ? DB.vendors : [];
-DB.purchases    = Array.isArray(DB.purchases) ? DB.purchases : [];
-DB.cash         = Array.isArray(DB.cash) ? DB.cash : [];
-DB.returns      = Array.isArray(DB.returns) ? DB.returns : [];
-DB.deletedLogs  = Array.isArray(DB.deletedLogs) ? DB.deletedLogs : [];
+DB.vendors     ??= [];
+DB.purchases   ??= [];
+DB.cash        ??= [];
+DB.returns     ??= [];
+DB.deletedLogs ??= [];
 
 let vendorPage = 1;
 const vendorsPerPage = 20;
 
-/* ================= MONEY FORMAT ================= */
+/* ================= MONEY ================= */
 
 function money(v){
   const n = Number(v || 0);
@@ -2476,26 +2476,23 @@ function money(v){
     Math.abs(n).toLocaleString("en-PK",{minimumFractionDigits:2});
 }
 
-/* ================= NEXT VENDOR NUMBER ================= */
+/* ================= NEXT VENDOR NO ================= */
 
 function nextVendorNo(){
-  if(!DB.vendors.length) return "VEN1001";
-
+  const base = 1000;
   const nums = DB.vendors
-    .map(v => parseInt(String(v.no||"").replace("VEN","")))
-    .filter(n => !isNaN(n));
-
-  return "VEN" + (Math.max(...nums,1000) + 1);
+    .map(v=>parseInt(String(v.no||"").replace("VEN","")))
+    .filter(n=>!isNaN(n));
+  return "VEN" + ((nums.length ? Math.max(...nums) : base) + 1);
 }
 
-/* ================= ADD VENDOR ================= */
+/* ================= ADD ================= */
 
 function addVendor(){
-
-  const name = document.getElementById("vendorName").value.trim();
+  const name = vendorName.value.trim();
   if(!name) return alert("Vendor name required");
 
-  if(DB.vendors.some(v => v.name.toLowerCase() === name.toLowerCase()))
+  if(DB.vendors.some(v=>v.name.toLowerCase()===name.toLowerCase()))
     return alert("Vendor already exists");
 
   DB.vendors.push({
@@ -2506,7 +2503,7 @@ function addVendor(){
   });
 
   saveDB();
-  document.getElementById("vendorName").value="";
+  vendorName.value="";
   vendorPage=1;
   renderVendors();
   loadVendorOptions();
@@ -2527,90 +2524,82 @@ function editVendor(id){
   loadVendorOptions();
 }
 
-/* ================= DELETE (WITH BALANCE PROTECTION) ================= */
+/* ================= BALANCE ENGINE (SINGLE SOURCE OF TRUTH) ================= */
+
+function vendorBalance(vendorId){
+
+  let bal = 0;
+
+  // Purchases ↑ liability
+  DB.purchases
+    .filter(p=>p.vendorId===vendorId)
+    .forEach(p=> bal += Number(p.total)||0 );
+
+  // Cash payments
+  DB.cash
+    .filter(c=>c.vendorId===vendorId)
+    .forEach(c=>{
+      if(c.type==="OUT") bal -= Number(c.amount)||0; // you paid
+      if(c.type==="IN")  bal += Number(c.amount)||0; // vendor paid you
+    });
+
+  // Returns ↓ liability
+  DB.returns
+    .filter(r=>r.vendorId===vendorId)
+    .forEach(r=> bal -= Number(r.amount)||0 );
+
+  return bal;
+}
+
+/* ================= DELETE PROTECTION ================= */
 
 function deleteVendor(id){
-
   const v = DB.vendors.find(x=>x.id===id);
   if(!v) return;
 
-  const bal = vendorBalance(v.id);
+  if(vendorBalance(id)!==0)
+    return alert("Cannot delete vendor with balance");
 
-  if(bal !== 0)
-    return alert("Cannot delete vendor. Balance must be zero.");
-
-  if(!confirm("Delete this vendor?")) return;
+  if(!confirm("Delete vendor?")) return;
 
   DB.deletedLogs.push({
     id: uid("DEL"),
     section:"VENDOR",
-    account: currentUser?.username || "System",
     ref:v.no,
-    detail: JSON.parse(JSON.stringify(v)),
+    detail: structuredClone(v),
     date:new Date().toISOString()
   });
 
   DB.vendors = DB.vendors.filter(x=>x.id!==id);
-
   saveDB();
   renderVendors();
   loadVendorOptions();
-}
-
-/* ================= BALANCE ENGINE ================= */
-
-function vendorBalance(vendorId){
-
-  const purchaseTotal = DB.purchases
-    .filter(p=>p.vendorId===vendorId)
-    .reduce((s,p)=>s+(Number(p.total)||0),0);
-
-  const paymentTotal = DB.cash
-    .filter(c=>c.type==="OUT" && c.vendorId===vendorId)
-    .reduce((s,c)=>s+(Number(c.amount)||0),0);
-
-  const returnTotal = DB.returns
-    .filter(r=>r.vendorId===vendorId)
-    .reduce((s,r)=>s+(Number(r.amount)||0),0);
-
-  return purchaseTotal - paymentTotal - returnTotal;
 }
 
 /* ================= RENDER ================= */
 
 function renderVendors(){
 
-  const tbody = document.getElementById("vendorRows");
-  tbody.innerHTML="";
+  vendorRows.innerHTML="";
 
-  const q = (document.getElementById("vendorSearch").value||"")
-              .toLowerCase().trim();
+  const q = vendorSearch.value.toLowerCase().trim();
 
   const filtered = DB.vendors
-    .filter(v=>{
-      if(!q) return true;
-      return (
-        (v.name||"").toLowerCase().includes(q) ||
-        (v.no||"").toLowerCase().includes(q)
-      );
-    })
+    .filter(v=>!q || v.name.toLowerCase().includes(q) || v.no.includes(q))
     .sort((a,b)=>new Date(b.createdDate)-new Date(a.createdDate));
 
-  const totalPages = Math.ceil(filtered.length / vendorsPerPage);
-  if(vendorPage > totalPages) vendorPage = totalPages || 1;
+  const pages = Math.ceil(filtered.length/vendorsPerPage)||1;
+  vendorPage = Math.min(vendorPage,pages);
 
   filtered
-    .slice((vendorPage-1)*vendorsPerPage, vendorPage*vendorsPerPage)
+    .slice((vendorPage-1)*vendorsPerPage,vendorPage*vendorsPerPage)
     .forEach((v,i)=>{
-
-      const bal = vendorBalance(v.id);
-
-      tbody.innerHTML+=`
+      vendorRows.innerHTML+=`
       <tr>
         <td>${(vendorPage-1)*vendorsPerPage+i+1}</td>
         <td>${v.no}</td>
         <td>${v.name}</td>
-        <td>₨ ${money(bal)}</td>
+        <td>₨ ${money(vendorBalance(v.id))}</td>
         <td><button onclick="openVendorLedger('${v.id}')">Open</button></td>
         <td><button onclick="editVendor('${v.id}')">Edit</button></td>
         <td><button class="red" onclick="deleteVendor('${v.id}')">Delete</button></td>
@@ -2618,12 +2607,7 @@ function renderVendors(){
     });
 }
 
-/* ================= PAGINATION ================= */
-
-function nextVendorPage(){ vendorPage++; renderVendors(); }
-function prevVendorPage(){ if(vendorPage>1){ vendorPage--; renderVendors(); } }
-
-/* ================= LEDGER SYSTEM ================= */
+/* ================= LEDGER (ACCOUNTING-GRADE) ================= */
 
 function openVendorLedger(vendorId){
 
@@ -2634,39 +2618,27 @@ function openVendorLedger(vendorId){
 
   DB.purchases
     .filter(p=>p.vendorId===vendorId)
-    .forEach(p=>{
-      rows.push({
-        date:p.dateTime,
-        type:"Purchase",
-        ref:p.id,
-        debit:Number(p.total)||0,
-        credit:0
-      });
-    });
+    .forEach(p=> rows.push({
+      date:p.dateTime, type:"Purchase", ref:p.id,
+      debit:p.total, credit:0
+    }));
 
   DB.cash
-    .filter(c=>c.vendorId===vendorId && c.type==="OUT")
+    .filter(c=>c.vendorId===vendorId)
     .forEach(c=>{
-      rows.push({
-        date:c.dateTime,
-        type:"Payment",
-        ref:c.ref||c.id,
-        debit:Number(c.amount)||0,
-        credit:0
-      });
+      if(c.type==="OUT"){
+        rows.push({date:c.dateTime,type:"Payment",ref:c.ref,debit:0,credit:c.amount});
+      }
+      if(c.type==="IN"){
+        rows.push({date:c.dateTime,type:"Received",ref:c.ref,debit:c.amount,credit:0});
+      }
     });
 
   DB.returns
     .filter(r=>r.vendorId===vendorId)
-    .forEach(r=>{
-      rows.push({
-        date:r.dateTime,
-        type:"Return",
-        ref:r.no,
-        debit:0,
-        credit:Number(r.amount)||0
-      });
-    });
+    .forEach(r=> rows.push({
+      date:r.dateTime,type:"Return",ref:r.no,debit:0,credit:r.amount
+    }));
 
   rows.sort((a,b)=>new Date(a.date)-new Date(b.date));
 
@@ -2674,76 +2646,31 @@ function openVendorLedger(vendorId){
 
   const w = window.open("");
   w.document.write(`
-<html>
-<head>
-<title>Vendor Ledger</title>
-<style>
-body{font-family:Arial;padding:40px;}
-table{width:100%;border-collapse:collapse;margin-top:20px;}
-th,td{border:1px solid #000;padding:8px;text-align:center;}
-th{background:#000;color:#fff;}
-.total{margin-top:20px;text-align:right;font-weight:900;}
-</style>
-</head>
-<body>
-
-<h2>Vendor Ledger</h2>
-<div><b>Vendor:</b> ${v.name}</div>
-<div><b>No:</b> ${v.no}</div>
-<div><b>Printed:</b> ${new Date().toLocaleString()}</div>
-
-<table>
-<tr>
-<th>#</th>
-<th>Date</th>
-<th>Type</th>
-<th>Reference</th>
-<th>Debit</th>
-<th>Credit</th>
-<th>Balance</th>
-</tr>
-
-${rows.map((r,i)=>{
-  running += r.debit - r.credit;
-  return `
-<tr>
-<td>${i+1}</td>
-<td>${new Date(r.date).toLocaleDateString()}</td>
-<td>${r.type}</td>
-<td>${r.ref}</td>
-<td>${money(r.debit)}</td>
-<td>${money(r.credit)}</td>
-<td>${money(running)}</td>
-</tr>`;
-}).join("")}
-
-</table>
-
-<div class="total">
-Current Balance: ₨ ${money(running)}
-</div>
-
-</body>
-</html>
-`);
+  <html><body>
+  <h2>Vendor Ledger</h2>
+  <div><b>${v.name}</b> (${v.no})</div>
+  <table border="1" width="100%" style="margin-top:20px">
+  <tr><th>#</th><th>Date</th><th>Type</th><th>Ref</th>
+      <th>Debit</th><th>Credit</th><th>Balance</th></tr>
+  ${
+    rows.map((r,i)=>{
+      running += (Number(r.debit)||0) - (Number(r.credit)||0);
+      return `<tr>
+        <td>${i+1}</td>
+        <td>${new Date(r.date).toLocaleDateString()}</td>
+        <td>${r.type}</td>
+        <td>${r.ref}</td>
+        <td>${money(r.debit)}</td>
+        <td>${money(r.credit)}</td>
+        <td>${money(running)}</td>
+      </tr>`;
+    }).join("")
+  }
+  </table>
+  <h3 style="text-align:right">Balance: ₨ ${money(running)}</h3>
+  </body></html>
+  `);
   w.print();
-}
-
-/* ================= DROPDOWN LINK ================= */
-
-function loadVendorOptions(){
-  const payVendor = document.getElementById("payVendor");
-  const cashVendorFilter = document.getElementById("cashVendorFilter");
-
-  if(!payVendor || !cashVendorFilter) return;
-
-  payVendor.innerHTML='<option value="">Select Vendor</option>';
-  cashVendorFilter.innerHTML='<option value="">All Vendors</option>';
-
-  DB.vendors.forEach(v=>{
-    payVendor.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
-    cashVendorFilter.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
-  });
 }
 
 /* ================= INIT ================= */
