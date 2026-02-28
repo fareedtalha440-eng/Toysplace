@@ -82,8 +82,6 @@ nav div.active{
 /* ===== SECTION ===== */
 section{
   box-sizing:border-box;
-max-width:1400px;
-margin:auto;
   display:none;
   padding:20px;
 }
@@ -824,7 +822,7 @@ function vrKeyNav(e,inp){
   items.forEach(x=>x.classList.remove("active"));
   if(idx>-1) items[idx].classList.add("active");
 }
-
+  
 /* ================= SELECT PRODUCT ================= */
 function vrSelectProduct(inp,p){
 
@@ -1220,7 +1218,7 @@ function updateLiveInvoiceNo(){
 }
 
 /* ===== ADD ROW ===== */
-function addInvoiceRow(){
+function addInvoiceRow(p);{
   invoiceDraft.push({productId:"",barcode:"",itemNo:"",desc:"",qty:1,rate:0,valid:false});
   renderInvoice();
 }
@@ -1869,6 +1867,18 @@ function saveCashPayment(){
   const id = getNextPaymentId();
 
   DB.cash.push({
+    if(vendor){
+  DB.vendorLedger = DB.vendorLedger || [];
+  DB.vendorLedger.push({
+    id: "VL"+Date.now(),
+    vendor: vendor,
+    date: dtISO,
+    type: "PAYMENT",
+    ref: ref || "",
+    amount: amount,
+    direction: "OUT"
+  });
+}
     if(vendorId){
   const vendorObj = DB.vendors.find(v=>v.id===vendorId);
   DB.vendorLedger.push({
