@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dani Test Software</title>
 
 <!-- ====== XLSX LIBRARY ====== -->
@@ -18,11 +19,13 @@
 /* ===== BODY ===== */
 body{
   margin:0;
-  font-family:Segoe UI, Arial;
-  background:white;
+  font-family:Segoe UI, Arial, sans-serif;
+  background:#f4f6f9;
   color:#0b1c2d;
+  width:100%;
+  min-height:100vh;
+  overflow-x:hidden;
 }
-
 /* ===== HEADER ===== */
 header{
   display:flex;
@@ -78,6 +81,9 @@ nav div.active{
 
 /* ===== SECTION ===== */
 section{
+  box-sizing:border-box;
+max-width:1400px;
+margin:auto;
   display:none;
   padding:20px;
 }
@@ -94,20 +100,22 @@ section.active{
 
 /* ===== CARD ===== */
 .card{
-  background:white;
-  border:1px solid var(--border);
-  padding:18px;
+  background:#ffffff;
+  border:1px solid #e0e0e0;
+  padding:20px;
   width:100%;
   margin-bottom:20px;
-  border-radius:10px;
+  border-radius:12px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.04);
+  box-sizing:border-box;
 }
-
 /* ===== TABLE ===== */
 table{
   width:100%;
   border-collapse:collapse;
+  table-layout:fixed;
+  word-wrap:break-word;
 }
-
 th,td{
   border:1px solid var(--border);
   padding:8px;
@@ -221,7 +229,10 @@ button{
 <script>
 /* ================= TAB SWITCHING (FIXED) ================= */
 function openTab(id){
-
+if(id==="adminReports"){
+  if(!(user.permissions||[]).includes("adminReports"))
+    return alert("Access denied");
+}
   const session = sessionStorage.getItem("loggedInUser");
   if(!session){
     alert("Please login first");
@@ -340,59 +351,20 @@ function showReport(type){
   const reportView = document.getElementById("reportView");
   reportView.innerHTML="";
 
-  const box = document.getElementById("invoiceProfitReport");
-  box.style.display="block";
 
   document.getElementById("deletedDataReport").style.display="none";
   document.getElementById("productDetailsReport").style.display="none";
 
   box.innerHTML=`
-    <h2>Invoice Wise Profit</h2>
-    <div class="r-filter">
-      <input type="date" id="pFrom">
-      <input type="date" id="pTo">
-      <select id="pUser">
-        <option value="">All Users</option>
-        ${DB.accounts.map(a=>`<option>${a.username}</option>`).join("")}
-      </select>
-      <button onclick="applyProfitReport()">Apply</button>
-    </div>
-
-    <table class="r-table">
-      <thead>
-        <tr>
-          <th>Invoice</th>
-          <th>Date</th>
-          <th>User</th>
-          <th>Sale</th>
-          <th>Cost</th>
-          <th>Profit</th>
-        </tr>
-      </thead>
-      <tbody id="profitRows"></tbody>
-    </table>
-  `;
-}
-
-
-function alertInvoiceProfit(id){
-  const inv=DB.invoices.find(x=>x.id===id);
-  let msg="Invoice "+id+"\\n\\n";
-  inv.items.forEach(it=>{
-    const purchase=DB.purchases
-      .filter(p=>p.items.some(x=>x.product.id===it.product.id))
-      .sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
-    const cost=(purchase?.items.find(x=>x.product.id===it.product.id)?.cost||0)*it.qty;
-    const sale=it.qty*it.rate;
-    msg+=`${it.product.id} Profit: ${(sale-cost).toFixed(2)}\\n`;
-  });
-  alert(msg);
-}
+  
 </script>
 
 <!-- ================= DATABASE ================= -->
 <script>
 let DB = {
+  vendorLedger: JSON.parse(localStorage.getItem("vendorLedger") || "[]"),
+expenses: JSON.parse(localStorage.getItem("expenses") || "[]"),
+logs: JSON.parse(localStorage.getItem("logs") || "[]"),
   products: JSON.parse(localStorage.getItem("products") || "[]"),
   vendors: JSON.parse(localStorage.getItem("vendors") || "[]"),
   purchases: JSON.parse(localStorage.getItem("purchases") || "[]"),
@@ -814,28 +786,33 @@ function vrAddRow(){
 
 /* ================= SEARCH + KEYBOARD ================= */
 function vrSearch(inp,type){
-  const q=inp.value.toLowerCase();
-  const box=inp.nextElementSibling;
+
+  const q = inp.value.toLowerCase().trim();
+  const box = inp.nextElementSibling;
   box.innerHTML="";
   if(!q) return;
 
   DB.products.forEach(p=>{
-    let ok=false;
-    if(type==="barcode" && (p.barcode||"").toLowerCase().includes(q)) ok=true;
-    if(type==="item" && (p.product.id||"").toLowerCase().includes(q)) ok=true;
-    if(type==="desc" && (p.desc||"").toLowerCase().includes(q)) ok=true;
-    if(!ok) return;
 
-    if([...vrBody.children].some(r=>r!==inp.closest("tr") && r.children[1].children[0].value===p.product.id)) return;
+    const barcode = (p.barcode||"").toLowerCase();
+    const itemNo  = (p.product?.id||"").toLowerCase();
+    const desc    = (p.desc||"").toLowerCase();
+
+    let match=false;
+
+    if(type==="barcode" && barcode.includes(q)) match=true;
+    if(type==="item" && itemNo.includes(q)) match=true;
+    if(type==="desc" && desc.includes(q)) match=true;
+
+    if(!match) return;
 
     const d=document.createElement("div");
     d.className="dd-item";
-    d.innerText=`${p.product.id} | ${p.desc} (Stock ${p.stock})`;
+    d.innerText=p.product.id+" | "+p.desc+" (Stock "+p.stock+")";
     d.onclick=()=>vrSelectProduct(inp,p);
     box.appendChild(d);
   });
 }
-
 function vrKeyNav(e,inp){
   const box=inp.nextElementSibling;
   const items=[...box.children];
@@ -1331,11 +1308,11 @@ function searchInvProduct(i,val,field){
   let results = DB.products.filter(p=>{
 
     const barcode = (p.barcode||"").toLowerCase();
-    const itemNo  = (p.itemNo||"").toLowerCase();
+    const itemNo  = (p.product?.id||"").toLowerCase();
     const desc    = (p.desc||"").toLowerCase();
 
     if(field==="barcode") return barcode.includes(q);
-if(field==="itemNo")  return itemNo.includes(q);
+if(field==="itemNo")  return (p.product?.id||"").toLowerCase().includes(q);
 if(field==="desc")    return desc.includes(q);
 
     return false;
@@ -1798,7 +1775,6 @@ td{position:relative}
       <thead>
         <tr>
           <th>Date</th>
-          <th>Time</th>
           <th>Type</th>
           <th>Vendor</th>
           <th>Amount</th>
@@ -1893,6 +1869,20 @@ function saveCashPayment(){
   const id = getNextPaymentId();
 
   DB.cash.push({
+    if(vendorId){
+  const vendorObj = DB.vendors.find(v=>v.id===vendorId);
+  DB.vendorLedger.push({
+    id:uid("VL"),
+    vendorId:vendorObj?.id||"",
+    vendorName:vendorObj?.name||"",
+    type:"Payment",
+    ref:ref||"Cash Payment",
+    debit:Number(amount),
+    credit:0,
+    expense:false,
+    date:new Date().toISOString()
+  });
+}
     id,
     dateTime: new Date(date).toISOString(),
     createdDate: new Date().toISOString(),
@@ -3752,53 +3742,6 @@ document.addEventListener("DOMContentLoaded", ()=>{
 </script>
 <!-- ================= MENU LOGIC ================= -->
 <script>
-/* ===== OPEN TAB FUNCTION WITH UNDERLINE ANIMATION ===== */
-function openTab(id){
-  // Hide all sections
-  document.querySelectorAll("section").forEach(s => s.style.display = "none");
-
-  // Show the selected section
-  const sec = document.getElementById(id);
-  if(sec) sec.style.display = "block";
-
-  // Update menu active state
-  document.querySelectorAll("#mainMenu .menuItem").forEach(d => d.classList.remove("active"));
-  const tab = document.getElementById("tab-" + id);
-  if(tab) tab.classList.add("active");
-
-  // Animate underline
-  const underline = document.getElementById("menuUnderline");
-  if(tab && underline){
-    const rect = tab.getBoundingClientRect();
-    const parentRect = tab.parentElement.getBoundingClientRect();
-    underline.style.width = rect.width + "px";
-    underline.style.left = (rect.left - parentRect.left) + "px";
-  }
-}
-
-/* ===== ADJUST UNDERLINE ON WINDOW RESIZE ===== */
-window.addEventListener("resize", () => {
-  const active = document.querySelector("#mainMenu .menuItem.active");
-  const underline = document.getElementById("menuUnderline");
-  if(active && underline){
-    const rect = active.getBoundingClientRect();
-    const parentRect = active.parentElement.getBoundingClientRect();
-    underline.style.width = rect.width + "px";
-    underline.style.left = (rect.left - parentRect.left) + "px";
-  }
-});
-
-/* ===== OPEN DEFAULT TAB ON PAGE LOAD ===== */
-document.addEventListener("DOMContentLoaded", () => {
-  const activeTab = document.querySelector("#mainMenu .menuItem.active");
-  if(!activeTab) document.getElementById("tab-invoice").click();
-});
-/* ================= MENU UNDERLINE HARD LOCK ================= */
-
-/* Lock menu height so nothing can push it */
-
-</script>
-<script>
 DB.logs = DB.logs || [];
 
 function openReport(type){
@@ -3841,7 +3784,9 @@ document.addEventListener("DOMContentLoaded",()=>{
     <h2>Reports</h2>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-top:20px;">
-
+<div style="font-size:16px;font-weight:600;margin-top:8px">
+Profit Report
+</div>
       <div class="card" style="cursor:pointer" onclick="openProductDetailsReport()">
         <h3>📦 Product Details</h3>
         <p>Stock movement, vendor filter & ranking</p>
@@ -3924,7 +3869,6 @@ document.addEventListener("DOMContentLoaded",()=>{
 </div>
   <!-- ===== REPORT OUTPUT BLOCKS ===== -->
   <div id="productDetailsReport" class="card" style="display:none;margin-top:20px;"></div>
-  <div id="invoiceProfitReport" class="card" style="display:none;margin-top:20px;"></div>
   <div id="deletedDataReport" class="card" style="display:none;margin-top:20px;"></div>
 
 </section>
@@ -3948,14 +3892,13 @@ function calculateProfitReport(from, to) {
 
   let totalExpense = 0;
 
-  (DB.cash || []).forEach(c => {
-    if(!c.isExpense) return;
-    const d = c.date.split("T")[0];
-    if(from && d < from) return;
-    if(to && d > to) return;
-    totalExpense += Number(c.amount || 0);
-  });
-
+  DB.cash.forEach(c=>{
+  if(!c.expense) return;
+  const d=new Date(c.dateTime);
+  if(from && d<new Date(from)) return;
+  if(to && d>new Date(to+"T23:59:59")) return;
+  totalExpense += Number(c.amount||0);
+});
   /* ===== EXPENSE DISTRIBUTION BY SALES RATIO ===== */
 
   let netProfit = grossProfit - totalExpense;
@@ -4158,4 +4101,7 @@ function consumeFIFO(map, productId, qty){
 
   return totalCost;
 }
+  window.addEventListener("beforeunload",()=>{
+  saveDB();
+});
 </script>
