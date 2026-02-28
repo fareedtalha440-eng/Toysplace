@@ -1824,27 +1824,9 @@ selectFilter.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
 /* ===== CASH BALANCE ===== */
 function cashBalance(){
   return DB.cash.reduce((s,t)=>{
-    if(t.expense){
-      return s - t.amount;
-    }
-    if(t.type==="IN"){
-      return s + t.amount;
-    }
-    return s - t.amount;
+    if(t.type==="IN") return s + Number(t.amount||0);
+    return s - Number(t.amount||0);
   },0);
-}
-function calculateVendorBalance(vendorId){
-
-  let bal = 0;
-
-  (DB.vendorLedger || [])
-    .filter(l=>l.vendorId===vendorId)
-    .forEach(l=>{
-      bal += Number(l.debit || 0);
-      bal -= Number(l.credit || 0);
-    });
-
-  return bal;
 }
 /* ===== SAVE PAYMENT (ADD / EDIT) ===== */
 function saveCashPayment(){
@@ -1854,41 +1836,19 @@ function saveCashPayment(){
   const vendorObj = DB.vendors.find(v=>v.id===vendorId);
   const vendorName = vendorObj ? vendorObj.name : "";
   const ref = document.getElementById("payRef").value.trim();
-  const amount = +document.getElementById("payAmount").value;
+  const amount = Number(document.getElementById("payAmount").value);
   const type = document.getElementById("payType").value;
   const expense = document.getElementById("isExpense").checked;
 
   if(!date || !amount) return alert("Date and Amount required");
 
-  const id = getNextPaymentId();
+  const id = editingCashId || getNextPaymentId();
+
+  if(editingCashId){
+    DB.cash = DB.cash.filter(x=>x.id!==editingCashId);
+  }
 
   DB.cash.push({
-    if(vendor){
-  DB.vendorLedger = DB.vendorLedger || [];
-  DB.vendorLedger.push({
-    id: "VL"+Date.now(),
-    vendor: vendor,
-    date: dtISO,
-    type: "PAYMENT",
-    ref: ref || "",
-    amount: amount,
-    direction: "OUT"
-  });
-}
-    if(vendorId){
-  const vendorObj = DB.vendors.find(v=>v.id===vendorId);
-  DB.vendorLedger.push({
-    id:uid("VL"),
-    vendorId:vendorObj?.id||"",
-    vendorName:vendorObj?.name||"",
-    type:"Payment",
-    ref:ref||"Cash Payment",
-    debit:Number(amount),
-    credit:0,
-    expense:false,
-    date:new Date().toISOString()
-  });
-}
     id,
     dateTime: new Date(date).toISOString(),
     createdDate: new Date().toISOString(),
@@ -1896,24 +1856,9 @@ function saveCashPayment(){
     vendorId: vendorId || "",
     vendorName: vendorName || "",
     ref: ref || id,
-    amount: Number(amount),
+    amount,
     expense
   });
-
-  if(vendorId){
-    DB.vendorLedger = DB.vendorLedger || [];
-    DB.vendorLedger.push({
-      id: uid("VL"),
-      vendorId: vendorId,
-      vendorName: vendorName,
-      type: type==="OUT" ? "Payment" : "Received",
-      ref: ref || id,
-      debit: type==="OUT" ? Number(amount) : 0,
-      credit: type==="IN" ? Number(amount) : 0,
-      expense,
-      date: new Date().toISOString()
-    });
-  }
 
   saveDB();
   resetCashForm();
@@ -1958,7 +1903,7 @@ function renderCash(){
 
   const searchText = document.getElementById("cashSearch").value.trim().toLowerCase();
   if(searchText) filtered = filtered.filter(c=> 
-    (c.vendor||"").toLowerCase().includes(searchText) ||
+    (c.vendorName||"").toLowerCase().includes(searchText) ||
     (c.ref||"").toLowerCase().includes(searchText) ||
     (c.amount+"").includes(searchText)
   );
@@ -1971,9 +1916,9 @@ function renderCash(){
 
   displayRows.forEach(c=>{
     if(c.type==="IN"){
-  runningBal += Number(c.amount);
+  runningBal += Number(c.amount||0);
 }else{
-  runningBal -= Number(c.amount);
+  runningBal -= Number(c.amount||0);
 }
     const dt = new Date(c.dateTime);
     const created = new Date(c.createdDate || c.dateTime).toLocaleString();
@@ -1982,7 +1927,6 @@ function renderCash(){
     tbody.innerHTML+=`
       <tr>
         <td>${dt.toLocaleDateString()}</td>
-        <td>${dt.toLocaleTimeString()}</td>
         <td>${c.expense ? "EXPENSE" : c.type}</td>
         <td>${vendorName}</td>
         <td>${formatNumber(c.amount)}</td>
@@ -2003,33 +1947,31 @@ function prevCashPage(){ if(cashPage>1){ cashPage--; renderCash(); } }
 
 /* ===== EDIT / DELETE ===== */
 function editCashPayment(id){
-  const c = DB.cash.find(x=>x.id===id && x.type==="OUT");
-  if(!c) return alert("Only vendor payments can be edited.");
+  const c = DB.cash.find(x=>x.id===id);
+  if(!c) return;
+
   editingCashId = id;
+
   const dt = new Date(c.dateTime);
   document.getElementById("payDate").value = dt.toISOString().slice(0,10);
-  document.getElementById("payVendor").value = c.vendor;
-  document.getElementById("payRef").value = c.ref;
-  document.getElementById("payAmount").value = c.amount;
+  document.getElementById("payVendor").value = c.vendorId || "";
+  document.getElementById("payRef").value = c.ref || "";
+  document.getElementById("payAmount").value = c.amount || "";
+  document.getElementById("payType").value = c.type;
+  document.getElementById("isExpense").checked = c.expense || false;
 }
-
 function deleteCashPayment(id){
-  const c = DB.cash.find(x=>x.id===id && x.type==="OUT");
-  if(!c) return alert("Only vendor payments can be deleted.");
+
+  const c = DB.cash.find(x=>x.id===id);
+  if(!c) return;
+
   if(!confirm("Delete this payment?")) return;
 
-  if(!DB.deletedPayments) DB.deletedPayments=[];
-  DB.deletedPayments.push({id:c.id,dateTime:new Date().toISOString(),original:c});
-
-  if(c.vendor){
-    const v = DB.vendors.find(x=>x.name===c.vendor);
-    if(v) v.balance = (v.balance || 0) + c.amount;
-  }
-
   DB.cash = DB.cash.filter(x=>x.id!==id);
-  saveDB(); renderCash();
-}
-function deleteVendor(id){
+
+  saveDB();
+  renderCash();
+}function deleteVendor(id){
 
   if(calculateVendorBalance(id) !== 0){
     alert("Vendor balance not zero");
