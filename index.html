@@ -770,9 +770,9 @@ function vrAddRow(){
 
   const tr=document.createElement("tr");
   tr.innerHTML=`
-<td><input onkeydown="vrKeyNav(event,this,'barcode')" oninput="vrSearch(this,'barcode')"><div class="dropdown"></div></td>
-<td><input onkeydown="vrKeyNav(event,this,'item')" oninput="vrSearch(this,'item')"><div class="dropdown"></div></td>
-<td><input onkeydown="vrKeyNav(event,this,'desc')" oninput="vrSearch(this,'desc')"><div class="dropdown"></div></td>
+<td style="position:relative"> <input onkeydown="vrKeyNav(event,this,'barcode')" oninput="vrSearch(this,'barcode')" autocomplete="off"><div class="dropdown" style="position:absolute;background:#fff;border:1px solid #ccc;z-index:9999;max-height:150px;overflow-y:auto;width:250px;"></div></td>
+<td style="position:relative"> <input onkeydown="vrKeyNav(event,this,'item')" oninput="vrSearch(this,'item')" autocomplete="off"><div class="dropdown" style="position:absolute;background:#fff;border:1px solid #ccc;z-index:9999;max-height:150px;overflow-y:auto;width:250px;"></div></td>
+<td style="position:relative"> <input onkeydown="vrKeyNav(event,this,'desc')" oninput="vrSearch(this,'desc')" autocomplete="off"><div class="dropdown" style="position:absolute;background:#fff;border:1px solid #ccc;z-index:9999;max-height:150px;overflow-y:auto;width:250px;"></div></td>
 <td class="stk">0</td>
 <td><input type="number" min="1" oninput="vrCalc()"></td>
 <td><input type="number" min="0.01" step="0.01" oninput="vrCalc()"></td>
@@ -785,11 +785,15 @@ function vrAddRow(){
 /* ================= SEARCH + KEYBOARD ================= */
 function vrSearch(inp,type){
 
+  if(!DB.products || !DB.products.length) return;
   const q = inp.value.toLowerCase().trim();
   const box = inp.nextElementSibling;
   box.innerHTML="";
-  if(!q) return;
-
+  if(!q){
+  box.style.display="none";
+  return;
+}
+box.style.display="block";
   DB.products.forEach(p=>{
 
     const barcode = (p.barcode||"").toLowerCase();
@@ -825,6 +829,7 @@ function vrKeyNav(e,inp){
   
 /* ================= SELECT PRODUCT ================= */
 function vrSelectProduct(inp,p){
+  
 
   const r = inp.closest("tr");
 
@@ -872,6 +877,7 @@ if(!vendorObj){
   r.children[5].children[0].value = autoCost;
 
   inp.nextElementSibling.innerHTML = "";
+  inp.nextElementSibling.style.display="none";
   vrCalc();
 }
 /* ================= CALC ================= */
