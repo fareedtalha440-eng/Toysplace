@@ -1894,8 +1894,8 @@ function renderCash(){
   let filtered = [...DB.cash];
 
 filtered.sort((a,b)=>{
-  const da = new Date(a.createdDate || a.dateTime);
-  const db = new Date(b.createdDate || b.dateTime);
+  const da = new Date(a.dateTime);
+  const db = new Date(b.dateTime);
   return cashSortOrder === "DESC" ? db - da : da - db;
 });
   // Filters
@@ -1920,10 +1920,21 @@ filtered.sort((a,b)=>{
   // FULL running balance first (oldest → newest)
 let runningBal = 0;
 
-let ordered = [...filtered].sort((a,b)=>{
+// Always calculate balance oldest → newest (by payment date)
+let runningBal = 0;
+
+let balanceOrdered = [...DB.cash].sort((a,b)=>{
   return new Date(a.dateTime) - new Date(b.dateTime);
 });
 
+balanceOrdered.forEach(c=>{
+  if(c.type==="IN"){
+    runningBal += Number(c.amount||0);
+  }else{
+    runningBal -= Number(c.amount||0);
+  }
+  c._runningBal = runningBal;
+});
 ordered.forEach(c=>{
   if(c.type==="IN"){
     runningBal += Number(c.amount||0);
