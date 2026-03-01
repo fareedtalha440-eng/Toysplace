@@ -885,7 +885,7 @@ if(!vendorObj){
   }
 
   // FILL ROW
-const productId = (p.product && p.product.id ? p.product.id : p.id || "");
+const productId = (p.itemNo || p.product?.itemNo || p.id || "");
 
 r.children[0].children[0].value = p.barcode || "";
 r.children[1].children[0].value = productId;
