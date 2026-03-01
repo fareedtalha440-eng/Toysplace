@@ -793,7 +793,7 @@ function vrSearch(inp,type){
   DB.products.forEach(p=>{
 
     const barcode = (p.barcode||"").toLowerCase();
-    const itemNo  = (p.product?.id||"").toLowerCase();
+    const itemNo  = (p.product?.id || p.id || "").toLowerCase();
     const desc    = (p.desc||"").toLowerCase();
 
     let match=false;
@@ -806,7 +806,7 @@ function vrSearch(inp,type){
 
     const d=document.createElement("div");
     d.className="dd-item";
-    d.innerText=p.product.id+" | "+p.desc+" (Stock "+p.stock+")";
+    d.innerText=(p.product?.id || p.id)+" | "+(p.desc||"")+" (Stock "+(p.stock||0)+")";
     d.onclick=()=>vrSelectProduct(inp,p);
     box.appendChild(d);
   });
@@ -850,7 +850,9 @@ if(!vendorObj){
 
     if(!purchase.items) continue;
 
-    const found = purchase.items.find(i => i.productId === p.id);
+    const found = purchase.items.find(i => 
+  i.productId === (p.product?.id || p.id)
+);
 
     if(found){
       autoCost = Number(found.cost || found.rate || 0);
@@ -1024,9 +1026,8 @@ function vrPrint(i){
 
     return `
 <tr>
-<td>${i+1}</td>
-<td>${it.product.id}</td>
-<th>Description</th>
+<td>${index+1}</td>
+<td>${it.productId}</td>
 <td>${it.qty}</td>
 <td>${Number(it.cost).toFixed(2)}</td>
 <td>${Number(amt).toFixed(2)}</td>
@@ -1056,7 +1057,7 @@ th{background:#f2f2f2}
 <div class="title">VENDOR RETURN INVOICE</div>
 <div><b>Return No:</b> ${r.no}</div>
 <div><b>Date:</b> ${d.toLocaleString()}</div>
-<div><b>Vendor:</b> ${r.vendor}</div>
+<div><b>Vendor:</b> ${r.vendorName}</div>
 </div>
 </div>
 
