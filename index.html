@@ -935,14 +935,22 @@ function vrSave(){
   if(vrEditIndex!==null){
     const old=DB.returns[vrEditIndex];
     old.items.forEach(it=>{
-      const p=DB.products.find(x=>x.product.id===it.productId);
+      const p=DB.products.find(x => 
+  (x.product && x.product.id === it.productId) ||
+  x.id === it.productId ||
+  x.itemNo === it.productId
+);
 if(p) p.stock+=it.qty;
     });
     DB.vendorLedger=DB.vendorLedger.filter(l=>l.ref!==old.no);
   }
 
   items.forEach(it=>{
-    const p=DB.products.find(x=>x.product.id===it.productId);
+    const p=DB.products.find(x => 
+  (x.product && x.product.id === it.productId) ||
+  x.id === it.productId ||
+  x.itemNo === it.productId
+);
 if(p) p.stock-=it.qty;
   });
 
@@ -1012,7 +1020,11 @@ function vrEdit(i){
   r.items.forEach(it=>{
     vrAddRow();
     const tr=vrBody.lastChild;
-    const p=DB.products.find(x=>x.product.id===it.productId);
+    const p=DB.products.find(x => 
+  (x.product && x.product.id === it.productId) ||
+  x.id === it.productId ||
+  x.itemNo === it.productId
+);
     tr.children[1].children[0].value=it.productId;
     tr.children[2].children[0].value=p?.desc||"";
     tr.querySelector(".stk").innerText=p?.stock||0;
@@ -1026,7 +1038,11 @@ function vrDelete(i){
   if(!confirm("Delete return permanently?")) return;
   const r=DB.returns[i];
   r.items.forEach(it=>{
-    const p=DB.products.find(x=>x.product.id===it.productId);
+    const p=DB.products.find(x => 
+  (x.product && x.product.id === it.productId) ||
+  x.id === it.productId ||
+  x.itemNo === it.productId
+);
     if(p) p.stock+=it.qty;
   });
   DB.vendorLedger=DB.vendorLedger.filter(l=>l.ref!==r.no);
