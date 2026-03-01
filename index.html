@@ -1917,27 +1917,24 @@ filtered.sort((a,b)=>{
 
   cashFiltered = filtered;
 
- 
-let balanceOrdered = [...DB.cash].sort((a,b)=>{
-  return new Date(a.dateTime) - new Date(b.dateTime);
-});
-
-balanceOrdered.forEach(c=>{
-  if(c.type==="IN"){
-    runningBal += Number(c.amount||0);
-  }else{
-    runningBal -= Number(c.amount||0);
-  }
-  c._runningBal = runningBal;
-});
-// Calculate running balance oldest → newest (by payment date)
+// Running balance must follow FILTERED data
 let runningBal = 0;
 
-let balanceOrdered = [...DB.cash].sort((a,b)=>{
-  return new Date(a.dateTime) - new Date(b.dateTime);
+// Always calculate from oldest payment date
+const balanceBase = [...filtered].sort((a,b)=> 
+  new Date(a.dateTime) - new Date(b.dateTime)
+);
+
+balanceBase.forEach(entry=>{
+  if(entry.type === "IN"){
+    runningBal += Number(entry.amount || 0);
+  } else {
+    runningBal -= Number(entry.amount || 0);
+  }
+  entry._runningBal = runningBal;
 });
 
-// Now display paginated (current sort already applied above)
+// Now paginate after balance assigned
 let displayRows = filtered.slice((cashPage-1)*cashPerPage, cashPage*cashPerPage);
 
 displayRows.forEach(c=>{
