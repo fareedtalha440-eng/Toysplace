@@ -3748,10 +3748,14 @@ function openReport(name){
   const container = document.getElementById("productDetailsReport");
   if(!container) return;
 
-  // Clear previous content
   container.innerHTML = "";
 
-  // Build a simple table
+  if(!(DB.products || []).length) {
+    container.innerHTML = "<p>No products found in DB.</p>";
+    return;
+  }
+
+  // Build table as before
   const table = document.createElement("table");
   table.className = "p-table";
 
@@ -3766,7 +3770,7 @@ function openReport(name){
     <tbody>
       ${(DB.products || []).map(p => {
         const vendor = (DB.vendors || []).find(v => v.id === p.vendorId);
-        const stockQty = calculateStockQty(p.id); // helper function
+        const stockQty = calculateStockQty(p.id);
         return `<tr>
           <td>${p.desc}</td>
           <td>${vendor ? vendor.name : ""}</td>
@@ -3775,10 +3779,8 @@ function openReport(name){
       }).join("")}
     </tbody>
   `;
-
   container.appendChild(table);
 }
-
 // Helper to calculate stock qty using FIFO
 function calculateStockQty(productId) {
   const purchases = (DB.purchases || []).filter(p => p.items.some(it=>it.productId===productId));
