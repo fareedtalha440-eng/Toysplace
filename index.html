@@ -1850,19 +1850,20 @@ function saveCashPayment(){
 
   DB.cash.push({
   id,
-  dateTime: new Date().toISOString(),
+  dateTime: new Date(date).toISOString(),
   createdDate: new Date().toISOString(),
-  type:"IN",
-  vendorId:"",
-  vendorName:"",
-  ref:"Invoice "+invoiceNo,
-  amount:paidAmount,
-  expense:false,
-  locked:true,
-  source:"INVOICE"
+  type: type,
+  vendorId: vendorId,
+  vendorName: vendorName,
+  ref: ref,
+  amount: amount,
+  expense: expense,
+  locked: false,
+  source: "MANUAL"
 });
   saveDB();
   resetCashForm();
+  cashPage = 1;
   renderCash();
 }
 function resetCashForm(){
@@ -1913,6 +1914,14 @@ function renderCash(){
 
   // Compute running balance per row
   let runningBal = 0;
+
+filtered.forEach(c=>{
+  if(c.type==="IN"){
+    runningBal += Number(c.amount||0);
+  } else {
+    runningBal -= Number(c.amount||0);
+  }
+});
   let displayRows = filtered.slice((cashPage-1)*cashPerPage, cashPage*cashPerPage);
 
   displayRows.forEach(c=>{
@@ -1952,13 +1961,7 @@ function prevCashPage(){ if(cashPage>1){ cashPage--; renderCash(); } }
 
 /* ===== EDIT / DELETE ===== */
 function editCashPayment(id){
-  if(c.locked){
-  alert("Invoice generated payments cannot be edited.");
-  return;
-}
-  const c = DB.cash.find(x=>x.id===id);
-  if(!c) return;
-
+  
   editingCashId = id;
 
   const dt = new Date(c.dateTime);
@@ -1973,6 +1976,10 @@ function deleteCashPayment(id){
 
   const c = DB.cash.find(x=>x.id===id);
   if(!c) return;
+  if(c.locked){
+  alert("Invoice generated payments cannot be edited.");
+  return;
+}
 
   if(c.locked){
     alert("Invoice generated payments cannot be deleted.");
