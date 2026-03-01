@@ -1760,6 +1760,9 @@ td{position:relative}
       </select>
       <button onclick="applyCashVendor()">Apply</button>
       <input placeholder="Search Vendor / Amount / Ref" id="cashSearch" style="flex:1">
+      <button id="cashSortBtn" onclick="toggleCashSort()" style="background:#222;color:#fff;border:none;padding:6px 12px;border-radius:6px;">
+  Sort: New → Old
+</button>
       <button onclick="applyCashSearch()">Apply</button>
       <button onclick="downloadCashCSV()">Download CSV</button>
     </div>
@@ -1794,6 +1797,7 @@ td{position:relative}
 let cashPage = 1, cashPerPage = 100;
 let cashFiltered = null;
 let editingCashId = null;
+  let cashSortOrder = "DESC"; // DESC = New→Old, ASC = Old→New
 
 /* ===== FORMAT NUMBER WITH COMMAS ===== */
 function formatNumber(x){ return Number(x).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}); }
@@ -1887,12 +1891,13 @@ function renderCash(){
   tbody.innerHTML="";
 
   // Sort newest → oldest by createdDate
-  let filtered = [...DB.cash].sort((a,b)=>{
-    const da = new Date(a.createdDate || a.dateTime);
-    const db = new Date(b.createdDate || b.dateTime);
-    return db - da; // newest first
-  });
+  let filtered = [...DB.cash];
 
+filtered.sort((a,b)=>{
+  const da = new Date(a.createdDate || a.dateTime);
+  const db = new Date(b.createdDate || b.dateTime);
+  return cashSortOrder === "DESC" ? db - da : da - db;
+});
   // Filters
   const from = document.getElementById("cashFrom").value;
   if(from) filtered = filtered.filter(c=>new Date(c.dateTime)>=new Date(from));
@@ -1912,47 +1917,51 @@ function renderCash(){
 
   cashFiltered = filtered;
 
-  // Compute running balance per row
-  let runningBal = 0;
+  // FULL running balance first (oldest → newest)
+let runningBal = 0;
 
-filtered.forEach(c=>{
+let ordered = [...filtered].sort((a,b)=>{
+  return new Date(a.dateTime) - new Date(b.dateTime);
+});
+
+ordered.forEach(c=>{
   if(c.type==="IN"){
     runningBal += Number(c.amount||0);
-  } else {
+  }else{
     runningBal -= Number(c.amount||0);
   }
+  c._runningBal = runningBal;
 });
-  let displayRows = filtered.slice((cashPage-1)*cashPerPage, cashPage*cashPerPage);
 
-  displayRows.forEach(c=>{
-    if(c.type==="IN"){
-  runningBal += Number(c.amount||0);
-}else{
-  runningBal -= Number(c.amount||0);
-}
-    const dt = new Date(c.dateTime);
-    const created = new Date(c.createdDate || c.dateTime).toLocaleString();
-    const vendorName = c.vendorName || "";
+// Now display paginated (current sort already applied above)
+let displayRows = filtered.slice((cashPage-1)*cashPerPage, cashPage*cashPerPage);
 
-    tbody.innerHTML+=`
-      <tr>
-        <td>${dt.toLocaleDateString()}</td>
-        <td>${c.expense ? "EXPENSE" : c.type}</td>
-        <td>${vendorName}</td>
-        <td>${formatNumber(c.amount)}</td>
-        <td>${c.ref || ""}</td>
-        <td>${formatNumber(runningBal)}</td>
-        <td>
-${!c.locked ? `<button onclick="editCashPayment('${c.id}')">Edit</button>` : ""}
-</td>
-<td>
-${!c.locked ? `<button onclick="deleteCashPayment('${c.id}')">Delete</button>` : ""}
-</td>
-<td>${created}</td>
-      </tr>
-    `;
+displayRows.forEach(c=>{
+
+  const dt = new Date(c.dateTime);
+  const created = new Date(c.createdDate || c.dateTime).toLocaleString();
+  const vendorName = c.vendorName || "";
+
+  tbody.innerHTML+=`
+    <tr>
+      <td>${dt.toLocaleDateString()}</td>
+      <td>${c.expense ? "EXPENSE" : c.type}</td>
+      <td>${vendorName}</td>
+      <td>${formatNumber(c.amount)}</td>
+      <td>${c.ref || ""}</td>
+      <td>${formatNumber(c._runningBal || 0)}</td>
+      <td>
+        ${!c.locked ? `<button onclick="editCashPayment('${c.id}')">Edit</button>` : ""}
+      </td>
+      <td>
+        ${!c.locked ? `<button onclick="deleteCashPayment('${c.id}')">Delete</button>` : ""}
+      </td>
+      <td>${created}</td>
+    </tr>
+  `;
 });
-  document.getElementById("cashBal").innerText = formatNumber(cashBalance());
+
+document.getElementById("cashBal").innerText = formatNumber(cashBalance());
 }
 
 /* ===== PAGINATION ===== */
@@ -2005,6 +2014,13 @@ function deleteCashPayment(id){
 
   saveDB();
   renderVendors();
+}
+  function toggleCashSort(){
+  cashSortOrder = cashSortOrder === "DESC" ? "ASC" : "DESC";
+  document.getElementById("cashSortBtn").innerText =
+    cashSortOrder === "DESC" ? "Sort: New → Old" : "Sort: Old → New";
+  cashPage = 1;
+  renderCash();
 }
 /* ===== DOWNLOAD CSV ===== */
 function downloadCashCSV(){
