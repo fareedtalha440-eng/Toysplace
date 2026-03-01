@@ -396,51 +396,6 @@ function saveDB() {
 function uid(prefix){ 
   return prefix + "_" + Date.now() + Math.floor(Math.random()*1000); 
 }
-function openProductDetailsReport(){
-document.getElementById("invoiceProfitReport").style.display="none";
-document.getElementById("deletedDataReport").style.display="none";
-document.getElementById("productDetailsReport").style.display="block";
-
-
-  const box=document.getElementById("productDetailsReport");
-  box.innerHTML=`
-  <h2>Product Details Report</h2>
-
-  <div style="display:flex;gap:10px;flex-wrap:wrap;margin:15px 0">
-
-    <select id="pdProduct"></select>
-
-    <select id="pdVendor">
-      <option value="">All Vendors</option>
-    </select>
-
-    <input type="date" id="pdFrom">
-    <input type="date" id="pdTo">
-
-    <button onclick="generateProductDetails()">Generate</button>
-
-  </div>
-
-  <table class="r-table">
-    <thead>
-      <tr>
-        <th>S#</th>
-        <th>Date</th>
-        <th>Ref</th>
-        <th>Name</th>
-        <th>In</th>
-        <th>Out</th>
-        <th>Rate</th>
-        <th>Amount</th>
-        <th>Balance</th>
-      </tr>
-    </thead>
-    <tbody id="pdRows"></tbody>
-  </table>
-  `;
-
-  loadPDFilters();
-}
 
 </script>
 <script>
@@ -3763,8 +3718,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 
 </div>
   <!-- ===== REPORT OUTPUT BLOCKS ===== -->
-  <div id="productDetailsReport" class="card" style="display:none;margin-top:20px;"></div>
-
+  <div id="productDetailsReport" class="report-page card" style="display:none;margin-top:20px;"></div>
 </section>
 <script>
 function openReport(name){
@@ -3780,7 +3734,6 @@ function openReport(name){
   }
 }
   function openProductDetailsReport(){
-
   document.querySelectorAll(".report-page").forEach(d=>{
     d.style.display="none";
   });
@@ -3788,9 +3741,58 @@ function openReport(name){
   const el = document.getElementById("productDetailsReport");
   if(el){
     el.style.display="block";
+    loadProductDetailsReport(); // <== add this line
   }
-
 }
+  function loadProductDetailsReport() {
+  const container = document.getElementById("productDetailsReport");
+  if(!container) return;
+
+  // Clear previous content
+  container.innerHTML = "";
+
+  // Build a simple table
+  const table = document.createElement("table");
+  table.className = "p-table";
+
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Vendor</th>
+        <th>Stock Qty</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${(DB.products || []).map(p => {
+        const vendor = (DB.vendors || []).find(v => v.id === p.vendorId);
+        const stockQty = calculateStockQty(p.id); // helper function
+        return `<tr>
+          <td>${p.desc}</td>
+          <td>${vendor ? vendor.name : ""}</td>
+          <td>${stockQty}</td>
+        </tr>`;
+      }).join("")}
+    </tbody>
+  `;
+
+  container.appendChild(table);
+}
+
+// Helper to calculate stock qty using FIFO
+function calculateStockQty(productId) {
+  const purchases = (DB.purchases || []).filter(p => p.items.some(it=>it.productId===productId));
+  const sales = (DB.invoices || []).flatMap(inv=>inv.items).filter(it=>it.productId===productId);
+
+  const purchasedQty = purchases.reduce((sum,p)=>{
+    return sum + p.items.filter(it=>it.productId===productId).reduce((s,it)=>s+Number(it.qty),0);
+  },0);
+
+  const soldQty = sales.reduce((sum,it)=>sum+Number(it.qty),0);
+
+  return purchasedQty - soldQty;
+}
+  
 /* ================= MASTER FIFO PROFIT ENGINE ================= */
 
 function calculateProfitReport(from, to) {
