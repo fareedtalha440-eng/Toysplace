@@ -146,7 +146,14 @@ button{
   cursor:pointer;
   font-weight:600;
 }
-
+.dd-item{
+  padding:6px;
+  cursor:pointer;
+}
+.dd-item:hover,
+.dd-item.active{
+  background:#e8f0fe;
+}
 .green{background:#2da44e;color:white;}
 .red{background:#cf222e;color:white;}
 .blue{background:var(--accent);color:white;}
@@ -786,32 +793,40 @@ function vrAddRow(){
 function vrSearch(inp,type){
 
   if(!DB.products || !DB.products.length) return;
+
   const q = inp.value.toLowerCase().trim();
   const box = inp.nextElementSibling;
   box.innerHTML="";
+
   if(!q){
-  box.style.display="none";
-  return;
-}
-box.style.display="block";
+    box.style.display="none";
+    return;
+  }
+
+  box.style.display="block";
+
   DB.products.forEach(p=>{
 
-    const barcode = (p.barcode||"").toLowerCase();
-    const itemNo  = (p.product?.id || p.id || "").toLowerCase();
-    const desc    = (p.desc||"").toLowerCase();
+    const productId = (p.product && p.product.id ? p.product.id : p.id || "").toString().toLowerCase();
+    const barcode   = (p.barcode || "").toString().toLowerCase();
+    const desc      = (p.desc || "").toString().toLowerCase();
 
     let match=false;
 
     if(type==="barcode" && barcode.includes(q)) match=true;
-    if(type==="item" && itemNo.includes(q)) match=true;
+    if(type==="item" && productId.includes(q)) match=true;
     if(type==="desc" && desc.includes(q)) match=true;
 
     if(!match) return;
 
     const d=document.createElement("div");
     d.className="dd-item";
-    d.innerText=(p.product?.id || p.id)+" | "+(p.desc||"")+" (Stock "+(p.stock||0)+")";
-    d.onclick=()=>vrSelectProduct(inp,p);
+    d.innerText = productId+" | "+desc+" (Stock "+(p.stock||0)+")";
+
+    d.onclick=()=>{
+      vrSelectProduct(inp,p);
+    };
+
     box.appendChild(d);
   });
 }
@@ -870,12 +885,14 @@ if(!vendorObj){
   }
 
   // FILL ROW
-  r.children[0].children[0].value = p.barcode || "";
-  r.children[1].children[0].value = p.product.id;
-  r.children[2].children[0].value = p.desc;
-  r.querySelector(".stk").innerText = p.stock;
-  r.children[5].children[0].value = autoCost;
+const productId = (p.product && p.product.id ? p.product.id : p.id || "");
 
+r.children[0].children[0].value = p.barcode || "";
+r.children[1].children[0].value = productId;
+r.children[2].children[0].value = p.desc || "";
+r.querySelector(".stk").innerText = p.stock || 0;
+r.children[5].children[0].value = autoCost;
+  
   inp.nextElementSibling.innerHTML = "";
   inp.nextElementSibling.style.display="none";
   vrCalc();
