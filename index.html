@@ -3759,18 +3759,22 @@ function loadProductDetailsReport() {
   const productSelect = document.getElementById("productSearch");
   productSelect.innerHTML = '<option value="">-- Select Product --</option>';
 
-  console.log("DB.products:", DB.products);  // <-- debug
-
   (DB.products || []).forEach(p => {
-    // Only add products with proper id and desc
-    if(p.id && p.desc){
-      productSelect.innerHTML += `<option value="${p.id}">${p.desc}</option>`;
+    const id   = p.id || p.product?.id;
+    const desc = p.desc || p.product?.desc;
+
+    if(id && desc){
+      productSelect.innerHTML += `<option value="${id}">${desc}</option>`;
     }
   });
 
   // Clear previous table
   document.getElementById("productLedgerContainer").innerHTML = "";
 }
+  const product = (DB.products || []).find(p => 
+  (p.id === productId) || (p.product?.id === productId)
+);
+if(!product) return;
 // Load ledger for selected product
 function loadProductLedger(productId){
   const container = document.getElementById("productLedgerContainer");
