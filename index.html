@@ -3718,7 +3718,17 @@ document.addEventListener("DOMContentLoaded",()=>{
 
 </div>
   <!-- ===== REPORT OUTPUT BLOCKS ===== -->
-  <div id="productDetailsReport" class="report-page card" style="display:none;margin-top:20px;"></div>
+  <div id="productDetailsReport" class="report-page card" style="display:none;margin-top:20px;padding:15px;">
+  <h2>Product Details Report</h2>
+
+  <div style="margin-bottom:15px;">
+    <select id="productSearch" style="width:300px;padding:5px;" onchange="loadProductLedger(this.value)">
+      <option value="">-- Select Product --</option>
+    </select>
+  </div>
+
+  <div id="productLedgerContainer"></div>
+</div>
 </section>
 <script>
 function openReport(name){
@@ -3744,55 +3754,136 @@ function openReport(name){
     loadProductDetailsReport(); // <== add this line
   }
 }
-  function loadProductDetailsReport() {
-  const container = document.getElementById("productDetailsReport");
-  if(!container) return;
+  // Load product dropdown
+function loadProductDetailsReport() {
+  const productSelect = document.getElementById("productSearch");
+  productSelect.innerHTML = '<option value="">-- Select Product --</option>';
+  (DB.products || []).forEach(p => {
+    productSelect.innerHTML += `<option value="${p.id}">${p.desc}</option>`;
+  });
 
-  container.innerHTML = "";
+  // Clear previous table
+  document.getElementById("productLedgerContainer").innerHTML = "";
+}
 
-  if(!(DB.products || []).length) {
-    container.innerHTML = "<p>No products found in DB.</p>";
+// Load ledger for selected product
+function loadProductLedger(productId){
+  const container = document.getElementById("productLedgerContainer");
+  if(!productId) {
+    container.innerHTML = "";
     return;
   }
 
-  // Build table as before
+  const product = (DB.products || []).find(p => p.id === productId);
+  if(!product) return;
+
+  // Gather all transactions
+  const transactions = [];
+
+  // Purchases = IN
+  (DB.purchases || []).forEach(pur => {
+    pur.items.forEach(it=>{
+      if(it.productId === productId) {
+        transactions.push({
+          date: pur.dateTime.split("T")[0],
+          type: "PUR",
+          ref: pur.no || pur.ref || "",
+          desc: pur.desc || "Purchase",
+          inQty: Number(it.qty),
+          outQty: 0,
+          rate: Number(it.cost),
+          amount: Number(it.qty)*Number(it.cost)
+        });
+      }
+    });
+  });
+
+  // Sales = OUT
+  (DB.invoices || []).forEach(inv=>{
+    inv.items.forEach(it=>{
+      if(it.productId === productId) {
+        transactions.push({
+          date: inv.date,
+          type: "INV",
+          ref: inv.no || "",
+          desc: product.desc,
+          inQty: 0,
+          outQty: Number(it.qty),
+          rate: Number(it.rate),
+          amount: Number(it.qty)*Number(it.rate)
+        });
+      }
+    });
+  });
+
+  // Returns = OUT (if you want return to reduce stock)
+  (DB.returns || []).forEach(ret=>{
+    ret.items.forEach(it=>{
+      if(it.productId === productId){
+        transactions.push({
+          date: ret.date,
+          type: "RET",
+          ref: ret.no || "",
+          desc: ret.desc || "Return",
+          inQty: 0,
+          outQty: Number(it.qty),
+          rate: Number(it.rate),
+          amount: Number(it.qty)*Number(it.rate)
+        });
+      }
+    });
+  });
+
+  // Sort by date
+  transactions.sort((a,b)=> new Date(a.date) - new Date(b.date));
+
+  // Calculate presentQty (FIFO tracking)
+  let presentQty = 0;
+  transactions.forEach(t=>{
+    presentQty += (t.inQty || 0) - (t.outQty || 0);
+    t.presentQty = presentQty;
+  });
+
+  // Build table
   const table = document.createElement("table");
   table.className = "p-table";
-
+  table.style.width = "100%";
+  table.style.marginTop = "10px";
   table.innerHTML = `
     <thead>
       <tr>
-        <th>Product</th>
-        <th>Vendor</th>
-        <th>Stock Qty</th>
+        <th>S No</th>
+        <th>Date</th>
+        <th>Type</th>
+        <th>Ref No</th>
+        <th>Description</th>
+        <th>In Qty</th>
+        <th>Out Qty</th>
+        <th>Rate</th>
+        <th>Amount</th>
+        <th>Present Qty</th>
       </tr>
     </thead>
     <tbody>
-      ${(DB.products || []).map(p => {
-        const vendor = (DB.vendors || []).find(v => v.id === p.vendorId);
-        const stockQty = calculateStockQty(p.id);
-        return `<tr>
-          <td>${p.desc}</td>
-          <td>${vendor ? vendor.name : ""}</td>
-          <td>${stockQty}</td>
-        </tr>`;
-      }).join("")}
+      ${transactions.map((t,i)=>`
+        <tr>
+          <td>${i+1}</td>
+          <td>${t.date}</td>
+          <td>${t.type}</td>
+          <td>${t.ref}</td>
+          <td>${t.desc}</td>
+          <td>${t.inQty || 0}</td>
+          <td>${t.outQty || 0}</td>
+          <td>${t.rate.toFixed(2)}</td>
+          <td>${t.amount.toFixed(2)}</td>
+          <td>${t.presentQty}</td>
+        </tr>
+      `).join("")}
     </tbody>
   `;
+
+  container.innerHTML = "";
   container.appendChild(table);
-}
-// Helper to calculate stock qty using FIFO
-function calculateStockQty(productId) {
-  const purchases = (DB.purchases || []).filter(p => p.items.some(it=>it.productId===productId));
-  const sales = (DB.invoices || []).flatMap(inv=>inv.items).filter(it=>it.productId===productId);
-
-  const purchasedQty = purchases.reduce((sum,p)=>{
-    return sum + p.items.filter(it=>it.productId===productId).reduce((s,it)=>s+Number(it.qty),0);
-  },0);
-
-  const soldQty = sales.reduce((sum,it)=>sum+Number(it.qty),0);
-
-  return purchasedQty - soldQty;
 }
   
 /* ================= MASTER FIFO PROFIT ENGINE ================= */
