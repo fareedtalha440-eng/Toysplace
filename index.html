@@ -1487,7 +1487,19 @@ if(prod){
 }
   });
 
-  DB.cash.push({id:uid("C"),type:"IN",amount:total,ref:id,dateTime});
+  DB.cash.push({
+  id: getNextPaymentId(),
+  dateTime: new Date().toISOString(),
+  createdDate: new Date().toISOString(),
+  type: "IN",
+  vendorId: "",
+  vendorName: "",
+  ref: invoiceNo,
+  amount: totalAmount,
+  expense: false,
+  locked: true,
+  source: "INVOICE"
+});
 
   saveDB();
 
@@ -1981,7 +1993,10 @@ displayRows.forEach(c=>{
 
   const dt = new Date(c.dateTime);
   const created = new Date(c.createdDate || c.dateTime).toLocaleString();
-  const vendorName = c.vendorName || "";
+  const vendorName = 
+  c.source === "INVOICE" && c.type === "IN"
+    ? "Cash Customer"
+    : (c.vendorName || "");
 
   tbody.innerHTML+=`
     <tr>
