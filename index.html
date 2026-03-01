@@ -1917,12 +1917,7 @@ filtered.sort((a,b)=>{
 
   cashFiltered = filtered;
 
-  // FULL running balance first (oldest → newest)
-let runningBal = 0;
-
-// Always calculate balance oldest → newest (by payment date)
-let runningBal = 0;
-
+ 
 let balanceOrdered = [...DB.cash].sort((a,b)=>{
   return new Date(a.dateTime) - new Date(b.dateTime);
 });
@@ -1935,13 +1930,11 @@ balanceOrdered.forEach(c=>{
   }
   c._runningBal = runningBal;
 });
-ordered.forEach(c=>{
-  if(c.type==="IN"){
-    runningBal += Number(c.amount||0);
-  }else{
-    runningBal -= Number(c.amount||0);
-  }
-  c._runningBal = runningBal;
+// Calculate running balance oldest → newest (by payment date)
+let runningBal = 0;
+
+let balanceOrdered = [...DB.cash].sort((a,b)=>{
+  return new Date(a.dateTime) - new Date(b.dateTime);
 });
 
 // Now display paginated (current sort already applied above)
@@ -1981,7 +1974,15 @@ function prevCashPage(){ if(cashPage>1){ cashPage--; renderCash(); } }
 
 /* ===== EDIT / DELETE ===== */
 function editCashPayment(id){
-  
+
+  const c = DB.cash.find(x=>x.id===id);
+  if(!c) return;
+
+  if(c.locked){
+    alert("Invoice generated payments cannot be edited.");
+    return;
+  }
+
   editingCashId = id;
 
   const dt = new Date(c.dateTime);
@@ -1996,11 +1997,7 @@ function deleteCashPayment(id){
 
   const c = DB.cash.find(x=>x.id===id);
   if(!c) return;
-  if(c.locked){
-  alert("Invoice generated payments cannot be edited.");
-  return;
-}
-
+  
   if(c.locked){
     alert("Invoice generated payments cannot be deleted.");
     return;
