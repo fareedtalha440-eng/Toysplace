@@ -1,11 +1,10 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dani Test Software</title>
-
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- ====== XLSX LIBRARY ====== -->
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -303,8 +302,8 @@ function openTab(id){
 
 
 /* ================= OPEN FIRST ALLOWED TAB ================= */
-document.addEventListener("DOMContentLoaded", ()=>{
-
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadDB();
   const acc = sessionStorage.getItem("loggedInUser");
   if(!acc) return;
 
@@ -336,7 +335,8 @@ document.addEventListener("DOMContentLoaded", ()=>{
     }
   }
 
-  const DB = JSON.parse(localStorage.getItem("DB")) || {};
+  // Use Supabase central database instead of localStorage
+const DB = await loadDB(); // loadDB() fetches all tables from Supabase in real-time
   const s = DB.settings || {};
 
   const nameEl = document.getElementById("softwareName");
@@ -384,31 +384,56 @@ function calculateProfit(from, to){
 
 <!-- ================= DATABASE ================= -->
 <script>
+
+const supabase = window.supabase.createClient(
+  "https://roptzthctkynxpxlekki.supabase.co",
+  "sb_publishable_EmQ73Ml7_tZ_YyTqM2b0yg_epJvgOPS"
+);
+
 let DB = {
-  vendorLedger: JSON.parse(localStorage.getItem("vendorLedger") || "[]"),
-expenses: JSON.parse(localStorage.getItem("expenses") || "[]"),
-logs: JSON.parse(localStorage.getItem("logs") || "[]"),
-  products: JSON.parse(localStorage.getItem("products") || "[]"),
-  vendors: JSON.parse(localStorage.getItem("vendors") || "[]"),
-  purchases: JSON.parse(localStorage.getItem("purchases") || "[]"),
-  returns: JSON.parse(localStorage.getItem("returns") || "[]"),
-  invoices: JSON.parse(localStorage.getItem("invoices") || "[]"),
-  cash: JSON.parse(localStorage.getItem("cash") || "[]"),
-  deleted: JSON.parse(localStorage.getItem("deleted") || "[]"),
-  settings: JSON.parse(localStorage.getItem("settings") || "{}"),
-  accounts: JSON.parse(localStorage.getItem("accounts") || "[]")  // Added accounts
+  products: [],
+  vendors: [],
+  purchases: [],
+  returns: [],
+  invoices: [],
+  cash: [],
+  vendorLedger: [],
+  expenses: [],
+  logs: [],
+  settings: [],
+  accounts: [],
+  deleted: []
 };
+
+async function loadDB() {
+  for (let table in DB) {
+    const { data, error } = await supabase.from(table).select("*");
+    if (!error) DB[table] = data || [];
+  }
+}
+
+async function insertRow(table, row) {
+  await supabase.from(table).insert([row]);
+  await loadDB();
+}
+
+async function updateRow(table, id, row) {
+  await supabase.from(table).update(row).eq("id", id);
+  await loadDB();
+}
+
+async function deleteRow(table, id) {
+  await supabase.from(table).delete().eq("id", id);
+  await loadDB();
+}
+
+</script>
+<script>
 
 // Initialize default developer account if not exists
 if(!DB.accounts.find(x=>x.fixed)) {
   DB.accounts.push({id: uid("A"), username:"Dani", password:"7525", role:"developer", fixed:true, permissions:[]});
   saveDB();
-}
-
-function saveDB() { 
-  for(let k in DB){ 
-    localStorage.setItem(k, JSON.stringify(DB[k])); 
-  } 
 }
 
 function uid(prefix){ 
@@ -489,7 +514,7 @@ function loadPDFilters(){
 
   pSel.innerHTML='<option value="">Select Product</option>';
   DB.products.forEach(p=>{
-    pSel.innerHTML+=`<option value="${p.id}">${p.product.id} - ${p.desc}</option>`;
+    pSel.innerHTML+=`<option value="${p.id}">${p.product.id} - ${p.description}</option>`;
   });
 
   vSel.innerHTML='<option value="">All Vendors</option>';
@@ -751,7 +776,7 @@ function vrSearch(inp,type){
 
     const productId = (p.product && p.product.id ? p.product.id : p.id || "").toString().toLowerCase();
     const barcode   = (p.barcode || "").toString().toLowerCase();
-    const desc      = (p.desc || "").toString().toLowerCase();
+    const desc      = (p.description || "").toString().toLowerCase();
 
     let match=false;
 
@@ -831,7 +856,7 @@ const productId = (p.itemNo || p.product?.itemNo || p.id || "");
 
 r.children[0].children[0].value = p.barcode || "";
 r.children[1].children[0].value = productId;
-r.children[2].children[0].value = p.desc || "";
+r.children[2].children[0].value = p.description || "";
 r.querySelector(".stk").innerText = p.stock || 0;
 r.children[5].children[0].value = autoCost;
   
@@ -1200,7 +1225,7 @@ function updateLiveInvoiceNo(){
 
 /* ===== ADD ROW ===== */
 function addInvoiceRow(){
-  invoiceDraft.push({productId:"",barcode:"",itemNo:"",desc:"",qty:1,rate:0,valid:false});
+  invoiceDraft.push({productId:"",barcode:"",itemNo:"",description:"",qty:1,rate:0,valid:false});
   renderInvoice();
 }
 
@@ -1227,7 +1252,7 @@ function renderInvoice(){
 </td>
 
 <td>
-  <input value="${r.desc}" 
+  <input value="${r.description}" 
          oninput="searchInvProduct(${i},this.value,'desc')">
   <div id="invSugD${i}" class="invSug"></div>
 </td>
@@ -1288,7 +1313,7 @@ function searchInvProduct(i,val,field){
 
     const barcode = (p.barcode||"").toLowerCase();
     const itemNo  = (p.itemNo||"").toLowerCase();
-    const desc    = (p.desc||"").toLowerCase();
+    const desc    = (p.description||"").toLowerCase();
 
     if(field==="barcode") return barcode.includes(q);
     if(field==="itemNo")  return itemNo.includes(q);
@@ -1318,7 +1343,7 @@ function searchInvProduct(i,val,field){
     d.innerText=
       (p.barcode||"")+
       " | "+p.itemNo+
-      " | "+p.desc+
+      " | "+p.description+
       " (Stock: "+p.stock+")";
 
     d.onclick=()=>{
@@ -1340,7 +1365,7 @@ function selectInvoiceProduct(i,p){
     productId:p.id,
     barcode:p.barcode||"",
     itemNo:p.itemNo,
-    desc:p.desc,
+    description:p.description,
     qty:1,
     rate:p.rate||0,
     valid:true
@@ -1398,7 +1423,7 @@ function saveInvoice(){
   const p=DB.products.find(x=>x.id===r.productId);
   if(!p) continue;
   if(p.stock < r.qty){
-    return alert("Low stock: "+r.desc);
+    return alert("Low stock: "+r.descriptionription);
   }
 }
   const id=editingInvoiceId||getNextInvoiceNumber();
@@ -1432,12 +1457,6 @@ if(editingInvoiceId){
 DB.invoices.push(newInvoice);
 
 // NOW DEDUCT STOCK
-invoiceDraft.forEach(r=>{
-  const prod = DB.products.find(p=>p.id===r.productId);
-  if(prod){
-    prod.stock -= r.qty;
-  }
-});
   invoiceDraft.forEach(r=>{
    const prod = DB.products.find(p=>p.id===r.productId);
 if(prod){
@@ -1635,7 +1654,7 @@ td{padding:2px 0}
 ${inv.items.map((r,i)=>`
 <tr>
 <td>${i+1}</td>
-<td>${r.itemNo}<br><small>${r.desc||""}</small></td>
+<td>${r.itemNo}<br><small>${r.description||""}</small></td>
 <td>${r.qty}</td>
 <td>${r.rate}</td>
 <td class="right">Rs.${Number(r.qty*r.rate).toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
@@ -2143,7 +2162,7 @@ tbody.innerHTML += `
 <td>${start+index+1}</td>
 <td>${p.barcode||""}</td>
 <td>${p.itemNo}</td>
-<td>${p.desc}</td>
+<td>${p.description}</td>
 <td>${Number(p.rate).toLocaleString(undefined,{minimumFractionDigits:2})}</td>
 <td>${p.stock||0}</td>
 <td>
@@ -2172,7 +2191,7 @@ function advancedProductSearch(){
 
   const results = DB.products.filter(p =>
     (p.itemNo || "").toLowerCase().includes(q) ||
-    (p.desc || "").toLowerCase().includes(q) ||
+    (p.description || "").toLowerCase().includes(q) ||
     (p.barcode || "").toLowerCase().includes(q)
   );
 
@@ -2208,7 +2227,7 @@ productFormTitle.innerText="Edit Product";
 
 pBarcode.value=p.barcode||"";
 pItemNo.value=p.itemNo||"";
-pDesc.value=p.desc||"";
+pDesc.value=p.description||"";
 pRate.value=p.rate||0;
 }
 
@@ -2233,7 +2252,7 @@ if(!p) return;
 
 p.barcode=barcode;
 p.itemNo=itemNo;
-p.desc=desc;
+p.description=desc;
 p.rate=rate;
 
 }else{
@@ -2332,7 +2351,7 @@ DB.products.push({
 id: uid("P"),
 barcode,
 itemNo,
-desc: r["Description"]||"",
+description: r["Description"]||"",
 rate: Number(
   r["Rate"] ??
   r["RATE"] ??
@@ -2363,7 +2382,7 @@ function exportCSV(){
 let csv = "Barcode,Item No,Description,Rate,Stock\n";
 
 DB.products.forEach(p=>{
-csv += `"${p.barcode}","${p.itemNo}","${p.desc}",${p.rate},${p.stock}\n`;
+csv += `"${p.barcode}","${p.itemNo}","${p.description}",${p.rate},${p.stock}\n`;
 });
 
 const a = document.createElement("a");
@@ -2847,7 +2866,7 @@ function loadPurchaseVendors(){
 
 /* ===== ADD ROW ===== */
 function addPurchaseRow(){
-  purchaseDraft.push({productId:null,barcode:"",itemNo:"",desc:"",qty:1,cost:0});
+  purchaseDraft.push({productId:null,barcode:"",itemNo:"",description:"",qty:1,cost:0});
   renderPurchaseRows();
 }
 
@@ -2866,7 +2885,7 @@ function renderPurchaseRows(){
 <tr>
 <td><input value="${r.barcode}" oninput="searchProduct(this,${i})"></td>
 <td><input value="${r.itemNo}" oninput="searchProduct(this,${i})"></td>
-<td><input value="${r.desc}" oninput="searchProduct(this,${i})"></td>
+<td><input value="${r.description}" oninput="searchProduct(this,${i})"></td>
 <td>${stock}</td>
 <td><input type="number" value="${r.qty}" onchange="setQty(${i},this.value)"></td>
 <td><input type="number" value="${r.cost}" onchange="setCost(${i},this.value)" onkeydown="costTab(event,${i})"></td>
@@ -2894,7 +2913,7 @@ function searchProduct(inp,i){
   const list = (DB.products || []).filter(p =>
   (p.barcode || "").toLowerCase().includes(val.toLowerCase()) ||
   (p.itemNo || "").toLowerCase().includes(val.toLowerCase()) ||
-  (p.desc || "").toLowerCase().includes(val.toLowerCase())
+  (p.description || "").toLowerCase().includes(val.toLowerCase())
 ).slice(0,5);
   
   const box=document.createElement("div");
@@ -2917,7 +2936,7 @@ inp.closest("td").appendChild(box);
 
   list.forEach(p=>{
     const d=document.createElement("div");
-    d.innerText=`${p.barcode} | ${p.itemNo} | ${p.desc}`;
+    d.innerText=`${p.barcode} | ${p.itemNo} | ${p.description}`;
     d.onclick=()=>selectProduct(i,p);
     box.appendChild(d);
   });
@@ -2933,7 +2952,7 @@ function selectProduct(i,p){
     productId:p.id,
     barcode:p.barcode,
     itemNo:p.itemNo,
-    desc:p.desc
+    description:p.description
   });
 
   renderPurchaseRows();
@@ -3195,7 +3214,7 @@ function uploadPurchaseExcel(input){
     XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]).forEach(row=>{
       const p=DB.products.find(x=>x.barcode==row.Barcode||x.itemNo==row["Item No"]||x.desc==row.Description);
       if(!p)return;
-      purchaseDraft.push({productId:p.id,barcode:p.barcode,itemNo:p.itemNo,desc:p.desc,qty:+row.Qty||0,cost:+row.Cost||0});
+      purchaseDraft.push({productId:p.id,barcode:p.barcode,itemNo:p.itemNo,description:p.description,qty:+row.Qty||0,cost:+row.Cost||0});
     });
     renderPurchaseRows();
   };
@@ -3836,7 +3855,7 @@ function loadProductDetailsReport() {
 
   (DB.products || []).forEach(p => {
     const id   = p.id || p.product?.id;
-    const desc = p.desc || p.product?.desc;
+    const desc = p.description || p.product?.desc;
 
     if (id && desc) {
       productSelect.innerHTML += `<option value="${id}">${desc}</option>`;
@@ -3881,7 +3900,7 @@ function loadProductLedger(productId){
           date: pur.dateTime.split("T")[0],
           type: "PUR",
           ref: pur.no || pur.ref || "",
-          desc: pur.desc || "Purchase",
+          description: pur.description || "Purchase",
           inQty: Number(it.qty),
           outQty: 0,
           rate: Number(it.cost),
@@ -3899,7 +3918,7 @@ function loadProductLedger(productId){
           date: inv.date,
           type: "INV",
           ref: inv.no || "",
-          desc: product.desc,
+          description: product.desc,
           inQty: 0,
           outQty: Number(it.qty),
           rate: Number(it.rate),
@@ -3917,7 +3936,7 @@ function loadProductLedger(productId){
           date: ret.date,
           type: "RET",
           ref: ret.no || "",
-          desc: ret.desc || "Return",
+          description: ret.desc || "Return",
           inQty: 0,
           outQty: Number(it.qty),
           rate: Number(it.rate),
@@ -4105,7 +4124,7 @@ function loadProfitFilters(){
   accountSelect.innerHTML = '<option value="">All Accounts</option>';
 
   (DB.products||[]).forEach(p=>{
-    productSelect.innerHTML += `<option value="${p.id}">${p.desc}</option>`;
+    productSelect.innerHTML += `<option value="${p.id}">${p.description}</option>`;
   });
 
   (DB.vendors||[]).forEach(v=>{
