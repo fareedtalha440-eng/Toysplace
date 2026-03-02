@@ -3416,15 +3416,36 @@ function hasAccess(feature){
 
 /* ===== CREATE ACCOUNT ===== */
 function createAccount(){
+
   const username=document.getElementById("newUsername").value.trim();
   const password=document.getElementById("newPassword").value.trim();
   const role=document.getElementById("newRole").value;
   const perms=Array.from(document.getElementById("newPermissions").selectedOptions).map(x=>x.value);
 
   if(!username || !password || !role) return alert("Please fill all fields");
-  if(DB.accounts.find(x=>x.username===username)) return alert("Username exists");
 
-  DB.accounts.push({id: uid("A"), username, password, role, permissions:perms});
+  // ===== UPDATE MODE =====
+  if(editingAccountId){
+    const acc = DB.accounts.find(x=>x.id===editingAccountId);
+    if(!acc) return;
+
+    acc.username = username;
+    acc.password = password;
+    acc.role = role;
+    acc.permissions = perms;
+
+    editingAccountId = null;
+
+    document.querySelector("#settings button[onclick='createAccount()']").innerText = "Create Account";
+  }
+
+  // ===== CREATE MODE =====
+  else{
+    if(DB.accounts.find(x=>x.username===username)) return alert("Username exists");
+
+    DB.accounts.push({id: uid("A"), username, password, role, permissions:perms});
+  }
+
   saveDB();
   renderAccounts();
 
@@ -3433,7 +3454,6 @@ function createAccount(){
   document.getElementById("newRole").value="admin";
   document.getElementById("newPermissions").selectedIndex=-1;
 }
-
 /* ===== RENDER ACCOUNTS TABLE ===== */
 function renderAccounts(){
   const tbody=document.getElementById("accountsTable");
@@ -3452,24 +3472,26 @@ function renderAccounts(){
 }
 
 /* ===== EDIT ACCOUNT ===== */
+let editingAccountId = null;
+
 function editAccount(id){
-  const acc=DB.accounts.find(x=>x.id===id);
+  const acc = DB.accounts.find(x=>x.id===id);
   if(!acc) return alert("Account not found");
   if(acc.fixed) return alert("Cannot edit developer account");
 
-  const username=prompt("Username:", acc.username);
-  const password=prompt("Password:", acc.password);
-  const role=prompt("Role:", acc.role);
-  const perms=prompt("Permissions (comma separated):", (acc.permissions||[]).join(","));
+  editingAccountId = id;
 
-  if(username) acc.username=username;
-  if(password) acc.password=password;
-  if(role) acc.role=role;
-  acc.permissions=perms?perms.split(",").map(x=>x.trim()):[];
-  saveDB();
-  renderAccounts();
+  document.getElementById("newUsername").value = acc.username;
+  document.getElementById("newPassword").value = acc.password;
+  document.getElementById("newRole").value = acc.role;
+
+  const permSelect = document.getElementById("newPermissions");
+  Array.from(permSelect.options).forEach(opt=>{
+    opt.selected = (acc.permissions||[]).includes(opt.value);
+  });
+
+  document.querySelector("#settings button[onclick='createAccount()']").innerText = "Update Account";
 }
-
 /* ===== DELETE ACCOUNT ===== */
 function deleteAccount(id){
   const acc=DB.accounts.find(x=>x.id===id);
