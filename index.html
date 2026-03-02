@@ -3332,19 +3332,16 @@ function getPurchaseCost(productId, invDate){
 
 <script>
 /* ===== INIT DEFAULT DEVELOPER ACCOUNT ===== */
-if(!window.DB) window.DB = {};
-
-if(!DB.accounts){
-  DB.accounts=[{
-    id: uid("A"),
-    username:"Dani",
-    password:"7525",
-    role:"developer",
-    fixed:true,
-    permissions:[]
-  }];
-  saveDB();
+localStorage.setItem("accounts", JSON.stringify([
+{
+  id:"A_1",
+  username:"Dani",
+  password:"7525",
+  role:"developer",
+  fixed:true,
+  permissions:[]
 }
+]));
 /* ===== LOGIN SYSTEM ===== */
 function submitLogin(){
 
