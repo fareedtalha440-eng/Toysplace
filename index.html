@@ -336,7 +336,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // Use Supabase central database instead of localStorage
-const DB = await loadDB(); // loadDB() fetches all tables from Supabase in real-time
   const s = DB.settings || {};
 
   const nameEl = document.getElementById("softwareName");
@@ -404,14 +403,31 @@ let DB = {
   accounts: [],
   deleted: []
 };
+  async function saveDB() {
+
+  for (let table in DB) {
+
+    // Skip settings array format fix
+    if (!Array.isArray(DB[table])) continue;
+
+    // Delete all old rows
+    await supabase.from(table).delete().neq("id", "");
+
+    // Insert fresh data
+    if (DB[table].length > 0) {
+      await supabase.from(table).insert(DB[table]);
+    }
+  }
+
+}
 
 async function loadDB() {
   for (let table in DB) {
     const { data, error } = await supabase.from(table).select("*");
     if (!error) DB[table] = data || [];
   }
+  return DB;   // IMPORTANT
 }
-
 async function insertRow(table, row) {
   await supabase.from(table).insert([row]);
   await loadDB();
@@ -431,11 +447,22 @@ async function deleteRow(table, id) {
 <script>
 
 // Initialize default developer account if not exists
-if(!DB.accounts.find(x=>x.fixed)) {
-  DB.accounts.push({id: uid("A"), username:"Dani", password:"7525", role:"developer", fixed:true, permissions:[]});
-  saveDB();
-}
+document.addEventListener("DOMContentLoaded", async ()=>{
 
+  await loadDB();
+
+  if(!DB.accounts.find(x=>x.fixed)){
+    await insertRow("accounts",{
+      id: uid("A"),
+      username:"Dani",
+      password:"7525",
+      role:"developer",
+      fixed:true,
+      permissions:[]
+    });
+  }
+
+});
 function uid(prefix){ 
   return prefix + "_" + Date.now() + Math.floor(Math.random()*1000); 
 }
@@ -1423,7 +1450,7 @@ function saveInvoice(){
   const p=DB.products.find(x=>x.id===r.productId);
   if(!p) continue;
   if(p.stock < r.qty){
-    return alert("Low stock: "+r.descriptionription);
+    return alert("Low stock: "+r.description);
   }
 }
   const id=editingInvoiceId||getNextInvoiceNumber();
