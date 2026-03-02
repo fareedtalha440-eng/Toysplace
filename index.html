@@ -233,11 +233,6 @@ button{
 
 <script>
 /* ================= TAB SWITCHING (FIXED) ================= */
-function openTab(id){
-if(id==="adminReports"){
-  if(!(user.permissions||[]).includes("adminReports"))
-    return alert("Access denied");
-}
   const session = sessionStorage.getItem("loggedInUser");
   if(!session){
     alert("Please login first");
@@ -249,18 +244,29 @@ if(id==="adminReports"){
   // If not developer check permission
  if(user.role !== "developer"){
 
-if(id==="reports"){
-if(!(user.permissions||[]).includes("normalReports")) return alert("Access denied");
-}
+  if(id==="reports"){
+    if(!(user.permissions||[]).includes("normalReports") &&
+       !(user.permissions||[]).includes("adminReports")){
+         return alert("Access denied");
+    }
+  }
 
-if(id==="settings"){
-if(!(user.permissions||[]).includes("settings")) return alert("Access denied");
-}
+  if(id==="adminReports"){
+    if(!(user.permissions||[]).includes("adminReports")){
+      return alert("Access denied");
+    }
+  }
 
-if(!["reports","settings"].includes(id) && !(user.permissions||[]).includes(id)){
-return alert("Access denied");
-}
+  if(id==="settings"){
+    if(!(user.permissions||[]).includes("settings")){
+      return alert("Access denied");
+    }
+  }
 
+  if(!["reports","adminReports","settings"].includes(id) &&
+     !(user.permissions||[]).includes(id)){
+       return alert("Access denied");
+  }
 }
   // Hide all sections
   document.querySelectorAll("section").forEach(sec=>{
@@ -471,9 +477,11 @@ function loadPDFilters(){
 
   pSel.innerHTML='<option value="">Select Product</option>';
   DB.products.forEach(p=>{
-    pSel.innerHTML+=`<option value="${p.id}">${p.product.id} - ${p.desc}</option>`;
-  });
-
+  const code = p.itemNo || p.product?.itemNo || p.id;
+  pSel.innerHTML+=`<option value="${p.id}">
+    ${p.barcode || ""} | ${code} | ${p.desc}
+  </option>`;
+});
   vSel.innerHTML='<option value="">All Vendors</option>';
   DB.vendors.forEach(v=>{
     vSel.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
@@ -488,7 +496,11 @@ function generateProductDetails(){
  const from=document.getElementById("pdFrom").value;
   const to=document.getElementById("pdTo").value;
 
-  const product=DB.products.find(p=>p.id===pid);
+  const product=DB.products.find(p =>
+  p.id===pid ||
+  p.itemNo===pid ||
+  p.product?.itemNo===pid
+);
   if(!product) return;
 
   let rows=[];
