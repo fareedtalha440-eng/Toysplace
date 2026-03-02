@@ -1387,22 +1387,40 @@ function saveInvoice(){
   const id=editingInvoiceId||getNextInvoiceNumber();
   const dateTime=new Date().toISOString();
   const total=+invTotal.innerText.replace(/,/g,"");
-  const index = DB.invoices.findIndex(i=>i.id===id);
-if(index>-1){
-  DB.invoices[index]={
-    id,dateTime,total,
-    items:JSON.parse(JSON.stringify(invoiceDraft)),
-    discountAmt:+mainDiscAmt.value,
-    discountPct:+mainDiscPct.value
-  };
-}else{
-  DB.invoices.push({
-    id,dateTime,total,
-    items:JSON.parse(JSON.stringify(invoiceDraft)),
-    discountAmt:+mainDiscAmt.value,
-    discountPct:+mainDiscPct.value
-  });
+  // REMOVE OLD STOCK IF EDITING
+if(editingInvoiceId){
+  const old = DB.invoices.find(i=>i.id===editingInvoiceId);
+  if(old){
+    old.items.forEach(r=>{
+      const p = DB.products.find(x=>x.id===r.productId);
+      if(p) p.stock += r.qty;
+    });
+  }
 }
+
+// SAVE INVOICE
+const newInvoice = {
+  id,
+  dateTime,
+  total,
+  items: JSON.parse(JSON.stringify(invoiceDraft)),
+  discountAmt:+mainDiscAmt.value,
+  discountPct:+mainDiscPct.value
+};
+
+if(editingInvoiceId){
+  DB.invoices = DB.invoices.filter(i=>i.id!==editingInvoiceId);
+}
+
+DB.invoices.push(newInvoice);
+
+// NOW DEDUCT STOCK
+invoiceDraft.forEach(r=>{
+  const prod = DB.products.find(p=>p.id===r.productId);
+  if(prod){
+    prod.stock -= r.qty;
+  }
+});
   invoiceDraft.forEach(r=>{
    const prod = DB.products.find(p=>p.id===r.productId);
 if(prod){
@@ -1418,15 +1436,15 @@ if(prod){
   type: "IN",
   vendorId: "",
   vendorName: "",
-  ref: invoiceNo,
-  amount: totalAmount,
+  ref: id,
+  amount: total,
   expense: false,
   locked: true,
   source: "INVOICE"
-});
-
+});  
   saveDB();
-
+renderCash();
+    
   invoiceDraft=[];
   editingInvoiceId=null;
   mainDiscAmt.value=mainDiscPct.value=0;
@@ -1434,7 +1452,10 @@ if(prod){
   renderInvoice();
   renderInvoiceList();
   updateLiveInvoiceNo();
-  alert("Invoice saved");
+  document.getElementById("newInvoiceCard").style.display = "none";
+setTimeout(()=>{
+  document.getElementById("newInvoiceCard").style.display = "block";
+},200);
 }
 function cancelInvoice(){
   if(!confirm("Cancel this invoice?")) return;
@@ -1465,7 +1486,6 @@ function renderInvoiceList(){
         <td>${d.toLocaleTimeString()}</td>
         <td>${formatNumber(inv.total)}</td>
         <td><button onclick="printInvoice('${inv.id}')">Print</button></td>
-        <td><button onclick="editInvoice('${inv.id}')">Edit</button></td>
         <td><button class="red" onclick="deleteInvoice('${inv.id}')">Delete</button></td>
       </tr>`;
   });
@@ -1493,27 +1513,6 @@ function clearInvoiceFilter(){
 function prevInvPage(){ if(invPage>1){invPage--;renderInvoiceList();} }
 function nextInvPage(){ invPage++;renderInvoiceList(); }
 
-/* ===== EDIT INVOICE ===== */
-function editInvoice(id){
-  const inv = DB.invoices.find(i=>i.id===id);
-  if(!inv) return alert("Invoice not found");
-
-  // RESTORE STOCK FIRST
-  inv.items.forEach(r=>{
-    const p = DB.products.find(x=>x.id===r.productId);
-    if(p) p.stock += r.qty;
-  });
-
-  editingInvoiceId = id;
-  invoiceDraft = JSON.parse(JSON.stringify(inv.items));
-
-  mainDiscAmt.value = inv.discountAmt || 0;
-  mainDiscPct.value = inv.discountPct || 0;
-
-  renderInvoice();
-  updateLiveInvoiceNo();
-  window.scrollTo(0,0);
-}
 /* ===== DELETE INVOICE ===== */
 function deleteInvoice(id){
   if(!confirm("Delete this invoice?")) return;
@@ -1753,7 +1752,6 @@ td{position:relative}
           <th>Amount</th>
           <th>Reference</th>
           <th>Balance</th>
-          <th>Edit</th>
           <th>Delete</th>
           <th>Created Date</th>
         </tr>
