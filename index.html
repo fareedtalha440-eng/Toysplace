@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -317,13 +316,13 @@ document.addEventListener("DOMContentLoaded", ()=>{
 "purchase",
 "returns",
 "cash",
-"normalReports",
+"reports",
 "adminReports",
 "settings"
 ];
   for(const t of modules){
   if(user.role==="developer" || (user.permissions||[]).includes(t)){
-    openTab(t);
+    showSection(t);
     break;
   }
 }
