@@ -3754,7 +3754,7 @@ function openReport(name){
     loadProductDetailsReport(); // <== add this line
   }
 }
-  // Load product dropdown
+ // Load product dropdown
 function loadProductDetailsReport() {
   const productSelect = document.getElementById("productSearch");
   productSelect.innerHTML = '<option value="">-- Select Product --</option>';
@@ -3763,7 +3763,7 @@ function loadProductDetailsReport() {
     const id   = p.id || p.product?.id;
     const desc = p.desc || p.product?.desc;
 
-    if(id && desc){
+    if (id && desc) {
       productSelect.innerHTML += `<option value="${id}">${desc}</option>`;
     }
   });
@@ -3771,10 +3771,17 @@ function loadProductDetailsReport() {
   // Clear previous table
   document.getElementById("productLedgerContainer").innerHTML = "";
 }
+
+// Example function when selecting a product
+function showProductLedger(productId) {
   const product = (DB.products || []).find(p => 
-  (p.id === productId) || (p.product?.id === productId)
-);
-if(!product) return;
+    (p.id === productId) || (p.product?.id === productId)
+  );
+
+  if (!product) return;
+
+  console.log(product);
+}
 // Load ledger for selected product
 function loadProductLedger(productId){
   const container = document.getElementById("productLedgerContainer");
@@ -3783,7 +3790,9 @@ function loadProductLedger(productId){
     return;
   }
 
-  const product = (DB.products || []).find(p => p.id === productId);
+  const product = (DB.products || []).find(p => 
+  String(p.id) === String(productId)
+);
   if(!product) return;
 
   // Gather all transactions
@@ -3895,67 +3904,6 @@ function loadProductLedger(productId){
   container.appendChild(table);
 }
   
-/* ================= MASTER FIFO PROFIT ENGINE ================= */
-
-function calculateProfitReport(from, to) {
-
-  /* ===== EXPENSE CALCULATION ===== */
-
-  /* ===== EXPENSE CALCULATION ===== */
-
-let totalExpense = 0;
-
-(DB.cash || []).forEach(c => {
-
-  if(!c.expense) return;
-
-  const d = new Date(c.dateTime);
-  const fromDate = from ? new Date(from) : null;
-  const toDate   = to ? new Date(to + "T23:59:59") : null;
-
-  if(fromDate && d < fromDate) return;
-  if(toDate && d > toDate) return;
-
-  totalExpense += Number(c.amount || 0);
-
-});
-  /* ===== EXPENSE DISTRIBUTION BY SALES RATIO ===== */
-
-  let netProfit = grossProfit - totalExpense;
-
-  const profitPercent = totalSales > 0
-    ? (netProfit / totalSales) * 100
-    : 0;
-
-  /* ===== UPDATE SUMMARY ===== */
-
-  document.getElementById("pfSales").innerText   = totalSales.toFixed(2);
-  document.getElementById("pfCogs").innerText    = totalCOGS.toFixed(2);
-  document.getElementById("pfGross").innerText   = grossProfit.toFixed(2);
-  document.getElementById("pfExpense").innerText = totalExpense.toFixed(2);
-  document.getElementById("pfNet").innerText     = netProfit.toFixed(2);
-  document.getElementById("pfPercent").innerText = profitPercent.toFixed(2) + "%";
-
-  /* ===== DETAIL TABLE ===== */
-
-  const tbody = document.getElementById("profitDetailRows");
-  tbody.innerHTML = "";
-
-  detailRows.forEach(r => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${r.date}</td>
-      <td>${r.invoice}</td>
-      <td>${r.product}</td>
-      <td>${r.qty}</td>
-      <td>${r.sale.toFixed(2)}</td>
-      <td>${r.cost.toFixed(2)}</td>
-      <td>${r.gross.toFixed(2)}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-}
 /* ================= MASTER ACCURATE FIFO PROFIT ENGINE ================= */
 
 function generateAdvancedProfit(){
