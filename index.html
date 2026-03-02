@@ -234,34 +234,51 @@ button{
 
 <script>
 /* ================= TAB SWITCHING (FIXED) ================= */
-function openTab(id){
-if(id==="adminReports"){
-  if(!(user.permissions||[]).includes("adminReports"))
-    return alert("Access denied");
-}
-  const session = sessionStorage.getItem("loggedInUser");
-  if(!session){
-    alert("Please login first");
-    return;
+function showSection(id){
+
+  if(user.role !== "developer"){
+
+    if(id==="reports"){
+      if(!(user.permissions||[]).includes("normalReports") &&
+         !(user.permissions||[]).includes("adminReports")){
+           return alert("Access denied");
+      }
+    }
+
+    else if(id==="adminReports"){
+      if(!(user.permissions||[]).includes("adminReports")){
+        return alert("Access denied");
+      }
+    }
+
+    else if(id==="settings"){
+      if(!(user.permissions||[]).includes("settings")){
+        return alert("Access denied");
+      }
+    }
+
+    else if(!(user.permissions||[]).includes(id)){
+      return alert("Access denied");
+    }
   }
 
-  const user = JSON.parse(session);
+  document.querySelectorAll("section").forEach(sec=>{
+    sec.style.display="none";
+  });
 
-  // If not developer check permission
- if(user.role !== "developer"){
+  document.querySelectorAll("#mainMenu .menuItem").forEach(tab=>{
+    tab.classList.remove("active");
+  });
 
-if(id==="reports"){
-if(!(user.permissions||[]).includes("normalReports")) return alert("Access denied");
-}
+  const selected=document.getElementById(id);
+  if(selected){
+    selected.style.display="block";
+  }
 
-if(id==="settings"){
-if(!(user.permissions||[]).includes("settings")) return alert("Access denied");
-}
-
-if(!["reports","settings"].includes(id) && !(user.permissions||[]).includes(id)){
-return alert("Access denied");
-}
-
+  const active=document.getElementById("tab-"+id);
+  if(active){
+    active.classList.add("active");
+  }
 }
   // Hide all sections
   document.querySelectorAll("section").forEach(sec=>{
