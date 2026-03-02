@@ -3299,6 +3299,9 @@ function getPurchaseCost(productId, invDate){
         <option value="products">Products</option>
         <option value="settings">Settings</option>
         <option value="reports">Reports</option>
+        <option value="purchase">Purchase</option>
+<option value="returns">Returns</option>
+<option value="adminReports">Admin Reports</option>
       </select>
       <button onclick="createAccount()">Create Account</button>
     </div>
@@ -3391,14 +3394,17 @@ function renderSectionsByPermission(){
 function hasAccessSection(user,sectionId){
   if(user.role==="developer") return true;
   switch(sectionId){
-    case "invoice": return user.permissions.includes("invoice");
-    case "cash": return user.permissions.includes("cash");
-    case "vendors": return user.permissions.includes("vendors");
-    case "products": return user.permissions.includes("products");
-    case "settings": return user.permissions.includes("settings");
-    case "reports": return user.permissions.includes("reports");
-    default: return true;
-  }
+  case "invoice": return user.permissions.includes("invoice");
+  case "cash": return user.permissions.includes("cash");
+  case "vendors": return user.permissions.includes("vendors");
+  case "products": return user.permissions.includes("products");
+  case "purchase": return user.permissions.includes("purchase");
+  case "returns": return user.permissions.includes("returns");
+  case "settings": return user.permissions.includes("settings");
+  case "reports": return user.permissions.includes("reports");
+  case "adminReports": return user.permissions.includes("adminReports");
+  default: return true;
+}
 }
 
 /* ===== CHECK PERMISSIONS ===== */
@@ -3553,22 +3559,44 @@ function restoreBackup(input){
 }
 
 function resetSystem(){
+
   if(!confirm("Backup will be downloaded automatically. Continue reset?")) return;
+
   downloadBackup();
-  DB={
-    products:[],
-    vendors:[],
-    purchases:[],
-    invoices:[],
-    cash:[],
-    deleted:[],
-    accounts:DB.accounts,
-    settings:{softwareName:"Dani Test Software", logo:""}
+
+  // Completely clear storage
+  localStorage.clear();
+
+  // Recreate full empty database
+  DB = {
+    products: [],
+    vendors: [],
+    purchases: [],
+    returns: [],
+    invoices: [],
+    cash: [],
+    deleted: [],
+    logs: [],
+    settings: {
+      softwareName: "Dani Test Software",
+      logo: ""
+    },
+    accounts: [{
+      id: uid("A"),
+      username: "Dani",
+      password: "7525",
+      role: "developer",
+      fixed: true,
+      permissions: []
+    }]
   };
+
   saveDB();
+
+  alert("System Reset Completed Successfully");
+
   location.reload();
 }
-
 /* ===== INITIAL RENDER ===== */
 renderAccounts();
 
