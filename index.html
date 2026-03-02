@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -169,14 +170,14 @@ button{
 </header>
 <!-- ================= TOP MENU ================= -->
 <nav id="mainMenu">
-  <div id="tab-invoice" class="menuItem" onclick="showSection(('invoice')">Invoice</div>
-  <div id="tab-products" class="menuItem" onclick="showSection('products')">Products</div>
-  <div id="tab-vendors" class="menuItem" onclick="showSection('vendors')">Vendors</div>
-  <div id="tab-purchase" class="menuItem" onclick="showSection('purchase')">Purchase</div>
-  <div id="tab-returns" class="menuItem" onclick="showSection('returns')">Return</div>
-  <div id="tab-cash" class="menuItem" onclick="showSection('cash')">Cash In Hand</div>
-  <div id="tab-reports" class="menuItem" onclick="showSection('reports')">Reports</div>
-  <div id="tab-settings" class="menuItem" onclick="showSection('settings')">Settings</div>
+  <div id="tab-invoice" class="menuItem" onclick="openTab('invoice')">Invoice</div>
+  <div id="tab-products" class="menuItem" onclick="openTab('products')">Products</div>
+  <div id="tab-vendors" class="menuItem" onclick="openTab('vendors')">Vendors</div>
+  <div id="tab-purchase" class="menuItem" onclick="openTab('purchase')">Purchase</div>
+  <div id="tab-returns" class="menuItem" onclick="openTab('returns')">Return</div>
+  <div id="tab-cash" class="menuItem" onclick="openTab('cash')">Cash In Hand</div>
+  <div id="tab-reports" class="menuItem" onclick="openTab('reports')">Reports</div>
+  <div id="tab-settings" class="menuItem" onclick="openTab('settings')">Settings</div>
 </nav>
 
 <style>
@@ -232,96 +233,110 @@ button{
 </style>
 
 <script>
-/* ================= TAB SWITCHING (FIXED) ================= */
-function showSection(id){
+/* ================= TAB SWITCHING (CLEAN WORKING VERSION) ================= */
+function openTab(id){
 
-  if(user.role !== "developer"){
-
-  if(id==="reports"){
-    if(!(user.permissions||[]).includes("normalReports") &&
-       !(user.permissions||[]).includes("adminReports")){
-        alert("Access denied");
-        return;
-    }
-  }
-
-  else if(id==="settings"){
-    if(!(user.permissions||[]).includes("settings")){
-        alert("Access denied");
-        return;
-    }
-  }
-
-  else if(!(user.permissions||[]).includes(id)){
-    alert("Access denied");
+  const session = sessionStorage.getItem("loggedInUser");
+  if(!session){
+    alert("Please login first");
     return;
   }
-}
-  document.querySelectorAll("section").forEach(sec=>{
-    sec.style.display="none";
-  });
 
-  document.querySelectorAll("#mainMenu .menuItem").forEach(tab=>{
-    tab.classList.remove("active");
-  });
+  const user = JSON.parse(session);
 
-  const selected=document.getElementById(id);
-  if(selected){
-    selected.style.display="block";
+  // ===== PERMISSION CHECK =====
+  if(user.role !== "developer"){
+
+    if(id === "reports"){
+      if(
+        !(user.permissions||[]).includes("normalReports") &&
+        !(user.permissions||[]).includes("adminReports")
+      ){
+        alert("Access denied");
+        return;
+      }
+    }
+
+    else if(id === "adminReports"){
+      if(!(user.permissions||[]).includes("adminReports")){
+        alert("Access denied");
+        return;
+      }
+    }
+
+    else if(id === "settings"){
+      if(!(user.permissions||[]).includes("settings")){
+        alert("Access denied");
+        return;
+      }
+    }
+
+    else if(!(user.permissions||[]).includes(id)){
+      alert("Access denied");
+      return;
+    }
   }
 
-  const active=document.getElementById("tab-"+id);
-  if(active){
-    active.classList.add("active");
-  }
-}
-  // Hide all sections
+  // ===== HIDE ALL SECTIONS =====
   document.querySelectorAll("section").forEach(sec=>{
     sec.style.display = "none";
     sec.classList.remove("active");
   });
 
-  // Remove active from all menu items
+  // ===== REMOVE ACTIVE MENU =====
   document.querySelectorAll("#mainMenu .menuItem").forEach(tab=>{
     tab.classList.remove("active");
   });
 
-  // Show selected section
+  // ===== SHOW SELECTED =====
   const selectedSection = document.getElementById(id);
   if(selectedSection){
     selectedSection.style.display = "block";
     selectedSection.classList.add("active");
   }
 
-  // Activate clicked tab
   const activeTab = document.getElementById("tab-" + id);
   if(activeTab){
     activeTab.classList.add("active");
   }
 }
+
+
 /* ================= OPEN FIRST ALLOWED TAB ================= */
 document.addEventListener("DOMContentLoaded", ()=>{
+
   const acc = sessionStorage.getItem("loggedInUser");
   if(!acc) return;
 
   const user = JSON.parse(acc);
+
   const modules = [
-"invoice",
-"products",
-"vendors",
-"purchase",
-"returns",
-"cash",
-"reports",
-"adminReports",
-"settings"
-];
+    "invoice",
+    "products",
+    "vendors",
+    "purchase",
+    "returns",
+    "cash",
+    "reports",
+    "adminReports",
+    "settings"
+  ];
+
   for(const t of modules){
-  if(user.role==="developer" || (user.permissions||[]).includes(t)){
-    showSection(t);
-    break;
+    if(
+      user.role === "developer" ||
+      (user.permissions||[]).includes(t) ||
+      (t==="reports" && (
+        (user.permissions||[]).includes("normalReports") ||
+        (user.permissions||[]).includes("adminReports")
+      ))
+    ){
+      openTab(t);
+      break;
+    }
   }
-}
+
+  const DB = JSON.parse(localStorage.getItem("DB")) || {};
   const s = DB.settings || {};
 
   const nameEl = document.getElementById("softwareName");
@@ -335,6 +350,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
     logoEl.src = s.logo;
     logoEl.style.display = "block";
   }
+
 });
 </script>
 <script>
@@ -365,6 +381,16 @@ function calculateProfit(from, to){
 
 }
 
+function showReport(type){
+  const reportView = document.getElementById("reportView");
+  reportView.innerHTML="";
+
+
+  document.getElementById("deletedDataReport").style.display="none";
+  document.getElementById("productDetailsReport").style.display="none";
+
+  box.innerHTML=`
+  
 </script>
 
 <!-- ================= DATABASE ================= -->
@@ -3364,7 +3390,7 @@ const p = document.getElementById("loginPassword").value.trim();
   document.getElementById("loginScreen").style.display = "none";
 
   renderSectionsByPermission();
-  showSection("invoice");
+  openTab("invoice");
 }
 
 /* ===== PERSIST LOGIN ===== */
@@ -3380,7 +3406,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
 
   document.getElementById("loginScreen").style.display="none";
   renderSectionsByPermission();
-  showSection("invoice");
+  openTab("invoice");
 });
 
 /* ===== RENDER SECTIONS BASED ON PERMISSIONS ===== */
