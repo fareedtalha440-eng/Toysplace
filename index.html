@@ -169,14 +169,14 @@ button{
 </header>
 <!-- ================= TOP MENU ================= -->
 <nav id="mainMenu">
-  <div id="tab-invoice" class="menuItem" onclick="openTab('invoice')">Invoice</div>
-  <div id="tab-products" class="menuItem" onclick="openTab('products')">Products</div>
-  <div id="tab-vendors" class="menuItem" onclick="openTab('vendors')">Vendors</div>
-  <div id="tab-purchase" class="menuItem" onclick="openTab('purchase')">Purchase</div>
-  <div id="tab-returns" class="menuItem" onclick="openTab('returns')">Return</div>
-  <div id="tab-cash" class="menuItem" onclick="openTab('cash')">Cash In Hand</div>
-  <div id="tab-reports" class="menuItem" onclick="openTab('reports')">Reports</div>
-  <div id="tab-settings" class="menuItem" onclick="openTab('settings')">Settings</div>
+  <div id="tab-invoice" class="menuItem" onclick="showSection(('invoice')">Invoice</div>
+  <div id="tab-products" class="menuItem" onclick="showSection('products')">Products</div>
+  <div id="tab-vendors" class="menuItem" onclick="showSection('vendors')">Vendors</div>
+  <div id="tab-purchase" class="menuItem" onclick="showSection('purchase')">Purchase</div>
+  <div id="tab-returns" class="menuItem" onclick="showSection('returns')">Return</div>
+  <div id="tab-cash" class="menuItem" onclick="showSection('cash')">Cash In Hand</div>
+  <div id="tab-reports" class="menuItem" onclick="showSection('reports')">Reports</div>
+  <div id="tab-settings" class="menuItem" onclick="showSection('settings')">Settings</div>
 </nav>
 
 <style>
@@ -237,30 +237,26 @@ function showSection(id){
 
   if(user.role !== "developer"){
 
-    if(id==="reports"){
-      if(!(user.permissions||[]).includes("normalReports") &&
-         !(user.permissions||[]).includes("adminReports")){
-           return alert("Access denied");
-      }
-    }
-
-    else if(id==="adminReports"){
-      if(!(user.permissions||[]).includes("adminReports")){
-        return alert("Access denied");
-      }
-    }
-
-    else if(id==="settings"){
-      if(!(user.permissions||[]).includes("settings")){
-        return alert("Access denied");
-      }
-    }
-
-    else if(!(user.permissions||[]).includes(id)){
-      return alert("Access denied");
+  if(id==="reports"){
+    if(!(user.permissions||[]).includes("normalReports") &&
+       !(user.permissions||[]).includes("adminReports")){
+        alert("Access denied");
+        return;
     }
   }
 
+  else if(id==="settings"){
+    if(!(user.permissions||[]).includes("settings")){
+        alert("Access denied");
+        return;
+    }
+  }
+
+  else if(!(user.permissions||[]).includes(id)){
+    alert("Access denied");
+    return;
+  }
+}
   document.querySelectorAll("section").forEach(sec=>{
     sec.style.display="none";
   });
@@ -3368,7 +3364,7 @@ const p = document.getElementById("loginPassword").value.trim();
   document.getElementById("loginScreen").style.display = "none";
 
   renderSectionsByPermission();
-  openTab("invoice");
+  showSection("invoice");
 }
 
 /* ===== PERSIST LOGIN ===== */
@@ -3384,7 +3380,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
 
   document.getElementById("loginScreen").style.display="none";
   renderSectionsByPermission();
-  openTab("invoice");
+  showSection("invoice");
 });
 
 /* ===== RENDER SECTIONS BASED ON PERMISSIONS ===== */
