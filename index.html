@@ -232,7 +232,9 @@ button{
 </style>
 
 <script>
-/* ================= TAB SWITCHING (FIXED) ================= */
+/* ================= TAB SWITCHING (WORKING VERSION) ================= */
+function openTab(id){
+
   const session = sessionStorage.getItem("loggedInUser");
   if(!session){
     alert("Please login first");
@@ -241,53 +243,53 @@ button{
 
   const user = JSON.parse(session);
 
-  // If not developer check permission
- if(user.role !== "developer"){
+  // Permission check
+  if(user.role !== "developer"){
 
-  if(id==="reports"){
-    if(!(user.permissions||[]).includes("normalReports") &&
-       !(user.permissions||[]).includes("adminReports")){
-         return alert("Access denied");
+    if(id==="reports"){
+      if(!(user.permissions||[]).includes("normalReports") &&
+         !(user.permissions||[]).includes("adminReports")){
+           return alert("Access denied");
+      }
     }
-  }
 
-  if(id==="adminReports"){
-    if(!(user.permissions||[]).includes("adminReports")){
+    else if(id==="adminReports"){
+      if(!(user.permissions||[]).includes("adminReports")){
+        return alert("Access denied");
+      }
+    }
+
+    else if(id==="settings"){
+      if(!(user.permissions||[]).includes("settings")){
+        return alert("Access denied");
+      }
+    }
+
+    else if(!(user.permissions||[]).includes(id)){
       return alert("Access denied");
     }
   }
 
-  if(id==="settings"){
-    if(!(user.permissions||[]).includes("settings")){
-      return alert("Access denied");
-    }
-  }
-
-  if(!["reports","adminReports","settings"].includes(id) &&
-     !(user.permissions||[]).includes(id)){
-       return alert("Access denied");
-  }
-}
   // Hide all sections
   document.querySelectorAll("section").forEach(sec=>{
-    sec.style.display = "none";
+    sec.style.display="none";
     sec.classList.remove("active");
   });
 
-  // Remove active from all menu items
+  // Remove active menu
   document.querySelectorAll("#mainMenu .menuItem").forEach(tab=>{
     tab.classList.remove("active");
   });
 
-  // Show selected section
-  const selectedSection = document.getElementById(id);
-  if(selectedSection){
-    selectedSection.style.display = "block";
-    selectedSection.classList.add("active");
+  // Show selected
+  const selected = document.getElementById(id);
+  if(selected){
+    selected.style.display="block";
+    selected.classList.add("active");
   }
 
-  // Activate clicked tab
-  const activeTab = document.getElementById("tab-" + id);
+  // Activate menu
+  const activeTab = document.getElementById("tab-"+id);
   if(activeTab){
     activeTab.classList.add("active");
   }
