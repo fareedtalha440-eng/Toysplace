@@ -3425,26 +3425,29 @@ function createAccount(){
   const perms=Array.from(document.getElementById("newPermissions").selectedOptions).map(x=>x.value);
 
   if(!username || !password || !role) return alert("Please fill all fields");
-  // update session if editing logged-in user
-const currentUser = JSON.parse(sessionStorage.getItem("loggedInUser"));
-if(currentUser && currentUser.id === acc.id){
-  sessionStorage.setItem("loggedInUser", JSON.stringify(acc));
-}
+
 
   // ===== UPDATE MODE =====
   if(editingAccountId){
-    const acc = DB.accounts.find(x=>x.id===editingAccountId);
-    if(!acc) return;
+  const acc = DB.accounts.find(x=>x.id===editingAccountId);
+  if(!acc) return;
 
-    acc.username = username;
-    acc.password = password;
-    acc.role = role;
-    acc.permissions = perms;
+  acc.username = username;
+  acc.password = password;
+  acc.role = role;
+  acc.permissions = perms;
 
-    editingAccountId = null;
-
-    document.querySelector("#settings button[onclick='createAccount()']").innerText = "Create Account";
+  // ✅ update session if this is logged-in user
+  const currentUser = JSON.parse(sessionStorage.getItem("loggedInUser"));
+  if(currentUser && currentUser.id === acc.id){
+    sessionStorage.setItem("loggedInUser", JSON.stringify(acc));
+    renderSectionsByPermission(); // refresh visible sections immediately
   }
+
+  editingAccountId = null;
+
+  document.querySelector("#settings button[onclick='createAccount()']").innerText = "Create Account";
+}
 
   // ===== CREATE MODE =====
   else{
