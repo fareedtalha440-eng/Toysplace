@@ -4234,13 +4234,15 @@ function consumeFIFO(map, productId, qty){
 </script>
 <script>
 
-for (let table in DB) {
+let tables = ["invoices", "cash", "products"];
+
+tables.forEach((table) => {
   supabase.channel(table)
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: table },
       () => {
-        loadDB().then(()=>{
+        loadDB().then(() => {
           renderInvoiceList();
           renderCash();
           ProductSystem.init();
@@ -4248,6 +4250,6 @@ for (let table in DB) {
       }
     )
     .subscribe();
-}
+});
 
 </script>
