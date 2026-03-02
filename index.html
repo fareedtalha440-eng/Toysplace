@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -232,9 +233,12 @@ button{
 </style>
 
 <script>
-/* ================= TAB SWITCHING (WORKING VERSION) ================= */
+/* ================= TAB SWITCHING (FIXED) ================= */
 function openTab(id){
-
+if(id==="adminReports"){
+  if(!(user.permissions||[]).includes("adminReports"))
+    return alert("Access denied");
+}
   const session = sessionStorage.getItem("loggedInUser");
   if(!session){
     alert("Please login first");
@@ -243,53 +247,42 @@ function openTab(id){
 
   const user = JSON.parse(session);
 
-  // Permission check
-  if(user.role !== "developer"){
+  // If not developer check permission
+ if(user.role !== "developer"){
 
-    if(id==="reports"){
-      if(!(user.permissions||[]).includes("normalReports") &&
-         !(user.permissions||[]).includes("adminReports")){
-           return alert("Access denied");
-      }
-    }
+if(id==="reports"){
+if(!(user.permissions||[]).includes("normalReports")) return alert("Access denied");
+}
 
-    else if(id==="adminReports"){
-      if(!(user.permissions||[]).includes("adminReports")){
-        return alert("Access denied");
-      }
-    }
+if(id==="settings"){
+if(!(user.permissions||[]).includes("settings")) return alert("Access denied");
+}
 
-    else if(id==="settings"){
-      if(!(user.permissions||[]).includes("settings")){
-        return alert("Access denied");
-      }
-    }
+if(!["reports","settings"].includes(id) && !(user.permissions||[]).includes(id)){
+return alert("Access denied");
+}
 
-    else if(!(user.permissions||[]).includes(id)){
-      return alert("Access denied");
-    }
-  }
-
+}
   // Hide all sections
   document.querySelectorAll("section").forEach(sec=>{
-    sec.style.display="none";
+    sec.style.display = "none";
     sec.classList.remove("active");
   });
 
-  // Remove active menu
+  // Remove active from all menu items
   document.querySelectorAll("#mainMenu .menuItem").forEach(tab=>{
     tab.classList.remove("active");
   });
 
-  // Show selected
-  const selected = document.getElementById(id);
-  if(selected){
-    selected.style.display="block";
-    selected.classList.add("active");
+  // Show selected section
+  const selectedSection = document.getElementById(id);
+  if(selectedSection){
+    selectedSection.style.display = "block";
+    selectedSection.classList.add("active");
   }
 
-  // Activate menu
-  const activeTab = document.getElementById("tab-"+id);
+  // Activate clicked tab
+  const activeTab = document.getElementById("tab-" + id);
   if(activeTab){
     activeTab.classList.add("active");
   }
@@ -359,6 +352,18 @@ function calculateProfit(from, to){
   document.getElementById("pfPercent").innerText = percent.toFixed(2)+"%";
 
 }
+
+function showReport(type){
+  const reportView = document.getElementById("reportView");
+  reportView.innerHTML="";
+
+
+  document.getElementById("deletedDataReport").style.display="none";
+  document.getElementById("productDetailsReport").style.display="none";
+
+  box.innerHTML=`
+  
+</script>
 
 <!-- ================= DATABASE ================= -->
 <script>
@@ -467,11 +472,9 @@ function loadPDFilters(){
 
   pSel.innerHTML='<option value="">Select Product</option>';
   DB.products.forEach(p=>{
-  const code = p.itemNo || p.product?.itemNo || p.id;
-  pSel.innerHTML+=`<option value="${p.id}">
-    ${p.barcode || ""} | ${code} | ${p.desc}
-  </option>`;
-});
+    pSel.innerHTML+=`<option value="${p.id}">${p.product.id} - ${p.desc}</option>`;
+  });
+
   vSel.innerHTML='<option value="">All Vendors</option>';
   DB.vendors.forEach(v=>{
     vSel.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
@@ -486,11 +489,7 @@ function generateProductDetails(){
  const from=document.getElementById("pdFrom").value;
   const to=document.getElementById("pdTo").value;
 
-  const product=DB.products.find(p =>
-  p.id===pid ||
-  p.itemNo===pid ||
-  p.product?.itemNo===pid
-);
+  const product=DB.products.find(p=>p.id===pid);
   if(!product) return;
 
   let rows=[];
@@ -3332,16 +3331,19 @@ function getPurchaseCost(productId, invDate){
 
 <script>
 /* ===== INIT DEFAULT DEVELOPER ACCOUNT ===== */
-localStorage.setItem("accounts", JSON.stringify([
-{
-  id:"A_1",
-  username:"Dani",
-  password:"7525",
-  role:"developer",
-  fixed:true,
-  permissions:[]
+if(!window.DB) window.DB = {};
+
+if(!DB.accounts){
+  DB.accounts=[{
+    id: uid("A"),
+    username:"Dani",
+    password:"7525",
+    role:"developer",
+    fixed:true,
+    permissions:[]
+  }];
+  saveDB();
 }
-]));
 /* ===== LOGIN SYSTEM ===== */
 function submitLogin(){
 
