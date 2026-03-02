@@ -3686,7 +3686,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 </select>
 
 <button onclick="generateAdvancedProfit()">Generate</button>
-
+<button onclick="clearProfitFilters()">Clear</button>
 </div>
 
 <h3>Summary</h3>
@@ -3775,8 +3775,8 @@ function loadProductDetailsReport() {
 // Example function when selecting a product
 function showProductLedger(productId) {
   const product = (DB.products || []).find(p => 
-    (p.id === productId) || (p.product?.id === productId)
-  );
+  String(p.id) === String(productId)
+);
 
   if (!product) return;
 
@@ -3801,7 +3801,7 @@ function loadProductLedger(productId){
   // Purchases = IN
   (DB.purchases || []).forEach(pur => {
     pur.items.forEach(it=>{
-      if(it.productId === productId) {
+      if(String(it.productId) === String(productId)) {
         transactions.push({
           date: pur.dateTime.split("T")[0],
           type: "PUR",
@@ -3819,7 +3819,7 @@ function loadProductLedger(productId){
   // Sales = OUT
   (DB.invoices || []).forEach(inv=>{
     inv.items.forEach(it=>{
-      if(it.productId === productId) {
+      if(String(it.productId) === String(productId)) {
         transactions.push({
           date: inv.date,
           type: "INV",
@@ -3837,7 +3837,7 @@ function loadProductLedger(productId){
   // Returns = OUT (if you want return to reduce stock)
   (DB.returns || []).forEach(ret=>{
     ret.items.forEach(it=>{
-      if(it.productId === productId){
+      if(String(it.productId) === String(productId)){
         transactions.push({
           date: ret.date,
           type: "RET",
@@ -4043,7 +4043,23 @@ function loadProfitFilters(){
 
 }
 /* ================= BUILD FIFO STOCK ================= */
+function clearProfitFilters(){
 
+  document.getElementById("profitFrom").value = "";
+  document.getElementById("profitTo").value = "";
+  document.getElementById("profitProduct").value = "";
+  document.getElementById("profitVendor").value = "";
+  document.getElementById("profitAccount").value = "";
+
+  document.getElementById("pfSales").innerText = "0.00";
+  document.getElementById("pfCogs").innerText = "0.00";
+  document.getElementById("pfGross").innerText = "0.00";
+  document.getElementById("pfExpense").innerText = "0.00";
+  document.getElementById("pfNet").innerText = "0.00";
+  document.getElementById("pfPercent").innerText = "0%";
+
+  document.getElementById("profitDetailRows").innerHTML = "";
+}
 function buildFifoStock(){
 
   const map = {};
