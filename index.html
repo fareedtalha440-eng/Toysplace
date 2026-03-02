@@ -3400,7 +3400,9 @@ function hasAccessSection(user,sectionId){
   case "purchase": return user.permissions.includes("purchase");
   case "returns": return user.permissions.includes("returns");
   case "settings": return user.permissions.includes("settings");
-  case "reports": return user.permissions.includes("reports");
+  case "reports": 
+  return user.permissions.includes("reports") 
+      || user.permissions.includes("adminReports");
   case "adminReports": return user.permissions.includes("adminReports");
   default: return true;
 }
@@ -3701,7 +3703,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 
 
   <!-- ===== ADMIN REPORTS ===== -->
-  <div class="card" id="adminReportSection" style="margin-top:30px;">
+  <div class="card" onclick="if(hasAccess('adminReports')) openReport('adminReport'); else alert('Access Denied')">
     <h2>Admin Reports</h2>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-top:20px;">
 <div class="card" style="cursor:pointer" onclick="openReport('profit')">
