@@ -527,7 +527,7 @@ function logAction(action, ref=""){
 </script>
   <script>
 
-document.addEventListener("DOMContentLoaded",()=>{
+document.addEventListener("DOMContentLoaded", async ()=>{   await loadDB();
 
   window.vrVendor = document.getElementById("vrVendor");
   window.vrBody = document.getElementById("vrBody");
@@ -747,7 +747,7 @@ if(!DB.vendorLedger) DB.vendorLedger=[];
 let vrEditIndex=null;
 
 /* ================= DOM READY ================= */
-document.addEventListener("DOMContentLoaded",()=>{
+document.addEventListener("DOMContentLoaded", async ()=>{   await loadDB();
   vrLoadVendors();
   vrGenerateNo();
   vrLoadPrevious();
@@ -1742,7 +1742,7 @@ Rs.${Number(inv.discountAmt||0)
   w.document.close();
 }
 /* ===== INITIAL RENDER ===== */
-document.addEventListener("DOMContentLoaded",()=>{
+document.addEventListener("DOMContentLoaded", async ()=>{   await loadDB();
   renderInvoice();
   renderInvoiceList();
   updateLiveInvoiceNo();
@@ -3311,7 +3311,7 @@ function getPurchaseCost(productId, invDate){
   return lastCost;
   }
 /* ===== LOAD USERS ===== */
- document.addEventListener("DOMContentLoaded",()=>{
+ document.addEventListener("DOMContentLoaded", async ()=>{   await loadDB();
 
   [...new Set((DB.logs||[]).map(l=>l.user))].forEach(u=>{
     profitUser.innerHTML+=`<option>${u}</option>`;
@@ -3778,7 +3778,7 @@ function getPurchaseCost(productId, invDate){
   return lastCost;
   }
 /* ===== LOAD USERS ===== */
-document.addEventListener("DOMContentLoaded",()=>{
+document.addEventListener("DOMContentLoaded", async ()=>{   await loadDB();
   [...new Set((DB.logs||[]).map(l=>l.user))].forEach(u=>{
     profitUser.innerHTML+=`<option>${u}</option>`;
     delUser.innerHTML+=`<option>${u}</option>`;
