@@ -3425,6 +3425,11 @@ function createAccount(){
   const perms=Array.from(document.getElementById("newPermissions").selectedOptions).map(x=>x.value);
 
   if(!username || !password || !role) return alert("Please fill all fields");
+  // update session if editing logged-in user
+const currentUser = JSON.parse(sessionStorage.getItem("loggedInUser"));
+if(currentUser && currentUser.id === acc.id){
+  sessionStorage.setItem("loggedInUser", JSON.stringify(acc));
+}
 
   // ===== UPDATE MODE =====
   if(editingAccountId){
