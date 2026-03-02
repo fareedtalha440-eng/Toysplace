@@ -4205,3 +4205,22 @@ function consumeFIFO(map, productId, qty){
   saveDB();
 });
 </script>
+<script>
+
+for (let table in DB) {
+  supabase.channel(table)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: table },
+      () => {
+        loadDB().then(()=>{
+          renderInvoiceList();
+          renderCash();
+          ProductSystem.init();
+        });
+      }
+    )
+    .subscribe();
+}
+
+</script>
