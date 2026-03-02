@@ -1,10 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="icon" href="data:,">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+const SUPABASE_URL = https://roptzthctkynxpxlekki.supabase.co
+const SUPABASE_ANON_KEY = sb_publishable_EmQ73Ml7_tZ_YyTqM2b0yg_epJvgOPS
+const supabase = window.supabase.createClient(https://roptzthctkynxpxlekki.supabase.co, eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvcHR6dGhjdGt5bnhweGxla2tpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0NzE3NDYsImV4cCI6MjA4ODA0Nzc0Nn0.VYRFlQ3-utaTa008mZ81cdimpQNRp3hkJ5UYm8nyzVs);
+</script>
 <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dani Test Software</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- ====== XLSX LIBRARY ====== -->
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -2085,7 +2091,11 @@ function downloadCashCSV(){
 }
 
 /* ===== INITIAL LOAD ===== */
-loadVendorOptions(); renderCash();
+document.addEventListener("DOMContentLoaded", async ()=>{
+  await loadDB();
+  loadVendorOptions();
+  renderCash();
+});
 </script>
 
 <!-- ================= PRODUCTS (ADVANCED SYSTEM) ================= -->
@@ -2438,10 +2448,10 @@ closeProductForm
 
 /* ================= LOAD ================= */
 
-document.addEventListener("DOMContentLoaded",function(){
-ProductSystem.init();
+document.addEventListener("DOMContentLoaded", async function(){
+  await loadDB();
+  ProductSystem.init();
 });
-
 </script>
 <!-- ================= VENDORS ================= -->
 <section id="vendors">
@@ -2483,6 +2493,27 @@ ProductSystem.init();
 <script>
 
 /* ================= HARD SAFE INIT ================= */
+  let DB = {};
+
+async function loadDB(){
+
+  const tables = ["products","vendors","purchases","invoices","cash","accounts","logs","returns"];
+
+  for(const table of tables){
+    const { data, error } = await supabase.from(table).select("*");
+    if(!error){
+      DB[table] = data || [];
+    }else{
+      DB[table] = [];
+    }
+  }
+
+  return DB;
+}
+
+async function saveDB(){
+  return true;
+}
 
 DB.vendors     ??= [];
 DB.purchases   ??= [];
@@ -4231,25 +4262,4 @@ function consumeFIFO(map, productId, qty){
   window.addEventListener("beforeunload",()=>{
   saveDB();
 });
-</script>
-<script>
-
-let tables = ["invoices", "cash", "products"];
-
-tables.forEach((table) => {
-  supabase.channel(table)
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: table },
-      () => {
-        loadDB().then(() => {
-          renderInvoiceList();
-          renderCash();
-          ProductSystem.init();
-        });
-      }
-    )
-    .subscribe();
-});
-
 </script>
