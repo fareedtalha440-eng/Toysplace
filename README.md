@@ -1,2 +1,1 @@
-# Toysplace
-Toys store software
+# Retail Software
