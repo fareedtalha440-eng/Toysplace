@@ -4,9 +4,14 @@
   <link rel="icon" href="data:,">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-const SUPABASE_URL = https://roptzthctkynxpxlekki.supabase.co
-const SUPABASE_ANON_KEY = sb_publishable_EmQ73Ml7_tZ_YyTqM2b0yg_epJvgOPS
-const supabase = window.supabase.createClient(https://roptzthctkynxpxlekki.supabase.co, eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvcHR6dGhjdGt5bnhweGxla2tpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0NzE3NDYsImV4cCI6MjA4ODA0Nzc0Nn0.VYRFlQ3-utaTa008mZ81cdimpQNRp3hkJ5UYm8nyzVs);
+const SUPABASE_URL = "https://roptzthctkynxpxlekki.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_EmQ73Ml7_tZ_YyTqM2b0yg_epJvgOPS";
+
+const supabase = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+                                              
 </script>
 <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -247,7 +252,7 @@ function openTab(id){
     return;
   }
 
-  const user = JSON.parse(session);
+const user = session ? JSON.parse(session) : { username: "unknown", role: "" };
 
   // ===== PERMISSION CHECK =====
   if(user.role !== "developer"){
@@ -389,11 +394,7 @@ function calculateProfit(from, to){
 
 <!-- ================= DATABASE ================= -->
 <script>
-
-const supabase = window.supabase.createClient(
-  "https://roptzthctkynxpxlekki.supabase.co",
-  "sb_publishable_EmQ73Ml7_tZ_YyTqM2b0yg_epJvgOPS"
-);
+let currentTenant = null;
 
 let DB = {
   products: [],
@@ -428,24 +429,57 @@ let DB = {
 }
 
 async function loadDB() {
+
+  if(!currentTenant) return;
+
   for (let table in DB) {
-    const { data, error } = await supabase.from(table).select("*");
-    if (!error) DB[table] = data || [];
+
+    if (!Array.isArray(DB[table])) continue;
+
+    const { data, error } = await supabase
+      .from(table)
+      .select("*")
+      .eq("tenantId", currentTenant);
+
+    if (!error) {
+      DB[table] = data || [];
+    }
   }
-  return DB;   // IMPORTANT
+
+  return DB;
 }
 async function insertRow(table, row) {
+
+  if(currentTenant){
+    row.tenantId = currentTenant;
+  }
+
   await supabase.from(table).insert([row]);
   await loadDB();
 }
-
 async function updateRow(table, id, row) {
-  await supabase.from(table).update(row).eq("id", id);
+
+  if(currentTenant){
+    row.tenantId = currentTenant;
+  }
+
+  await supabase
+    .from(table)
+    .update(row)
+    .eq("id", id)
+    .eq("tenantId", currentTenant);
+
   await loadDB();
 }
 
 async function deleteRow(table, id) {
-  await supabase.from(table).delete().eq("id", id);
+
+  await supabase
+    .from(table)
+    .delete()
+    .eq("id", id)
+    .eq("tenantId", currentTenant);
+
   await loadDB();
 }
 
@@ -458,14 +492,15 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   await loadDB();
 
   if(!DB.accounts.find(x=>x.fixed)){
-    await insertRow("accounts",{
-      id: uid("A"),
-      username:"Dani",
-      password:"7525",
-      role:"developer",
-      fixed:true,
-      permissions:[]
-    });
+   await insertRow("accounts",{
+  id: uid("A"),
+  username:"Dani",
+  password:"7525",
+  role:"developer",
+  tenantId:"MASTER",
+  fixed:true,
+  permissions:[]
+});
   }
 
 });
@@ -513,7 +548,7 @@ function ruleMessage(msg){
 function logAction(action, ref=""){
   if(!RULES.auditLog) return;
    const session = sessionStorage.getItem("loggedInUser");
-  const user = JSON.parse(session);
+ const user = session ? JSON.parse(session) : { username: "unknown", role: "" };
   DB.logs = DB.logs || [];
   DB.logs.push({
     user: user.username || "unknown",
@@ -522,7 +557,25 @@ function logAction(action, ref=""){
     ref,
     dateTime: new Date().toISOString()
   });
-  saveDB();
+  async function saveDB() {
+
+  if(!currentTenant) return;
+
+  for (let table in DB) {
+
+    if (!Array.isArray(DB[table])) continue;
+
+    for (let row of DB[table]) {
+
+      if (!row.id) continue;
+
+      row.tenantId = currentTenant;
+
+      await supabase
+        .from(table)
+        .upsert(row, { onConflict: "id" });
+    }
+  }
 }
 </script>
   <script>
@@ -547,7 +600,7 @@ function loadPDFilters(){
 
   pSel.innerHTML='<option value="">Select Product</option>';
   DB.products.forEach(p=>{
-    pSel.innerHTML+=`<option value="${p.id}">${p.product.id} - ${p.description}</option>`;
+    pSel.innerHTML+=`<option value="${p.id}">${p.itemNo || p.id} - ${p.description}</option>`;
   });
 
   vSel.innerHTML='<option value="">All Vendors</option>';
@@ -571,7 +624,7 @@ function generateProductDetails(){
   let balance=0;
 
   DB.purchases.forEach(p=>{
-    const item=p.product.id.find(i=>i.product.id===product.id);
+    const item=p.id.find(i=>i.product.id===product.id);
     if(!item) return;
     if(vendor && p.vendor!==vendor) return;
 
@@ -673,7 +726,7 @@ function calculateFastestProducts(){
     .sort((a,b)=>b[1]-a[1])
     .map((x,i)=>({productId:x[0],rank:i+1,qty:x[1]}));
 
-  saveDB();
+  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
 }
 
 </script>
@@ -807,7 +860,7 @@ function vrSearch(inp,type){
 
   DB.products.forEach(p=>{
 
-    const productId = (p.product && p.product.id ? p.product.id : p.id || "").toString().toLowerCase();
+    const productId = (p.product && p.id ? p.id : p.id || "").toString().toLowerCase();
     const barcode   = (p.barcode || "").toString().toLowerCase();
     const desc      = (p.description || "").toString().toLowerCase();
 
@@ -971,6 +1024,7 @@ DB.vendorLedger.push({
   date:new Date().toISOString()
 });
 const obj={
+  id: uid("RT"),
   no,
   vendorId: vendorObj?.id || "",
   vendorName: vendorObj?.name || "",
@@ -984,7 +1038,7 @@ const obj={
   DB.returns.push(obj);
 }
 
-  saveDB();
+  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
   vrEditIndex=null;
   vrBody.innerHTML="";
   vrGenerateNo();
@@ -1026,7 +1080,7 @@ function vrEdit(i){
   x.itemNo === it.productId
 );
     tr.children[1].children[0].value=it.productId;
-    tr.children[2].children[0].value=p?.desc||"";
+    tr.children[2].children[0].value=p?.description||"";
     tr.querySelector(".stk").innerText=p?.stock||0;
     tr.children[4].children[0].value=it.qty;
     tr.children[5].children[0].value=it.cost;
@@ -1047,7 +1101,7 @@ function vrDelete(i){
   });
   DB.vendorLedger=DB.vendorLedger.filter(l=>l.ref!==r.no);
   DB.returns.splice(i,1);
-  saveDB();
+  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
   vrLoadPrevious();
 }
 
@@ -1137,7 +1191,7 @@ function downloadVendorLedgerCSV(){
   let csv = "Date,Type,Ref,Debit,Credit,Balance\n";
   let bal = 0;
 
-  rows.forEach(r=>{
+  (DB.vendorLedger || []).forEach(r=>{
     bal += (r.debit||0) - (r.credit||0);
     csv += `"${new Date(r.date).toLocaleString()}","${r.type}","${r.ref}",${r.debit||0},${r.credit||0},${bal}\n`;
   });
@@ -1497,7 +1551,7 @@ if(prod){
   prod.stock -= r.qty;
 }
   });
-
+DB.cash = DB.cash.filter(c=>c.ref!==id);
   DB.cash.push({
   id: getNextPaymentId(),
   dateTime: new Date().toISOString(),
@@ -1511,7 +1565,7 @@ if(prod){
   locked: true,
   source: "INVOICE"
 });  
-  saveDB();
+  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
 renderCash();
     
   invoiceDraft=[];
@@ -1600,11 +1654,11 @@ DB.deleted.push({
   dateTime:new Date().toISOString(),
   data:inv
 });
-saveDB();
+async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
   DB.cash = DB.cash.filter(c=>c.ref!==id);
   DB.invoices = DB.invoices.filter(i=>i.id!==id);
 
-  saveDB();
+  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
   renderInvoiceList();
   renderInvoice();
   updateLiveInvoiceNo();
@@ -1614,7 +1668,7 @@ function printInvoice(id){
   const inv = DB.invoices.find(i=>i.id===id);
   if(!inv) return;
 
-  const s = DB.settings || {};
+  const s = DB.settings[0] || {};
   const d = new Date(inv.dateTime);
 
   const w = window.open("");
@@ -1908,7 +1962,7 @@ function saveCashPayment(){
   locked: false,
   source: "MANUAL"
 });
-  saveDB();
+  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
   resetCashForm();
   cashPage = 1;
   renderCash();
@@ -2050,7 +2104,7 @@ function deleteCashPayment(id){
 
   DB.cash = DB.cash.filter(x=>x.id!==id);
 
-  saveDB();
+  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
   renderCash();
 }
   function deleteVendor(id){
@@ -2063,7 +2117,7 @@ function deleteCashPayment(id){
   DB.vendors = DB.vendors.filter(v=>v.id!==id);
   DB.vendorLedger = DB.vendorLedger.filter(l=>l.vendorId!==id);
 
-  saveDB();
+  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
   renderVendors();
 }
   function toggleCashSort(){
@@ -2305,17 +2359,16 @@ return;
 }
 
 DB.products.push({
-id: uid("P"),
-barcode,
-itemNo,
-desc,
-rate,
-stock:0
+  id: uid("P"),
+  barcode,
+  itemNo,
+  description: desc,
+  rate,
+  stock:0
 });
-
 }
 
-saveDB();
+async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
 state.filtered = DB.products.slice();
 render();
 closeProductForm();
@@ -2341,7 +2394,7 @@ return;
 
 if(confirm("Delete Product?")){
 DB.products = DB.products.filter(x=>x.id!==id);
-saveDB();
+async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
 state.filtered = DB.products.slice();
 render();
 }
@@ -2402,7 +2455,7 @@ stock:0
 
 });
 
-saveDB();
+async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
 state.filtered = DB.products.slice();
 render();
 alert("Import Completed");
@@ -2476,6 +2529,7 @@ document.addEventListener("DOMContentLoaded", async function(){
           <th>Name</th>
           <th>Balance (PKR)</th>
           <th>Ledger</th>
+          <th>Expense</th>
           <th>Edit</th>
           <th>Delete</th>
         </tr>
@@ -2558,7 +2612,7 @@ function addVendor(){
     createdDate: new Date().toISOString()
   });
 
-  saveDB();
+  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
   vendorName.value="";
   vendorPage=1;
   renderVendors();
@@ -2575,7 +2629,7 @@ function editVendor(id){
   if(!name) return;
 
   v.name = name.trim();
-  saveDB();
+  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
   renderVendors();
   loadVendorOptions();
 }
@@ -2627,7 +2681,7 @@ function deleteVendor(id){
   });
 
   DB.vendors = DB.vendors.filter(x=>x.id!==id);
-  saveDB();
+  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
   renderVendors();
   loadVendorOptions();
 }
@@ -3082,7 +3136,7 @@ DB.purchases.push({
   total
 });
 
-  saveDB();
+  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
   generatePurchaseNo();
   purchaseDraft = [];
   addPurchaseRow();
@@ -3260,7 +3314,7 @@ function deletePurchase(id){
 
   DB.purchases = DB.purchases.filter(x=>x.id!==id);
 
-  saveDB();
+  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
   renderPurchaseHistory();
 }
 
@@ -3436,7 +3490,7 @@ if(!DB.accounts){
     fixed:true,
     permissions:[]
   }];
-  saveDB();
+  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
 }
 /* ===== LOGIN SYSTEM ===== */
 function submitLogin(){
@@ -3452,9 +3506,10 @@ const p = document.getElementById("loginPassword").value.trim();
   }
 
   sessionStorage.setItem("loggedInUser", JSON.stringify(user));
-
+  currentTenant = user.tenantId || user.id;
+await loadDB();
   document.getElementById("loginScreen").style.display = "none";
-
+  
   renderSectionsByPermission();
   openTab("invoice");
 }
@@ -3551,7 +3606,7 @@ function createAccount(){
     DB.accounts.push({id: uid("A"), username, password, role, permissions:perms});
   }
 
-  saveDB();
+  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
   renderAccounts();
 
   document.getElementById("newUsername").value="";
@@ -3603,7 +3658,7 @@ function deleteAccount(id){
   if(!acc || acc.fixed) return alert("Cannot delete this account");
   if(!confirm("Delete this account?")) return;
   DB.accounts=DB.accounts.filter(x=>x.id!==id);
-  saveDB();
+  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
   renderAccounts();
 }
 
@@ -3614,7 +3669,7 @@ function saveFontAndColor(){
   const color=document.getElementById("softwareColor").value;
   DB.settings.font=font;
   DB.settings.color=color;
-  saveDB();
+  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
   document.body.style.fontFamily=font;
   document.documentElement.style.setProperty('--primary', color);
   alert("Font & color applied");
@@ -3631,7 +3686,7 @@ function saveShopLocation(){
   if(!DB.settings) DB.settings={};
   const loc=document.getElementById("shopLocation").value.trim();
   DB.settings.shopLocation=loc;
-  saveDB();
+  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
   alert("Shop location saved");
 }
 
@@ -3640,7 +3695,7 @@ function saveSoftwareName(){
   if(!DB.settings) DB.settings={};
   const name=document.getElementById("setSoftwareName").value.trim();
   DB.settings.softwareName=name||"Dani Test Software";
-  saveDB();
+  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
   alert("Software name updated");
 }
 /* ===== LOGO ===== */
@@ -3652,7 +3707,7 @@ function uploadLogo(input){
   const reader = new FileReader();
   reader.onload = ()=>{
     DB.settings.logo = reader.result;
-    saveDB();
+    async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
     alert("Logo saved");
     location.reload();
   };
@@ -3675,7 +3730,7 @@ function restoreBackup(input){
   reader.onload=e=>{
     try{
       DB=JSON.parse(e.target.result);
-      saveDB();
+      async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
       location.reload();
     }catch{
       alert("Invalid backup file");
@@ -3717,7 +3772,7 @@ function resetSystem(){
     }]
   };
 
-  saveDB();
+  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
 
   alert("System Reset Completed Successfully");
 
@@ -4260,6 +4315,6 @@ function consumeFIFO(map, productId, qty){
   return totalCost;
 }
   window.addEventListener("beforeunload",()=>{
-  saveDB();
+  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
 });
 </script>
