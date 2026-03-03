@@ -487,9 +487,6 @@ async function deleteRow(table, id) {
 <script>
 
 // Initialize default developer account if not exists
-document.addEventListener("DOMContentLoaded", async ()=>{
-
-  await loadDB();
 
   if(!DB.accounts.find(x=>x.fixed)){
     await insertRow("accounts",{
