@@ -331,8 +331,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "adminReports",
     "settings"
   ];
-
-  for(const t of modules){
+    for(const t of modules){
     if(
       user.role === "developer" ||
       (user.permissions||[]).includes(t) ||
@@ -345,6 +344,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       break;
     }
   }
+}
 
   // Use Supabase central database instead of localStorage
   const s = DB.settings || {};
@@ -492,16 +492,16 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   await loadDB();
 
   if(!DB.accounts.find(x=>x.fixed)){
-   await insertRow("accounts",{
-  id: uid("A"),
-  username:"Dani",
-  password:"7525",
-  role:"developer",
-  tenantId:"MASTER",
-  fixed:true,
-  permissions:[]
-});
+    await insertRow("accounts",{
+      id: uid("A"),
+      username:"Dani",
+      password:"7525",
+      role:"developer",
+      fixed:true,
+      permissions:[]
+    });
   }
+
 
 });
 function uid(prefix){ 
