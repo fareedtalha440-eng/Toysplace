@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -798,465 +800,6 @@ function vrSelectProduct(inp,p){
   const vendorObj = DB.vendors.find(v => v.id === vrVendor.value);
 if(!vendorObj){
   ruleMessage("Vendor not selected");
-  returinsertRow(table, row) {
-
-  if(currentTenant){
-    row.tenantId = currentTenant;
-  }
-
-  await supabase.from(table).insert([row]);
-  await loadDB();
-}
-async function updateRow(table, id, row) {
-
-  if(currentTenant){
-    row.tenantId = currentTenant;
-  }
-
-  await supabase
-    .from(table)
-    .update(row)
-    .eq("id", id)
-    .eq("tenantId", currentTenant);
-
-  await loadDB();
-}
-
-async function deleteRow(table, id) {
-
-  await supabase
-    .from(table)
-    .delete()
-    .eq("id", id)
-    .eq("tenantId", currentTenant);
-
-  await loadDB();
-}
-
-</script>
-<script>
-
-// Initialize default developer account if not exists
-
-  if(!DB.accounts.find(x=>x.fixed)){
-    await insertRow("accounts",{
-      id: uid("A"),
-      username:"Dani",
-      password:"7525",
-      role:"developer",
-      fixed:true,
-      permissions:[]
-    });
-  }
-
-
-});
-function uid(prefix){ 
-  return prefix + "_" + Date.now() + Math.floor(Math.random()*1000); 
-}
-
-</script>
-<script>
-/* ================= RULE ENGINE ================= */
-const RULES = {
-  qtyIntegerOnly: true,
-  noDuplicateInvoiceProduct: true,
-  noDuplicatePurchaseProduct: true,
-  uniqueitemNo: true,
-  uniqueBarcode: true,
-  uniqueVendorName: true,
-  auditLog: true
-};
-
-/* ===== GLOBAL MESSAGE (CENTER SCREEN) ===== */
-function ruleMessage(msg){
-  let box = document.getElementById("ruleMsgBox");
-  if(!box){
-    box = document.createElement("div");
-    box.id = "ruleMsgBox";
-    box.style = `
-      position:fixed; top:50%; left:50%;
-      transform:translate(-50%,-50%);
-      background:#111; color:#fff;
-      padding:18px 26px;
-      border-radius:10px;
-      font-size:16px;
-      z-index:99999;
-      box-shadow:0 0 20px rgba(0,0,0,.4)
-    `;
-    document.body.appendChild(box);
-  }
-  box.innerText = msg;
-  box.style.display="block";
-  setTimeout(()=>box.style.display="none",2500);
-}
-
-/* ===== AUDIT LOG ===== */
-function logAction(action, ref=""){
-  if(!RULES.auditLog) return;
-   const session = sessionStorage.getItem("loggedInUser");
- const user = session ? JSON.parse(session) : { username: "unknown", role: "" };
-  DB.logs = DB.logs || [];
-  DB.logs.push({
-    user: user.username || "unknown",
-    role: user.role || "",
-    action,
-    ref,
-    dateTime: new Date().toISOString()
-  });
-  async function saveDB() {
-
-  if(!currentTenant) return;
-
-  for (let table in DB) {
-
-    if (!Array.isArray(DB[table])) continue;
-
-    for (let row of DB[table]) {
-
-      if (!row.id) continue;
-
-      row.tenantId = currentTenant;
-
-      await supabase
-        .from(table)
-        .upsert(row, { onConflict: "id" });
-    }
-  }
-}
-</script>
-  <script>
-
-document.addEventListener("DOMContentLoaded", async ()=>{   await loadDB();
-
-  window.vrVendor = document.getElementById("vrVendor");
-  window.vrBody = document.getElementById("vrBody");
-  window.vrTotal = document.getElementById("vrTotal");
-  window.vrNo = document.getElementById("vrNo");
-  window.vrPrev = document.getElementById("vrPrev");
-
-  vrLoadVendors();
-  vrGenerateNo();
-  vrLoadPrevious();
-});
-function loadPDFilters(){
-  const pSel=document.getElementById("pdProduct");
-  const vSel=document.getElementById("pdVendor");
-
-  if(!pSel) return;
-
-  pSel.innerHTML='<option value="">Select Product</option>';
-  DB.products.forEach(p=>{
-    pSel.innerHTML+=`<option value="${p.id}">${p.itemNo || p.id} - ${p.description}</option>`;
-  });
-
-  vSel.innerHTML='<option value="">All Vendors</option>';
-  DB.vendors.forEach(v=>{
-    vSel.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
-  });
-}
-
-function generateProductDetails(){
- const pid=document.getElementById("pdProduct").value;
-  if(!pid) return alert("Select product");
-
- const vendor=document.getElementById("pdVendor").value;
- const from=document.getElementById("pdFrom").value;
-  const to=document.getElementById("pdTo").value;
-
-  const product=DB.products.find(p=>p.id===pid);
-  if(!product) return;
-
-  let rows=[];
-  let balance=0;
-
-  DB.purchases.forEach(p=>{
-    const item=p.id.find(i=>i.product.id===product.id);
-    if(!item) return;
-    if(vendor && p.vendor!==vendor) return;
-
-    const d=new Date(p.date||p.dateTime);
-    if(from && d<new Date(from)) return;
-    if(to && d>new Date(to+"T23:59:59")) return;
-
-    balance+=item.qty;
-
-    rows.push({
-      date:d,
-      ref:p.no||"PUR",
-      name:p.vendor,
-      in:item.qty,
-      out:0,
-      rate:item.cost,
-      amount:item.qty*item.cost,
-      bal:balance
-    });
-  });
-
-  DB.invoices.forEach(inv=>{
-    const item=inv.items.find(i=>i.productId===pid);
-    if(!item) return;
-
-    const d=new Date(inv.dateTime);
-    if(from && d<new Date(from)) return;
-    if(to && d>new Date(to+"T23:59:59")) return;
-
-    balance-=item.qty;
-
-    rows.push({
-      date:d,
-      ref:inv.id,
-      name:"Cash Customer",
-      in:0,
-      out:item.qty,
-      rate:item.rate,
-      amount:item.qty*item.rate,
-      bal:balance
-    });
-  });
-
-  DB.returns.forEach(r=>{
-    const item=r.items.find(i=>i.product.id===product.product.id);
-    if(!item) return;
-    if(vendor && r.vendor!==vendor) return;
-
-    const d=new Date(r.dateTime);
-    if(from && d<new Date(from)) return;
-    if(to && d>new Date(to+"T23:59:59")) return;
-
-    balance-=item.qty;
-
-    rows.push({
-      date:d,
-      ref:r.no,
-      name:r.vendor,
-      in:0,
-      out:item.qty,
-      rate:item.cost,
-      amount:item.qty*item.cost,
-      bal:balance
-    });
-  });
-
-  rows.sort((a,b)=>a.date-b.date);
-
-  const tbody = document.getElementById("pdRows");
-tbody.innerHTML="";
-  rows.forEach((r,i)=>{
-    tbody.innerHTML+=`
-    <tr>
-    <td>${i+1}</td>
-    <td>${r.date.toLocaleDateString()}</td>
-    <td>${r.ref}</td>
-    <td>${r.name}</td>
-    <td>${r.in||""}</td>
-    <td>${r.out||""}</td>
-    <td>${r.rate}</td>
-    <td>${r.amount.toFixed(2)}</td>
-    <td>${r.bal}</td>
-    </tr>`;
-  });
-
-  calculateFastestProducts();
-}
-
-function calculateFastestProducts(){
-  const sales={};
-
-  DB.invoices.forEach(inv=>{
-    inv.items.forEach(i=>{
-      sales[i.productId]=(sales[i.productId]||0)+i.qty;
-    });
-  });
-
-  DB.fastestRanking=Object.entries(sales)
-    .sort((a,b)=>b[1]-a[1])
-    .map((x,i)=>({productId:x[0],rank:i+1,qty:x[1]}));
-
-  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
-}
-
-</script>
-<!-- ================= VENDOR RETURN (ULTRA FINAL) ================= -->
-<section id="returns" style="display:none;padding:30px">
-
-<h2 style="font-size:28px;font-weight:900">Vendor Return</h2>
-
-<div style="display:flex;gap:40px;align-items:end;margin-bottom:20px">
-  <div>
-    <label>Vendor</label><br>
-    <select id="vrVendor"></select>
-  </div>
-  <div style="font-size:24px;font-weight:800">
-    Return No: <span id="vrNo"></span>
-  </div>
-</div>
-
-<table width="100%" border="1" cellpadding="6">
-<thead>
-<tr>
-  <th>Barcode</th>
-  <th>Item No</th>
-  <th>Description</th>
-  <th>Stock</th>
-  <th>Qty</th>
-  <th>Cost</th>
-  <th>Amount</th>
-  <th></th>
-</tr>
-</thead>
-<tbody id="vrBody"></tbody>
-</table>
-
-<button onclick="vrAddRow()">Add Item</button>
-
-<h3 style="margin-top:15px">
-Total Return:
-<span id="vrTotal" style="font-size:22px;font-weight:900">0.00</span>
-</h3>
-
-<button onclick="vrSave()" style="margin-top:10px">Save Return</button>
-
-<hr>
-
-<h3>Previous Returns</h3>
-
-<table width="100%" border="1" cellpadding="6">
-<thead>
-<tr>
-  <th>#</th>
-  <th>No</th>
-  <th>Date</th>
-  <th>Time</th>
-  <th>Vendor</th>
-  <th>Amount</th>
-  <th>Print</th>
-  <th>Edit</th>
-  <th>Delete</th>
-</tr>
-</thead>
-<tbody id="vrPrev"></tbody>
-</table>
-
-</section>
-
-<script>
-/* ================= HARD INIT ================= */
-if(!DB.returns) DB.returns=[];
-if(!DB.vendorLedger) DB.vendorLedger=[];
-let vrEditIndex=null;
-
-/* ================= DOM READY ================= */
-document.addEventListener("DOMContentLoaded", async ()=>{   await loadDB();
-  vrLoadVendors();
-  vrGenerateNo();
-  vrLoadPrevious();
-});
-
-/* ================= VENDORS ================= */
-function vrLoadVendors(){
-  vrVendor.innerHTML='<option value="">Select Vendor</option>';
-  DB.vendors.forEach(v=>{
-    vrVendor.innerHTML+=`<option value="${v.id}">${v.name}</option>`;
-  });
-}
-
-/* ================= RETURN NO ================= */
-function vrGenerateNo(){
-  let max=0;
-  DB.returns.forEach(r=>{
-    const n=parseInt((r.no||"").replace("RT",""));
-    if(n>max) max=n;
-  });
-  vrNo.innerText="RT"+String(max+1).padStart(4,"0");
-}
-
-/* ================= ADD ROW ================= */
-function vrAddRow(){
-  if(!vrVendor.value){ ruleMessage("Select vendor first"); return; }
-
-  const tr=document.createElement("tr");
-  tr.innerHTML=`
-<td style="position:relative"> <input onkeydown="vrKeyNav(event,this,'barcode')" oninput="vrSearch(this,'barcode')" autocomplete="off"><div class="dropdown" style="position:absolute;background:#fff;border:1px solid #ccc;z-index:9999;max-height:150px;overflow-y:auto;width:250px;"></div></td>
-<td style="position:relative"> <input onkeydown="vrKeyNav(event,this,'item')" oninput="vrSearch(this,'item')" autocomplete="off"><div class="dropdown" style="position:absolute;background:#fff;border:1px solid #ccc;z-index:9999;max-height:150px;overflow-y:auto;width:250px;"></div></td>
-<td style="position:relative"> <input onkeydown="vrKeyNav(event,this,'desc')" oninput="vrSearch(this,'desc')" autocomplete="off"><div class="dropdown" style="position:absolute;background:#fff;border:1px solid #ccc;z-index:9999;max-height:150px;overflow-y:auto;width:250px;"></div></td>
-<td class="stk">0</td>
-<td><input type="number" min="1" oninput="vrCalc()"></td>
-<td><input type="number" min="0.01" step="0.01" oninput="vrCalc()"></td>
-<td class="amt">0.00</td>
-<td><button onclick="this.closest('tr').remove();vrCalc()">X</button></td>
-`;
-  vrBody.appendChild(tr);
-}
-
-/* ================= SEARCH + KEYBOARD ================= */
-function vrSearch(inp,type){
-
-  if(!DB.products || !DB.products.length) return;
-
-  const q = inp.value.toLowerCase().trim();
-  const box = inp.nextElementSibling;
-  box.innerHTML="";
-
-  if(!q){
-    box.style.display="none";
-    return;
-  }
-
-  box.style.display="block";
-
-  DB.products.forEach(p=>{
-
-    const productId = (p.product && p.id ? p.id : p.id || "").toString().toLowerCase();
-    const barcode   = (p.barcode || "").toString().toLowerCase();
-    const desc      = (p.description || "").toString().toLowerCase();
-
-    let match=false;
-
-    if(type==="barcode" && barcode.includes(q)) match=true;
-    if(type==="item" && productId.includes(q)) match=true;
-    if(type==="desc" && desc.includes(q)) match=true;
-
-    if(!match) return;
-
-    const d=document.createElement("div");
-    d.className="dd-item";
-    d.innerText = productId+" | "+desc+" (Stock "+(p.stock||0)+")";
-
-    d.onclick=()=>{
-      vrSelectProduct(inp,p);
-    };
-
-    box.appendChild(d);
-  });
-}
-function vrKeyNav(e,inp){
-  const box=inp.nextElementSibling;
-  const items=[...box.children];
-  if(!items.length) return;
-  let idx=items.findIndex(x=>x.classList.contains("active"));
-  if(e.key==="ArrowDown"){ e.preventDefault(); idx=(idx+1)%items.length; }
-  if(e.key==="ArrowUp"){ e.preventDefault(); idx=(idx-1+items.length)%items.length; }
-  if(e.key==="Enter" && idx>-1){ e.preventDefault(); items[idx].click(); }
-  items.forEach(x=>x.classList.remove("active"));
-  if(idx>-1) items[idx].classList.add("active");
-}
-  
-/* ================= SELECT PRODUCT ================= */
-function vrSelectProduct(inp,p){
-  
-
-  const r = inp.closest("tr");
-
-  if(!vrVendor.value){
-    ruleMessage("Select vendor first");
-    return;
-  }
-
-  // FIND VENDOR OBJECT
-  const vendorObj = DB.vendors.find(v => v.id === vrVendor.value);
-if(!vendorObj){
-  ruleMessage("Vendor not selected");
   return;
 }
   // GET LAST PURCHASE FOR THIS VENDOR + PRODUCT
@@ -1289,7 +832,7 @@ const productId = (p.itemNo || p.product?.itemNo || p.id || "");
 
 r.children[0].children[0].value = p.barcode || "";
 r.children[1].children[0].value = productId;
-r.children[2].children[0].value = p.description || "";
+r.children[2].children[0].value = p.desc || "";
 r.querySelector(".stk").innerText = p.stock || 0;
 r.children[5].children[0].value = autoCost;
   
@@ -1371,7 +914,6 @@ DB.vendorLedger.push({
   date:new Date().toISOString()
 });
 const obj={
-  id: uid("RT"),
   no,
   vendorId: vendorObj?.id || "",
   vendorName: vendorObj?.name || "",
@@ -1385,7 +927,7 @@ const obj={
   DB.returns.push(obj);
 }
 
-  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+  saveDB();
   vrEditIndex=null;
   vrBody.innerHTML="";
   vrGenerateNo();
@@ -1427,7 +969,7 @@ function vrEdit(i){
   x.itemNo === it.productId
 );
     tr.children[1].children[0].value=it.productId;
-    tr.children[2].children[0].value=p?.description||"";
+    tr.children[2].children[0].value=p?.desc||"";
     tr.querySelector(".stk").innerText=p?.stock||0;
     tr.children[4].children[0].value=it.qty;
     tr.children[5].children[0].value=it.cost;
@@ -1448,7 +990,7 @@ function vrDelete(i){
   });
   DB.vendorLedger=DB.vendorLedger.filter(l=>l.ref!==r.no);
   DB.returns.splice(i,1);
-  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+  saveDB();
   vrLoadPrevious();
 }
 
@@ -1538,7 +1080,7 @@ function downloadVendorLedgerCSV(){
   let csv = "Date,Type,Ref,Debit,Credit,Balance\n";
   let bal = 0;
 
-  (DB.vendorLedger || []).forEach(r=>{
+  rows.forEach(r=>{
     bal += (r.debit||0) - (r.credit||0);
     csv += `"${new Date(r.date).toLocaleString()}","${r.type}","${r.ref}",${r.debit||0},${r.credit||0},${bal}\n`;
   });
@@ -1659,7 +1201,7 @@ function updateLiveInvoiceNo(){
 
 /* ===== ADD ROW ===== */
 function addInvoiceRow(){
-  invoiceDraft.push({productId:"",barcode:"",itemNo:"",description:"",qty:1,rate:0,valid:false});
+  invoiceDraft.push({productId:"",barcode:"",itemNo:"",desc:"",qty:1,rate:0,valid:false});
   renderInvoice();
 }
 
@@ -1686,7 +1228,7 @@ function renderInvoice(){
 </td>
 
 <td>
-  <input value="${r.description}" 
+  <input value="${r.desc}" 
          oninput="searchInvProduct(${i},this.value,'desc')">
   <div id="invSugD${i}" class="invSug"></div>
 </td>
@@ -1747,7 +1289,7 @@ function searchInvProduct(i,val,field){
 
     const barcode = (p.barcode||"").toLowerCase();
     const itemNo  = (p.itemNo||"").toLowerCase();
-    const desc    = (p.description||"").toLowerCase();
+    const desc    = (p.desc||"").toLowerCase();
 
     if(field==="barcode") return barcode.includes(q);
     if(field==="itemNo")  return itemNo.includes(q);
@@ -1777,7 +1319,7 @@ function searchInvProduct(i,val,field){
     d.innerText=
       (p.barcode||"")+
       " | "+p.itemNo+
-      " | "+p.description+
+      " | "+p.desc+
       " (Stock: "+p.stock+")";
 
     d.onclick=()=>{
@@ -1799,7 +1341,7 @@ function selectInvoiceProduct(i,p){
     productId:p.id,
     barcode:p.barcode||"",
     itemNo:p.itemNo,
-    description:p.description,
+    desc:p.desc,
     qty:1,
     rate:p.rate||0,
     valid:true
@@ -1857,7 +1399,7 @@ function saveInvoice(){
   const p=DB.products.find(x=>x.id===r.productId);
   if(!p) continue;
   if(p.stock < r.qty){
-    return alert("Low stock: "+r.description);
+    return alert("Low stock: "+r.desc);
   }
 }
   const id=editingInvoiceId||getNextInvoiceNumber();
@@ -1891,6 +1433,12 @@ if(editingInvoiceId){
 DB.invoices.push(newInvoice);
 
 // NOW DEDUCT STOCK
+invoiceDraft.forEach(r=>{
+  const prod = DB.products.find(p=>p.id===r.productId);
+  if(prod){
+    prod.stock -= r.qty;
+  }
+});
   invoiceDraft.forEach(r=>{
    const prod = DB.products.find(p=>p.id===r.productId);
 if(prod){
@@ -1898,7 +1446,7 @@ if(prod){
   prod.stock -= r.qty;
 }
   });
-DB.cash = DB.cash.filter(c=>c.ref!==id);
+
   DB.cash.push({
   id: getNextPaymentId(),
   dateTime: new Date().toISOString(),
@@ -1912,7 +1460,7 @@ DB.cash = DB.cash.filter(c=>c.ref!==id);
   locked: true,
   source: "INVOICE"
 });  
-  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+  saveDB();
 renderCash();
     
   invoiceDraft=[];
@@ -2001,11 +1549,11 @@ DB.deleted.push({
   dateTime:new Date().toISOString(),
   data:inv
 });
-async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+saveDB();
   DB.cash = DB.cash.filter(c=>c.ref!==id);
   DB.invoices = DB.invoices.filter(i=>i.id!==id);
 
-  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+  saveDB();
   renderInvoiceList();
   renderInvoice();
   updateLiveInvoiceNo();
@@ -2015,7 +1563,7 @@ function printInvoice(id){
   const inv = DB.invoices.find(i=>i.id===id);
   if(!inv) return;
 
-  const s = DB.settings[0] || {};
+  const s = DB.settings || {};
   const d = new Date(inv.dateTime);
 
   const w = window.open("");
@@ -2088,7 +1636,7 @@ td{padding:2px 0}
 ${inv.items.map((r,i)=>`
 <tr>
 <td>${i+1}</td>
-<td>${r.itemNo}<br><small>${r.description||""}</small></td>
+<td>${r.itemNo}<br><small>${r.desc||""}</small></td>
 <td>${r.qty}</td>
 <td>${r.rate}</td>
 <td class="right">Rs.${Number(r.qty*r.rate).toLocaleString("en-PK",{minimumFractionDigits:2})}</td>
@@ -2143,7 +1691,7 @@ Rs.${Number(inv.discountAmt||0)
   w.document.close();
 }
 /* ===== INITIAL RENDER ===== */
-document.addEventListener("DOMContentLoaded", async ()=>{   await loadDB();
+document.addEventListener("DOMContentLoaded",()=>{
   renderInvoice();
   renderInvoiceList();
   updateLiveInvoiceNo();
@@ -2309,7 +1857,7 @@ function saveCashPayment(){
   locked: false,
   source: "MANUAL"
 });
-  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+  saveDB();
   resetCashForm();
   cashPage = 1;
   renderCash();
@@ -2451,7 +1999,7 @@ function deleteCashPayment(id){
 
   DB.cash = DB.cash.filter(x=>x.id!==id);
 
-  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+  saveDB();
   renderCash();
 }
   function deleteVendor(id){
@@ -2464,7 +2012,7 @@ function deleteCashPayment(id){
   DB.vendors = DB.vendors.filter(v=>v.id!==id);
   DB.vendorLedger = DB.vendorLedger.filter(l=>l.vendorId!==id);
 
-  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+  saveDB();
   renderVendors();
 }
   function toggleCashSort(){
@@ -2492,11 +2040,7 @@ function downloadCashCSV(){
 }
 
 /* ===== INITIAL LOAD ===== */
-document.addEventListener("DOMContentLoaded", async ()=>{
-  await loadDB();
-  loadVendorOptions();
-  renderCash();
-});
+loadVendorOptions(); renderCash();
 </script>
 
 <!-- ================= PRODUCTS (ADVANCED SYSTEM) ================= -->
@@ -2600,7 +2144,7 @@ tbody.innerHTML += `
 <td>${start+index+1}</td>
 <td>${p.barcode||""}</td>
 <td>${p.itemNo}</td>
-<td>${p.description}</td>
+<td>${p.desc}</td>
 <td>${Number(p.rate).toLocaleString(undefined,{minimumFractionDigits:2})}</td>
 <td>${p.stock||0}</td>
 <td>
@@ -2629,7 +2173,7 @@ function advancedProductSearch(){
 
   const results = DB.products.filter(p =>
     (p.itemNo || "").toLowerCase().includes(q) ||
-    (p.description || "").toLowerCase().includes(q) ||
+    (p.desc || "").toLowerCase().includes(q) ||
     (p.barcode || "").toLowerCase().includes(q)
   );
 
@@ -2665,7 +2209,7 @@ productFormTitle.innerText="Edit Product";
 
 pBarcode.value=p.barcode||"";
 pItemNo.value=p.itemNo||"";
-pDesc.value=p.description||"";
+pDesc.value=p.desc||"";
 pRate.value=p.rate||0;
 }
 
@@ -2690,7 +2234,7 @@ if(!p) return;
 
 p.barcode=barcode;
 p.itemNo=itemNo;
-p.description=desc;
+p.desc=desc;
 p.rate=rate;
 
 }else{
@@ -2706,16 +2250,17 @@ return;
 }
 
 DB.products.push({
-  id: uid("P"),
-  barcode,
-  itemNo,
-  description: desc,
-  rate,
-  stock:0
+id: uid("P"),
+barcode,
+itemNo,
+desc,
+rate,
+stock:0
 });
+
 }
 
-async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+saveDB();
 state.filtered = DB.products.slice();
 render();
 closeProductForm();
@@ -2741,7 +2286,7 @@ return;
 
 if(confirm("Delete Product?")){
 DB.products = DB.products.filter(x=>x.id!==id);
-async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+saveDB();
 state.filtered = DB.products.slice();
 render();
 }
@@ -2788,7 +2333,7 @@ DB.products.push({
 id: uid("P"),
 barcode,
 itemNo,
-description: r["Description"]||"",
+desc: r["Description"]||"",
 rate: Number(
   r["Rate"] ??
   r["RATE"] ??
@@ -2802,7 +2347,7 @@ stock:0
 
 });
 
-async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+saveDB();
 state.filtered = DB.products.slice();
 render();
 alert("Import Completed");
@@ -2819,7 +2364,7 @@ function exportCSV(){
 let csv = "Barcode,Item No,Description,Rate,Stock\n";
 
 DB.products.forEach(p=>{
-csv += `"${p.barcode}","${p.itemNo}","${p.description}",${p.rate},${p.stock}\n`;
+csv += `"${p.barcode}","${p.itemNo}","${p.desc}",${p.rate},${p.stock}\n`;
 });
 
 const a = document.createElement("a");
@@ -2848,10 +2393,10 @@ closeProductForm
 
 /* ================= LOAD ================= */
 
-document.addEventListener("DOMContentLoaded", async function(){
-  await loadDB();
-  ProductSystem.init();
+document.addEventListener("DOMContentLoaded",function(){
+ProductSystem.init();
 });
+
 </script>
 <!-- ================= VENDORS ================= -->
 <section id="vendors">
@@ -2876,7 +2421,6 @@ document.addEventListener("DOMContentLoaded", async function(){
           <th>Name</th>
           <th>Balance (PKR)</th>
           <th>Ledger</th>
-          <th>Expense</th>
           <th>Edit</th>
           <th>Delete</th>
         </tr>
@@ -2894,27 +2438,6 @@ document.addEventListener("DOMContentLoaded", async function(){
 <script>
 
 /* ================= HARD SAFE INIT ================= */
-  let DB = {};
-
-async function loadDB(){
-
-  const tables = ["products","vendors","purchases","invoices","cash","accounts","logs","returns"];
-
-  for(const table of tables){
-    const { data, error } = await supabase.from(table).select("*");
-    if(!error){
-      DB[table] = data || [];
-    }else{
-      DB[table] = [];
-    }
-  }
-
-  return DB;
-}
-
-async function saveDB(){
-  return true;
-}
 
 DB.vendors     ??= [];
 DB.purchases   ??= [];
@@ -2959,7 +2482,7 @@ function addVendor(){
     createdDate: new Date().toISOString()
   });
 
-  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+  saveDB();
   vendorName.value="";
   vendorPage=1;
   renderVendors();
@@ -2976,7 +2499,7 @@ function editVendor(id){
   if(!name) return;
 
   v.name = name.trim();
-  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+  saveDB();
   renderVendors();
   loadVendorOptions();
 }
@@ -3028,7 +2551,7 @@ function deleteVendor(id){
   });
 
   DB.vendors = DB.vendors.filter(x=>x.id!==id);
-  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+  saveDB();
   renderVendors();
   loadVendorOptions();
 }
@@ -3325,7 +2848,7 @@ function loadPurchaseVendors(){
 
 /* ===== ADD ROW ===== */
 function addPurchaseRow(){
-  purchaseDraft.push({productId:null,barcode:"",itemNo:"",description:"",qty:1,cost:0});
+  purchaseDraft.push({productId:null,barcode:"",itemNo:"",desc:"",qty:1,cost:0});
   renderPurchaseRows();
 }
 
@@ -3344,7 +2867,7 @@ function renderPurchaseRows(){
 <tr>
 <td><input value="${r.barcode}" oninput="searchProduct(this,${i})"></td>
 <td><input value="${r.itemNo}" oninput="searchProduct(this,${i})"></td>
-<td><input value="${r.description}" oninput="searchProduct(this,${i})"></td>
+<td><input value="${r.desc}" oninput="searchProduct(this,${i})"></td>
 <td>${stock}</td>
 <td><input type="number" value="${r.qty}" onchange="setQty(${i},this.value)"></td>
 <td><input type="number" value="${r.cost}" onchange="setCost(${i},this.value)" onkeydown="costTab(event,${i})"></td>
@@ -3372,7 +2895,7 @@ function searchProduct(inp,i){
   const list = (DB.products || []).filter(p =>
   (p.barcode || "").toLowerCase().includes(val.toLowerCase()) ||
   (p.itemNo || "").toLowerCase().includes(val.toLowerCase()) ||
-  (p.description || "").toLowerCase().includes(val.toLowerCase())
+  (p.desc || "").toLowerCase().includes(val.toLowerCase())
 ).slice(0,5);
   
   const box=document.createElement("div");
@@ -3395,7 +2918,7 @@ inp.closest("td").appendChild(box);
 
   list.forEach(p=>{
     const d=document.createElement("div");
-    d.innerText=`${p.barcode} | ${p.itemNo} | ${p.description}`;
+    d.innerText=`${p.barcode} | ${p.itemNo} | ${p.desc}`;
     d.onclick=()=>selectProduct(i,p);
     box.appendChild(d);
   });
@@ -3411,7 +2934,7 @@ function selectProduct(i,p){
     productId:p.id,
     barcode:p.barcode,
     itemNo:p.itemNo,
-    description:p.description
+    desc:p.desc
   });
 
   renderPurchaseRows();
@@ -3483,7 +3006,7 @@ DB.purchases.push({
   total
 });
 
-  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+  saveDB();
   generatePurchaseNo();
   purchaseDraft = [];
   addPurchaseRow();
@@ -3661,7 +3184,7 @@ function deletePurchase(id){
 
   DB.purchases = DB.purchases.filter(x=>x.id!==id);
 
-  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+  saveDB();
   renderPurchaseHistory();
 }
 
@@ -3673,7 +3196,7 @@ function uploadPurchaseExcel(input){
     XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]).forEach(row=>{
       const p=DB.products.find(x=>x.barcode==row.Barcode||x.itemNo==row["Item No"]||x.desc==row.Description);
       if(!p)return;
-      purchaseDraft.push({productId:p.id,barcode:p.barcode,itemNo:p.itemNo,description:p.description,qty:+row.Qty||0,cost:+row.Cost||0});
+      purchaseDraft.push({productId:p.id,barcode:p.barcode,itemNo:p.itemNo,desc:p.desc,qty:+row.Qty||0,cost:+row.Cost||0});
     });
     renderPurchaseRows();
   };
@@ -3712,7 +3235,7 @@ function getPurchaseCost(productId, invDate){
   return lastCost;
   }
 /* ===== LOAD USERS ===== */
- document.addEventListener("DOMContentLoaded", async ()=>{   await loadDB();
+ document.addEventListener("DOMContentLoaded",()=>{
 
   [...new Set((DB.logs||[]).map(l=>l.user))].forEach(u=>{
     profitUser.innerHTML+=`<option>${u}</option>`;
@@ -3837,7 +3360,7 @@ if(!DB.accounts){
     fixed:true,
     permissions:[]
   }];
-  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+  saveDB();
 }
 /* ===== LOGIN SYSTEM ===== */
 function submitLogin(){
@@ -3853,10 +3376,9 @@ const p = document.getElementById("loginPassword").value.trim();
   }
 
   sessionStorage.setItem("loggedInUser", JSON.stringify(user));
-  currentTenant = user.tenantId || user.id;
-await loadDB();
+
   document.getElementById("loginScreen").style.display = "none";
-  
+
   renderSectionsByPermission();
   openTab("invoice");
 }
@@ -3953,7 +3475,7 @@ function createAccount(){
     DB.accounts.push({id: uid("A"), username, password, role, permissions:perms});
   }
 
-  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+  saveDB();
   renderAccounts();
 
   document.getElementById("newUsername").value="";
@@ -4005,7 +3527,7 @@ function deleteAccount(id){
   if(!acc || acc.fixed) return alert("Cannot delete this account");
   if(!confirm("Delete this account?")) return;
   DB.accounts=DB.accounts.filter(x=>x.id!==id);
-  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+  saveDB();
   renderAccounts();
 }
 
@@ -4016,7 +3538,7 @@ function saveFontAndColor(){
   const color=document.getElementById("softwareColor").value;
   DB.settings.font=font;
   DB.settings.color=color;
-  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+  saveDB();
   document.body.style.fontFamily=font;
   document.documentElement.style.setProperty('--primary', color);
   alert("Font & color applied");
@@ -4033,7 +3555,7 @@ function saveShopLocation(){
   if(!DB.settings) DB.settings={};
   const loc=document.getElementById("shopLocation").value.trim();
   DB.settings.shopLocation=loc;
-  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+  saveDB();
   alert("Shop location saved");
 }
 
@@ -4042,7 +3564,7 @@ function saveSoftwareName(){
   if(!DB.settings) DB.settings={};
   const name=document.getElementById("setSoftwareName").value.trim();
   DB.settings.softwareName=name||"Dani Test Software";
-  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+  saveDB();
   alert("Software name updated");
 }
 /* ===== LOGO ===== */
@@ -4054,7 +3576,7 @@ function uploadLogo(input){
   const reader = new FileReader();
   reader.onload = ()=>{
     DB.settings.logo = reader.result;
-    async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+    saveDB();
     alert("Logo saved");
     location.reload();
   };
@@ -4077,7 +3599,7 @@ function restoreBackup(input){
   reader.onload=e=>{
     try{
       DB=JSON.parse(e.target.result);
-      async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+      saveDB();
       location.reload();
     }catch{
       alert("Invalid backup file");
@@ -4119,7 +3641,7 @@ function resetSystem(){
     }]
   };
 
-  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+  saveDB();
 
   alert("System Reset Completed Successfully");
 
@@ -4180,7 +3702,7 @@ function getPurchaseCost(productId, invDate){
   return lastCost;
   }
 /* ===== LOAD USERS ===== */
-document.addEventListener("DOMContentLoaded", async ()=>{   await loadDB();
+document.addEventListener("DOMContentLoaded",()=>{
   [...new Set((DB.logs||[]).map(l=>l.user))].forEach(u=>{
     profitUser.innerHTML+=`<option>${u}</option>`;
     delUser.innerHTML+=`<option>${u}</option>`;
@@ -4315,7 +3837,7 @@ function loadProductDetailsReport() {
 
   (DB.products || []).forEach(p => {
     const id   = p.id || p.product?.id;
-    const desc = p.description || p.product?.desc;
+    const desc = p.desc || p.product?.desc;
 
     if (id && desc) {
       productSelect.innerHTML += `<option value="${id}">${desc}</option>`;
@@ -4360,7 +3882,7 @@ function loadProductLedger(productId){
           date: pur.dateTime.split("T")[0],
           type: "PUR",
           ref: pur.no || pur.ref || "",
-          description: pur.description || "Purchase",
+          desc: pur.desc || "Purchase",
           inQty: Number(it.qty),
           outQty: 0,
           rate: Number(it.cost),
@@ -4378,7 +3900,7 @@ function loadProductLedger(productId){
           date: inv.date,
           type: "INV",
           ref: inv.no || "",
-          description: product.desc,
+          desc: product.desc,
           inQty: 0,
           outQty: Number(it.qty),
           rate: Number(it.rate),
@@ -4396,7 +3918,7 @@ function loadProductLedger(productId){
           date: ret.date,
           type: "RET",
           ref: ret.no || "",
-          description: ret.desc || "Return",
+          desc: ret.desc || "Return",
           inQty: 0,
           outQty: Number(it.qty),
           rate: Number(it.rate),
@@ -4584,7 +4106,7 @@ function loadProfitFilters(){
   accountSelect.innerHTML = '<option value="">All Accounts</option>';
 
   (DB.products||[]).forEach(p=>{
-    productSelect.innerHTML += `<option value="${p.id}">${p.description}</option>`;
+    productSelect.innerHTML += `<option value="${p.id}">${p.desc}</option>`;
   });
 
   (DB.vendors||[]).forEach(v=>{
@@ -4662,6 +4184,6 @@ function consumeFIFO(map, productId, qty){
   return totalCost;
 }
   window.addEventListener("beforeunload",()=>{
-  async function saveDB() {   for (let table in DB) {      if (!Array.isArray(DB[table])) continue;      for (let row of DB[table]) {       if (!row.id) continue;        await supabase         .from(table)         .upsert(row, { onConflict: "id" });     }   } }
+  saveDB();
 });
 </script>
